@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260829-9">
-  <link rel="stylesheet" href="css/layout.css?v=20260829-9">
-  <link rel="stylesheet" href="css/components.css?v=20260829-9">
+  <link rel="stylesheet" href="css/base.css?v=20260829-10">
+  <link rel="stylesheet" href="css/layout.css?v=20260829-10">
+  <link rel="stylesheet" href="css/components.css?v=20260829-10">
 </head>
 <body class="review-page">
   <div class="app-shell">
@@ -16,7 +16,7 @@
       <p class="brand-sub">VALORANT Clip Analysis</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item" href="index.html">Dashboard</a>
-        <a class="nav-item active" href="review.html?v=20260829-9">New Review</a>
+        <a class="nav-item active" href="review.html?v=20260829-10">New Review</a>
         <a class="nav-item" href="result.html">Import / Result</a>
         <a class="nav-item" href="history.html">History</a>
         <a class="nav-item" href="training.html">Training</a>
@@ -27,7 +27,7 @@
     <main class="main-content">
       <header class="page-header compact">
         <div>
-          <p class="eyebrow">NEW REVIEW · BUILD 0.4.5</p>
+          <p class="eyebrow">NEW REVIEW · BUILD 0.4.6</p>
           <h1>クリップ解析</h1>
           <p class="lead">動画はブラウザ内で処理します。元動画を外部へ自動送信しません。</p>
         </div>
@@ -66,19 +66,19 @@
               <button class="btn btn-primary" id="autoDetectBtn" type="button" disabled>キルSceneを自動検出</button>
             </div>
             <div class="detection-status hidden" id="detectionStatus" aria-live="polite"><div class="detection-status-head"><span id="detectionMessage">解析準備中…</span><span class="progress-number" id="detectionProgressText"></span></div><progress id="detectionProgress" max="100" value="0"></progress></div>
-            <p class="helper detection-warning" id="detectionWarning">Detector v0.4.4は見逃し対策版です。v0.4.3が削除した弱い候補をLOWとして残し、長い連キルでFocus Windowの後ろに強い戦闘証拠が続く場合はScene終端を復元します。LOW候補は誤検出も混ざるため必ず確認してください。</p>
+            <p class="helper detection-warning" id="detectionWarning">Detector v0.4.5では、v0.4.4の見逃し防止候補を維持したまま、本命Sceneと根拠の弱い要確認候補を分離します。要確認候補は折りたたみ表示されます。</p>
           </section>
 
           <section class="panel">
             <div class="section-heading"><div><p class="eyebrow">SCENES</p><h2>Scene確認</h2></div><span class="badge" id="sceneCount">0 scenes</span></div>
-            <p class="helper">各Sceneを再生して「キル / デス / 戦闘のみ / 不要」を選んでください。LOW候補は見逃し防止のため意図的に残しています。範囲がずれていればStart / Endを修正し、まだ漏れがあれば手動追加してください。</p>
+            <p class="helper">本命Sceneを先に確認してください。見逃し防止用の弱候補は下の「要確認候補」にまとめています。検証中は弱候補も開いて正解ラベルを付けてください。</p>
             <div class="scene-list" id="sceneList"></div>
           </section>
 
           <section class="panel feedback-panel">
             <div class="section-heading"><div><p class="eyebrow">DETECTOR FEEDBACK</p><h2>検出改善用パッケージ</h2></div></div>
-            <p class="helper">Detector v0.4.4ではdiagnosticsに、v0.4.3で削除された候補の復元結果と、長Scene後半を戻した理由も保存します。LOW候補にも正解ラベルを付けてください。</p>
-            <label class="notes-field"><span>メモ（任意）</span><textarea id="feedbackNotes" rows="3" placeholder="例: LOWの2番が実キル / 4番は不要 / 連キルの後半まで入った"></textarea></label>
+            <p class="helper">Detector v0.4.5ではdiagnosticsに本命 / 弱候補の分類結果も保存します。要確認候補にも可能な範囲でラベルを付けてください。</p>
+            <label class="notes-field"><span>メモ（任意）</span><textarea id="feedbackNotes" rows="3" placeholder="例: 要確認候補の1番は本物 / Scene 2は不要 / 連キルの区切りが長い"></textarea></label>
             <button class="btn btn-primary full" id="feedbackPackageBtn" type="button" disabled>検出改善用ZIPを作成</button>
             <div class="detection-status hidden" id="feedbackStatus" aria-live="polite"><div class="detection-status-head"><span id="feedbackMessage">準備中…</span><span class="progress-number" id="feedbackProgressText"></span></div><progress id="feedbackProgress" max="100" value="0"></progress></div>
           </section>
@@ -93,13 +93,14 @@
     </main>
   </div>
 
-  <script src="js/storage.js?v=20260829-9"></script>
-  <script src="js/video.js?v=20260829-9"></script>
-  <script src="js/scene-detection-v042.js?v=20260829-9"></script>
-  <script src="js/scene-detection-v043.js?v=20260829-9"></script>
-  <script src="js/scene-detection-v044.js?v=20260829-9"></script>
-  <script src="js/feedback-package-v3.js?v=20260829-9"></script>
-  <script src="js/ui.js?v=20260829-9"></script>
-  <script src="js/app.js?v=20260829-9"></script>
+  <script src="js/storage.js?v=20260829-10"></script>
+  <script src="js/video.js?v=20260829-10"></script>
+  <script src="js/scene-detection-v042.js?v=20260829-10"></script>
+  <script src="js/scene-detection-v043.js?v=20260829-10"></script>
+  <script src="js/scene-detection-v044.js?v=20260829-10"></script>
+  <script src="js/scene-detection-v045.js?v=20260829-10"></script>
+  <script src="js/feedback-package-v3.js?v=20260829-10"></script>
+  <script src="js/ui.js?v=20260829-10"></script>
+  <script src="js/app.js?v=20260829-10"></script>
 </body>
 </html>
