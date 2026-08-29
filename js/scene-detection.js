@@ -10,7 +10,8 @@ window.VReviewSceneDetection = (() => {
     const duration = Math.max(0, Number(options.duration || 0));
     if (!duration) throw new Error('動画時間を取得できませんでした。');
 
-    const sensitivity = SENSITIVITY[options.sensitivity] || SENSITIVITY.standard;
+    const sensitivityName = options.sensitivity || 'standard';
+    const sensitivity = SENSITIVITY[sensitivityName] || SENSITIVITY.standard;
     const onProgress = typeof options.onProgress === 'function' ? options.onProgress : () => {};
     const warnings = [];
 
@@ -37,10 +38,34 @@ window.VReviewSceneDetection = (() => {
     return {
       scenes,
       warnings,
+      sensitivity: sensitivityName,
       diagnostics: {
         audioSamples: audio.length,
         visualSamples: visual.length,
-        eventCount: events.length
+        eventCount: events.length,
+        thresholds: { ...sensitivity }
+      },
+      diagnosticData: {
+        audio: audio.map(item => ({
+          time: round(item.time, 3),
+          score: round(item.score, 4),
+          rms: round(item.rms, 6),
+          peak: round(item.peak, 6),
+          rise: round(item.rise, 6),
+          crest: round(item.crest, 4)
+        })),
+        visual: visual.map(item => ({
+          time: round(item.time, 3),
+          score: round(item.score, 4),
+          motion: round(item.motion, 5),
+          centerMotion: round(item.centerMotion, 5)
+        })),
+        events: events.map(item => ({
+          time: round(item.time, 3),
+          score: round(item.score, 4),
+          audio: round(item.audio, 4),
+          visual: round(item.visual, 4)
+        }))
       }
     };
   }
@@ -346,6 +371,11 @@ window.VReviewSceneDetection = (() => {
       target.addEventListener(eventName, onDone, { once: true });
       target.addEventListener('error', onError, { once: true });
     });
+  }
+
+  function round(value, digits) {
+    const p = 10 ** digits;
+    return Math.round(Number(value || 0) * p) / p;
   }
 
   function clamp(value, min, max) {
