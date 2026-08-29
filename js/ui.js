@@ -7,6 +7,7 @@ window.VReviewUI = (() => {
   };
 
   const els = {};
+  const FEEDBACK_VALUES = ['unreviewed', 'kill', 'death', 'fight', 'false_positive'];
 
   function init() {
     els.video = document.getElementById('videoPreview');
@@ -36,7 +37,7 @@ window.VReviewUI = (() => {
         alert('開始位置と終了位置を正しい順番で設定してください。');
         return;
       }
-      addScene(start, end, { source: 'manual', confidence: null });
+      addScene(start, end, { source: 'manual', confidence: null, feedbackLabel: 'unreviewed' });
       state.draftStart = null;
       state.draftEnd = null;
     });
@@ -55,6 +56,7 @@ window.VReviewUI = (() => {
       fps: 'auto',
       source: 'manual',
       confidence: null,
+      feedbackLabel: 'unreviewed',
       ...extra
     });
     if (!scene) return;
@@ -64,7 +66,7 @@ window.VReviewUI = (() => {
 
   function replaceScenes(scenes) {
     state.scenes = (Array.isArray(scenes) ? scenes : [])
-      .map(item => normalizeScene({ id: createId(), fps: 'auto', source: 'auto', ...item }))
+      .map(item => normalizeScene({ id: createId(), fps: 'auto', source: 'auto', feedbackLabel: 'unreviewed', ...item }))
       .filter(Boolean);
     sortAndPersist();
   }
@@ -72,10 +74,12 @@ window.VReviewUI = (() => {
   function updateScene(id, patch) {
     const scene = state.scenes.find(item => item.id === id);
     if (!scene) return;
+    const timingChanged = Object.prototype.hasOwnProperty.call(patch, 'start') || Object.prototype.hasOwnProperty.call(patch, 'end');
     Object.assign(scene, patch);
     const normalized = normalizeScene(scene);
     if (!normalized) return;
-    Object.assign(scene, normalized, { source: scene.source === 'auto' ? 'edited' : scene.source, confidence: scene.confidence });
+    const nextSource = timingChanged && scene.source === 'auto' ? 'edited' : scene.source;
+    Object.assign(scene, normalized, { source: nextSource, confidence: scene.confidence });
     sortAndPersist();
   }
 
@@ -106,13 +110,15 @@ window.VReviewUI = (() => {
 
     state.scenes.forEach((scene, index) => {
       const card = document.createElement('article');
-      card.className = 'scene-card';
+      card.className = `scene-card feedback-${scene.feedbackLabel || 'unreviewed'}`;
       const detectionBadge = getDetectionBadge(scene);
+      const reasonBadge = scene.detectorReason ? `<span class="badge badge-reason">${escapeHtml(scene.detectorReason)}</span>` : '';
       card.innerHTML = `
         <header>
           <strong>Scene ${String(index + 1).padStart(2, '0')}</strong>
           <div class="scene-badges">
             ${detectionBadge}
+            ${reasonBadge}
             <span class="badge">${scene.fps === 'auto' ? 'Auto FPS' : `${scene.fps}fps`}</span>
           </div>
         </header>
@@ -120,6 +126,16 @@ window.VReviewUI = (() => {
           <label>Start<input data-role="start" type="number" min="0" step="0.01" value="${scene.start.toFixed(2)}"></label>
           <label>End<input data-role="end" type="number" min="0" step="0.01" value="${scene.end.toFixed(2)}"></label>
         </div>
+        <label class="scene-feedback-field">
+          <span>このSceneは？</span>
+          <select data-role="feedback">
+            <option value="unreviewed"${scene.feedbackLabel === 'unreviewed' ? ' selected' : ''}>未確認</option>
+            <option value="kill"${scene.feedbackLabel === 'kill' ? ' selected' : ''}>キルScene（欲しい）</option>
+            <option value="death"${scene.feedbackLabel === 'death' ? ' selected' : ''}>デスScene（欲しい）</option>
+            <option value="fight"${scene.feedbackLabel === 'fight' ? ' selected' : ''}>戦闘のみ</option>
+            <option value="false_positive"${scene.feedbackLabel === 'false_positive' ? ' selected' : ''}>不要・誤検出</option>
+          </select>
+        </label>
         <div class="scene-actions">
           <button class="btn btn-secondary" data-action="play">再生</button>
           <button class="btn btn-secondary" data-action="minus-start">開始 -0.1</button>
@@ -131,6 +147,7 @@ window.VReviewUI = (() => {
 
       card.querySelector('[data-role="start"]').addEventListener('change', e => updateScene(scene.id, { start: Number(e.target.value) }));
       card.querySelector('[data-role="end"]').addEventListener('change', e => updateScene(scene.id, { end: Number(e.target.value) }));
+      card.querySelector('[data-role="feedback"]').addEventListener('change', e => updateScene(scene.id, { feedbackLabel: e.target.value }));
       card.querySelector('[data-action="play"]').addEventListener('click', () => seek(scene.start));
       card.querySelector('[data-action="minus-start"]').addEventListener('click', () => updateScene(scene.id, { start: scene.start - 0.1 }));
       card.querySelector('[data-action="plus-start"]').addEventListener('click', () => updateScene(scene.id, { start: scene.start + 0.1 }));
@@ -141,7 +158,7 @@ window.VReviewUI = (() => {
 
       if (state.duration > 0) {
         const bar = document.createElement('button');
-        bar.className = `timeline-scene${scene.source === 'manual' ? ' manual' : ''}`;
+        bar.className = `timeline-scene${scene.source === 'manual' ? ' manual' : ''}${scene.feedbackLabel === 'false_positive' ? ' rejected' : ''}`;
         bar.style.left = `${(scene.start / state.duration) * 100}%`;
         bar.style.width = `${Math.max(((scene.end - scene.start) / state.duration) * 100, .4)}%`;
         bar.title = `Scene ${index + 1} ${formatShort(scene.start)} - ${formatShort(scene.end)}`;
@@ -162,10 +179,12 @@ window.VReviewUI = (() => {
     const start = clamp(Number(scene.start || 0), 0, state.duration);
     const end = clamp(Number(scene.end || 0), 0, state.duration);
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+    const feedbackLabel = FEEDBACK_VALUES.includes(scene.feedbackLabel) ? scene.feedbackLabel : 'unreviewed';
     return {
       ...scene,
       start,
       end,
+      feedbackLabel,
       fps: ['auto', 30, 60, '30', '60'].includes(scene.fps) ? scene.fps : 'auto'
     };
   }
@@ -208,6 +227,10 @@ window.VReviewUI = (() => {
 
   function formatShort(seconds) {
     return window.VReviewVideo?.formatTime(seconds) || Number(seconds).toFixed(2);
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
   }
 
   function clamp(value, min, max) {
