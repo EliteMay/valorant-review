@@ -94,19 +94,41 @@
               </div>
               <span class="badge" id="sceneCount">0 scenes</span>
             </div>
-            <p class="helper">自動検出後、ずれている開始・終了位置は0.1秒単位で修正できます。漏れた場面は動画から手動追加してください。</p>
+            <p class="helper">自動検出後、誤検出は削除、開始・終了のズレは修正、見逃しは手動追加してください。この修正後データを「正解」として提出できます。</p>
             <div class="scene-list" id="sceneList"></div>
+          </section>
+
+          <section class="panel feedback-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">DETECTOR FEEDBACK</p>
+                <h2>検出改善用パッケージ</h2>
+              </div>
+            </div>
+            <p class="helper">自動検出結果を確認・修正したあとに作成してください。元の自動検出、修正後Scene、検出スコア、確認画像をZIPにまとめます。</p>
+            <label class="notes-field">
+              <span>メモ（任意）</span>
+              <textarea id="feedbackNotes" rows="3" placeholder="例: キルシーンを2つ見逃した / 足音で誤検出が多い / 開始位置が毎回遅い"></textarea>
+            </label>
+            <button class="btn btn-primary full" id="feedbackPackageBtn" type="button" disabled>検出改善用ZIPを作成</button>
+            <div class="detection-status hidden" id="feedbackStatus" aria-live="polite">
+              <div class="detection-status-head">
+                <span id="feedbackMessage">準備中…</span>
+                <span class="progress-number" id="feedbackProgressText"></span>
+              </div>
+              <progress id="feedbackProgress" max="100" value="0"></progress>
+            </div>
           </section>
 
           <section class="panel">
             <div class="section-heading">
               <div>
-                <p class="eyebrow">PACKAGE</p>
-                <h2>解析パッケージ</h2>
+                <p class="eyebrow">AI REVIEW PACKAGE</p>
+                <h2>ChatGPT採点用パッケージ</h2>
               </div>
             </div>
             <div class="status-callout pending">
-              コンタクトシート生成とZIP出力はまだ未実装です。Scene検出・修正を先に安定させます。
+              こちらは次の段階です。まず実クリップから検出改善用ZIPを集めて、自動検出精度を上げます。
             </div>
             <button class="btn btn-primary full" type="button" disabled>ChatGPT解析パッケージを作成</button>
           </section>
@@ -115,9 +137,11 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/video.js"></script>
   <script src="js/scene-detection.js"></script>
+  <script src="js/feedback-package.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
 </body>
