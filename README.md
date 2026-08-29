@@ -1,7 +1,8 @@
 # VReview
 
 **Current site version: v0.4.6**  
-**Current Detector: v0.4.5**
+**Current Detector: v0.4.5**  
+**Current Detector Feedback Package: v4**
 
 VALORANTクリップから必要なキルSceneを抽出し、最終的にChatGPT Plusへ高fps解析パッケージを渡してAIM / Movementをレビューする個人用Webツールです。
 
@@ -133,6 +134,33 @@ v0.4.4再検証では、通常候補でも `shot_evidence_count = 0` のSceneが
 
 `detector-diagnostics.json` には `candidateClassifier.primary / weak` を保存します。
 
+## Detector v0.4.5 既知5クリップ再検証
+
+同じ5クリップをDetector v0.4.5で再実行した結果:
+
+- primary: **13件**
+- weak: **7件**
+- primary内 `kill`: **11件**
+- primary内 `fight`: **1件**
+- primary内 `false_positive`: **1件**
+
+`fight`もレビュー対象として有効と数える場合、primaryの有効Scene率は **12 / 13 = 約92.3%**。
+
+ユーザーメモ:
+
+- ace: `完璧`
+- 4k: `完璧`
+- ace2: `いいかんじ`
+- ace4-1: `最初のイラン`
+
+ace4-1型の重複Sceneだけは継続して残っています。
+
+weak 7件は今回ラベルが `unreviewed` のままだったため正式なPrecision計算には入れていませんが、確認画像上は明確な本人キルSceneには見えませんでした。
+
+ただしこの5本はClassifier設計に使用した既知データでもあるため、**Detector v0.4.5はまだ完成扱いにしません**。
+
+次は未使用クリップで汎化性能を確認します。
+
 ## v0.4.4再検証5本の結果
 
 | クリップ | 結果 |
@@ -172,7 +200,7 @@ v0.4.4再検証では、通常候補でも `shot_evidence_count = 0` のSceneが
 - `false_positive` — 不要・誤検出
 - `unreviewed` — 未確認
 
-## 検出改善用ZIP
+## 検出改善用ZIP v4
 
 ```text
 vreview_feedback_<clip>.zip
@@ -185,6 +213,23 @@ vreview_feedback_<clip>.zip
 ├─ auto-scenes/
 └─ corrected-scenes/
 ```
+
+Scene JSONには以下を保存します。
+
+- `feedback_label`
+- `review_tier`
+- `needs_review`
+- `weak_reason`
+- `detector_reason`
+- `recall_guard`
+- `classifier_index`
+- `classifier_evidence`
+- `anchor_count`
+- `shot_evidence_count`
+
+manifestには `counts.review_tiers` を追加し、primary / weak / manualの件数を直接確認できます。
+
+確認用16コマ画像のラベルにも `PRIMARY / WEAK / MANUAL` を表示します。
 
 診断には以下を含みます。
 
@@ -254,12 +299,12 @@ Detectorが安定した後、各Sceneについて
 - 本命Scene / 要確認候補の分離表示
 - Confidence表示
 - Scene正解ラベル
-- 検出改善用ZIP
+- 検出改善用ZIP v4
 - 確認用16コマ画像
 
 ### 改善中 / 未実装
 
-- v0.4.5の再検証
+- 未使用クリップでのv0.4.5汎化検証
 - 重複Scene処理
 - 長い連キルの自動分割
 - Death専用検出
