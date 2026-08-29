@@ -115,12 +115,18 @@
 
   function shouldDropScene(scene, evidence) {
     const shotCount = Number(scene.shotEvidenceCount || 0);
+    const reason = String(scene.detectorReason || '');
+
     if (shotCount > 0) return false;
+
+    if (reason === 'kill-confirm') {
+      return evidence.localKillConfirmCount === 0;
+    }
 
     if (evidence.localKillConfirmCount > 0) return false;
     if (evidence.verifiedKillfeedCount > 0) return false;
 
-    if (scene.detectorReason === 'killfeed-with-shots' && evidence.combatSupportCount >= 3) return false;
+    if (reason === 'killfeed-with-shots' && evidence.combatSupportCount >= 3) return false;
 
     return true;
   }
