@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260829-6">
-  <link rel="stylesheet" href="css/layout.css?v=20260829-6">
-  <link rel="stylesheet" href="css/components.css?v=20260829-6">
+  <link rel="stylesheet" href="css/base.css?v=20260829-7">
+  <link rel="stylesheet" href="css/layout.css?v=20260829-7">
+  <link rel="stylesheet" href="css/components.css?v=20260829-7">
 </head>
 <body>
   <div class="app-shell">
@@ -16,7 +16,7 @@
       <p class="brand-sub">VALORANT Clip Analysis</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item" href="index.html">Dashboard</a>
-        <a class="nav-item active" href="review.html?v=20260829-6">New Review</a>
+        <a class="nav-item active" href="review.html?v=20260829-7">New Review</a>
         <a class="nav-item" href="result.html">Import / Result</a>
         <a class="nav-item" href="history.html">History</a>
         <a class="nav-item" href="training.html">Training</a>
@@ -27,7 +27,7 @@
     <main class="main-content">
       <header class="page-header compact">
         <div>
-          <p class="eyebrow">NEW REVIEW · BUILD 0.4.2</p>
+          <p class="eyebrow">NEW REVIEW · BUILD 0.4.3</p>
           <h1>クリップ解析</h1>
           <p class="lead">動画はブラウザ内で処理します。元動画を外部へ自動送信しません。</p>
         </div>
@@ -63,7 +63,7 @@
               <button class="btn btn-primary" id="autoDetectBtn" type="button" disabled>キルSceneを自動検出</button>
             </div>
             <div class="detection-status hidden" id="detectionStatus" aria-live="polite"><div class="detection-status-head"><span id="detectionMessage">解析準備中…</span><span class="progress-number" id="detectionProgressText"></span></div><progress id="detectionProgress" max="100" value="0"></progress></div>
-            <p class="helper detection-warning" id="detectionWarning">v0.4.2では「戦闘っぽい」だけでScene化せず、画面下中央のキル確認UI・右上キルフィード・弾数HUD・射撃音を組み合わせてキルSceneを優先します。</p>
+            <p class="helper detection-warning" id="detectionWarning">v0.4.3ではv0.4.2の検出後に、長すぎるSceneを実戦密度の高い区間へ絞り、キル根拠の弱い候補を除外し、短いSceneには解析用の前時間を追加します。</p>
           </section>
 
           <section class="panel">
@@ -74,8 +74,8 @@
 
           <section class="panel feedback-panel">
             <div class="section-heading"><div><p class="eyebrow">DETECTOR FEEDBACK</p><h2>検出改善用パッケージ</h2></div></div>
-            <p class="helper">Sceneごとの判定を付けてから作成すると、次回はメモだけでなくJSON上で正解・誤検出を直接比較できます。自動検出・修正後Scene・ラベル・採用/抑制イベント・確認画像をZIPにまとめます。</p>
-            <label class="notes-field"><span>メモ（任意）</span><textarea id="feedbackNotes" rows="3" placeholder="例: 2キル目の開始が0.4秒遅い / 3番は撃ち合いだけで不要"></textarea></label>
+            <p class="helper">Sceneごとの判定を付けてから作成すると、次回はメモだけでなくJSON上で正解・誤検出を直接比較できます。v0.4.3では補正前後と除外理由もdiagnosticsへ保存します。</p>
+            <label class="notes-field"><span>メモ（任意）</span><textarea id="feedbackNotes" rows="3" placeholder="例: 1番はまだ長い / 2番はいらない / 最後はあと1秒前から欲しい"></textarea></label>
             <button class="btn btn-primary full" id="feedbackPackageBtn" type="button" disabled>検出改善用ZIPを作成</button>
             <div class="detection-status hidden" id="feedbackStatus" aria-live="polite"><div class="detection-status-head"><span id="feedbackMessage">準備中…</span><span class="progress-number" id="feedbackProgressText"></span></div><progress id="feedbackProgress" max="100" value="0"></progress></div>
           </section>
@@ -90,11 +90,12 @@
     </main>
   </div>
 
-  <script src="js/storage.js?v=20260829-6"></script>
-  <script src="js/video.js?v=20260829-6"></script>
-  <script src="js/scene-detection-v042.js?v=20260829-6"></script>
-  <script src="js/feedback-package-v3.js?v=20260829-6"></script>
-  <script src="js/ui.js?v=20260829-6"></script>
-  <script src="js/app.js?v=20260829-6"></script>
+  <script src="js/storage.js?v=20260829-7"></script>
+  <script src="js/video.js?v=20260829-7"></script>
+  <script src="js/scene-detection-v042.js?v=20260829-7"></script>
+  <script src="js/scene-detection-v043.js?v=20260829-7"></script>
+  <script src="js/feedback-package-v3.js?v=20260829-7"></script>
+  <script src="js/ui.js?v=20260829-7"></script>
+  <script src="js/app.js?v=20260829-7"></script>
 </body>
 </html>
