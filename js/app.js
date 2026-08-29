@@ -20,6 +20,8 @@ function initReviewPage() {
   const workspace = document.getElementById('workspace');
   const preview = document.getElementById('videoPreview');
   const meta = document.getElementById('videoMeta');
+  const changeVideoBtn = document.getElementById('changeVideoBtn');
+  const sceneColumn = document.querySelector('.scene-column');
   const autoDetectBtn = document.getElementById('autoDetectBtn');
   const sensitivity = document.getElementById('detectSensitivity');
   const detectionStatus = document.getElementById('detectionStatus');
@@ -69,8 +71,10 @@ function initReviewPage() {
       currentVideoData = data;
       lastDetectionRun = null;
       workspace.classList.remove('hidden');
+      document.body.classList.add('review-loaded');
       window.VReviewUI?.clearScenes();
       window.VReviewUI?.setDuration(data.duration);
+      if (sceneColumn) sceneColumn.scrollTop = 0;
       if (autoDetectBtn) {
         autoDetectBtn.disabled = false;
         autoDetectBtn.textContent = 'Combat Sceneを自動検出';
@@ -84,11 +88,16 @@ function initReviewPage() {
         const mb = (file.size / 1024 / 1024).toFixed(1);
         meta.innerHTML = `<span>${escapeHtml(file.name)}</span><span>${window.VReviewVideo.formatTime(data.duration)}</span><span>${data.width}×${data.height}</span><span>${mb} MB</span>`;
       }
-      window.scrollTo({ top: workspace.offsetTop - 20, behavior: 'smooth' });
     } catch (error) {
       alert(error.message || '動画を読み込めませんでした。');
     }
   };
+
+  changeVideoBtn?.addEventListener('click', () => {
+    if (detecting || exportingFeedback) return;
+    input.value = '';
+    input.click();
+  });
 
   autoDetectBtn?.addEventListener('click', async () => {
     if (!currentFile || !currentVideoData || detecting) return;
@@ -119,6 +128,7 @@ function initReviewPage() {
       }
       autoDetectBtn.textContent = '自動検出をやり直す';
       if (feedbackBtn) feedbackBtn.disabled = false;
+      if (sceneColumn) sceneColumn.scrollTop = 0;
     } catch (error) {
       lastDetectionRun = null;
       setDetectionState(0, '自動検出に失敗しました。', true);
