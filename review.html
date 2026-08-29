@@ -105,7 +105,7 @@
                 <h2>検出改善用パッケージ</h2>
               </div>
             </div>
-            <p class="helper">自動検出結果を確認・修正したあとに作成してください。元の自動検出、修正後Scene、検出スコア、確認画像をZIPにまとめます。</p>
+            <p class="helper">自動検出結果を確認・修正したあとに作成してください。元の自動検出、修正後Scene、検出スコア、確認画像を1つのZIPにまとめます。外部ライブラリは使用しません。</p>
             <label class="notes-field">
               <span>メモ（任意）</span>
               <textarea id="feedbackNotes" rows="3" placeholder="例: キルシーンを2つ見逃した / 足音で誤検出が多い / 開始位置が毎回遅い"></textarea>
@@ -137,7 +137,6 @@
     </main>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/video.js"></script>
   <script src="js/scene-detection.js"></script>
