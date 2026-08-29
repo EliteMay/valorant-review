@@ -29,17 +29,25 @@
 .video-panel video { width: 100%; max-height: 65vh; background: #000; border-radius: 12px; display: block; }
 .video-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; color: var(--muted); font-size: .84rem; }
 .badge { border: 1px solid var(--border); background: var(--panel-2); border-radius: 999px; padding: 7px 10px; color: var(--muted); font-size: .8rem; }
+.badge-reason { color: #9eb0c2; font-size: .72rem; }
 .scene-list { display: grid; gap: 10px; }
-.scene-card { border: 1px solid var(--border); background: var(--panel-2); border-radius: 12px; padding: 14px; }
+.scene-card { border: 1px solid var(--border); background: var(--panel-2); border-radius: 12px; padding: 14px; transition: border-color .15s ease, opacity .15s ease; }
+.scene-card.feedback-kill { border-color: rgba(70,211,154,.42); }
+.scene-card.feedback-death { border-color: rgba(240,179,90,.45); }
+.scene-card.feedback-fight { border-color: rgba(120,160,205,.35); }
+.scene-card.feedback-false_positive { border-color: rgba(233,139,139,.3); opacity: .68; }
 .scene-card header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .scene-card .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .scene-card input { width: 100%; border: 1px solid var(--border); background: #0d1116; color: var(--text); border-radius: 8px; padding: 9px 10px; }
+.scene-feedback-field { display: grid; gap: 7px; margin-top: 10px; color: var(--muted); font-size: .8rem; font-weight: 800; }
+.scene-feedback-field select { width: 100%; border: 1px solid var(--border); background: #0d1116; color: var(--text); border-radius: 8px; padding: 9px 10px; }
 .scene-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .scene-actions button { padding: 8px 10px; font-size: .8rem; }
 .timeline-wrap { margin-top: 14px; }
 .timeline { position: relative; height: 42px; background: #0d1116; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 .timeline-scene { position: absolute; top: 6px; bottom: 6px; min-width: 3px; border-radius: 6px; background: var(--accent); opacity: .8; }
 .timeline-scene.manual { outline: 1px solid rgba(255,255,255,.35); }
+.timeline-scene.rejected { opacity: .24; filter: grayscale(1); }
 .status-callout { border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: .9rem; line-height: 1.55; }
 .status-callout.pending { background: rgba(240,179,90,.08); border: 1px solid rgba(240,179,90,.25); color: #e7c58f; }
 .detect-controls { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
