@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260829-5">
-  <link rel="stylesheet" href="css/layout.css?v=20260829-5">
-  <link rel="stylesheet" href="css/components.css?v=20260829-5">
+  <link rel="stylesheet" href="css/base.css?v=20260829-7">
+  <link rel="stylesheet" href="css/layout.css?v=20260829-7">
+  <link rel="stylesheet" href="css/components.css?v=20260829-7">
 </head>
 <body>
   <div class="app-shell">
@@ -16,7 +16,7 @@
       <p class="brand-sub">VALORANT Clip Analysis</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item active" href="index.html">Dashboard</a>
-        <a class="nav-item" href="review.html?v=20260829-5">New Review</a>
+        <a class="nav-item" href="review.html?v=20260829-7">New Review</a>
         <a class="nav-item" href="result.html">Import / Result</a>
         <a class="nav-item" href="history.html">History</a>
         <a class="nav-item" href="training.html">Training</a>
@@ -27,11 +27,11 @@
     <main class="main-content">
       <header class="page-header">
         <div>
-          <p class="eyebrow">DASHBOARD · v0.4.1</p>
+          <p class="eyebrow">DASHBOARD · v0.4.3</p>
           <h1>プレイを、感覚ではなく記録で見直す。</h1>
-          <p class="lead">クリップから戦闘Sceneを整理し、ChatGPT PlusでAIM / Movementを採点するためのレビュー環境。</p>
+          <p class="lead">クリップからキルSceneを整理し、最終的にChatGPT PlusでAIM / Movementを採点するためのレビュー環境。</p>
         </div>
-        <a class="btn btn-primary" href="review.html?v=20260829-5">New Review</a>
+        <a class="btn btn-primary" href="review.html?v=20260829-7">New Review</a>
       </header>
 
       <section class="stats-grid" aria-label="レビュー概要">
@@ -56,9 +56,9 @@
         <div class="section-heading"><div><p class="eyebrow">WORKFLOW</p><h2>レビューの流れ</h2></div></div>
         <div class="workflow-grid">
           <div class="workflow-step"><span>01</span><strong>動画を選択</strong><p>MP4 / WebMをブラウザ内で読み込み。</p></div>
-          <div class="workflow-step"><span>02</span><strong>Scene確認</strong><p>自動検出候補を確認して必要なら修正。</p></div>
-          <div class="workflow-step"><span>03</span><strong>解析Pack作成</strong><p>コンタクトシートとJSONをまとめる。</p></div>
-          <div class="workflow-step"><span>04</span><strong>ChatGPT採点</strong><p>返却JSONをVReviewへ読み込む。</p></div>
+          <div class="workflow-step"><span>02</span><strong>Scene確認</strong><p>自動検出候補を確認して、正解ラベルと範囲を修正。</p></div>
+          <div class="workflow-step"><span>03</span><strong>検出改善</strong><p>Feedback ZIPで実クリップを基準にDetectorを改善。</p></div>
+          <div class="workflow-step"><span>04</span><strong>ChatGPT採点</strong><p>検出安定後に30 / 60fps解析Packと結果JSONを実装。</p></div>
         </div>
       </section>
 
@@ -67,16 +67,17 @@
         <div class="status-list">
           <div class="status-row"><span>UI土台</span><strong class="status-ready">Ready</strong></div>
           <div class="status-row"><span>動画読み込み</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>Scene手動追加</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>Combat Scene自動検出</span><strong class="status-ready">Testing v0.4.1</strong></div>
-          <div class="status-row"><span>検出改善ZIP</span><strong class="status-ready">Ready</strong></div>
+          <div class="status-row"><span>Scene手動修正</span><strong class="status-ready">Ready</strong></div>
+          <div class="status-row"><span>キルScene自動検出</span><strong class="status-ready">Testing v0.4.3</strong></div>
+          <div class="status-row"><span>Scene正解ラベル</span><strong class="status-ready">Ready</strong></div>
+          <div class="status-row"><span>検出改善ZIP</span><strong class="status-ready">Ready v3</strong></div>
           <div class="status-row"><span>採点用コンタクトシート</span><strong class="status-pending">Next</strong></div>
           <div class="status-row"><span>ChatGPT採点ZIP</span><strong class="status-pending">Next</strong></div>
         </div>
       </section>
     </main>
   </div>
-  <script src="js/storage.js?v=20260829-5"></script>
-  <script src="js/app.js?v=20260829-5"></script>
+  <script src="js/storage.js?v=20260829-7"></script>
+  <script src="js/app.js?v=20260829-7"></script>
 </body>
 </html>
