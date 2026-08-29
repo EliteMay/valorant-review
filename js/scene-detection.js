@@ -113,7 +113,7 @@ window.VReviewSceneDetection = (() => {
     video.src = url;
 
     try {
-      await waitFor(video, 'loadedmetadata', 10000);
+      await waitFor(video, 'loadeddata', 10000);
       const canvas = document.createElement('canvas');
       const width = 96;
       const height = Math.max(48, Math.round(width * (video.videoHeight / Math.max(1, video.videoWidth))));
@@ -256,7 +256,7 @@ window.VReviewSceneDetection = (() => {
       }
     }
 
-    return mergeOverlaps(scenes, duration).slice(0, 12);
+    return mergeOverlaps(scenes, duration);
   }
 
   function mergeOverlaps(scenes, duration) {
@@ -325,6 +325,7 @@ window.VReviewSceneDetection = (() => {
   function waitFor(target, eventName, timeoutMs) {
     return new Promise((resolve, reject) => {
       if (eventName === 'loadedmetadata' && target.readyState >= 1) return resolve();
+      if (eventName === 'loadeddata' && target.readyState >= 2) return resolve();
       const timer = setTimeout(() => {
         cleanup();
         reject(new Error('動画情報の読み込みがタイムアウトしました。'));
