@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260829-3">
-  <link rel="stylesheet" href="css/layout.css?v=20260829-3">
-  <link rel="stylesheet" href="css/components.css?v=20260829-3">
+  <link rel="stylesheet" href="css/base.css?v=20260829-4">
+  <link rel="stylesheet" href="css/layout.css?v=20260829-4">
+  <link rel="stylesheet" href="css/components.css?v=20260829-4">
 </head>
 <body>
   <div class="app-shell">
@@ -16,7 +16,7 @@
       <p class="brand-sub">VALORANT Clip Analysis</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item" href="index.html">Dashboard</a>
-        <a class="nav-item active" href="review.html?v=20260829-3">New Review</a>
+        <a class="nav-item active" href="review.html?v=20260829-4">New Review</a>
         <a class="nav-item" href="result.html">Import / Result</a>
         <a class="nav-item" href="history.html">History</a>
         <a class="nav-item" href="training.html">Training</a>
@@ -27,7 +27,7 @@
     <main class="main-content">
       <header class="page-header compact">
         <div>
-          <p class="eyebrow">NEW REVIEW · BUILD 0.3.1</p>
+          <p class="eyebrow">NEW REVIEW · BUILD 0.4.0</p>
           <h1>クリップ解析</h1>
           <p class="lead">動画はブラウザ内で処理します。元動画を外部へ自動送信しません。</p>
         </div>
@@ -63,7 +63,7 @@
               <button class="btn btn-primary" id="autoDetectBtn" type="button" disabled>Combat Sceneを自動検出</button>
             </div>
             <div class="detection-status hidden" id="detectionStatus" aria-live="polite"><div class="detection-status-head"><span id="detectionMessage">解析準備中…</span><span class="progress-number" id="detectionProgressText"></span></div><progress id="detectionProgress" max="100" value="0"></progress></div>
-            <p class="helper detection-warning" id="detectionWarning">音声ピークと画面変化を組み合わせて候補を作ります。確定ではないので、検出後にSceneを確認してください。</p>
+            <p class="helper detection-warning" id="detectionWarning">v0.4.0では音声だけでなく、中央の映像変化と右上キルフィード領域の変化を重視して候補を作ります。検出後は必ずSceneを確認してください。</p>
           </section>
 
           <section class="panel">
@@ -90,11 +90,11 @@
     </main>
   </div>
 
-  <script src="js/storage.js?v=20260829-3"></script>
-  <script src="js/video.js?v=20260829-3"></script>
-  <script src="js/scene-detection.js?v=20260829-3"></script>
-  <script src="js/feedback-package-v2.js?v=20260829-3"></script>
-  <script src="js/ui.js?v=20260829-3"></script>
-  <script src="js/app.js?v=20260829-3"></script>
+  <script src="js/storage.js?v=20260829-4"></script>
+  <script src="js/video.js?v=20260829-4"></script>
+  <script src="js/scene-detection-v040.js?v=20260829-4"></script>
+  <script src="js/feedback-package-v2.js?v=20260829-4"></script>
+  <script src="js/ui.js?v=20260829-4"></script>
+  <script src="js/app.js?v=20260829-4"></script>
 </body>
 </html>
