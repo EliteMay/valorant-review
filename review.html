@@ -61,12 +61,40 @@
           <section class="panel">
             <div class="section-heading">
               <div>
+                <p class="eyebrow">AUTO DETECTION</p>
+                <h2>Combat Scene自動検出</h2>
+              </div>
+            </div>
+            <div class="detect-controls">
+              <label class="select-field">
+                <span>検出感度</span>
+                <select id="detectSensitivity">
+                  <option value="low">低い</option>
+                  <option value="standard" selected>標準</option>
+                  <option value="high">高い（見逃し優先）</option>
+                </select>
+              </label>
+              <button class="btn btn-primary" id="autoDetectBtn" type="button" disabled>Combat Sceneを自動検出</button>
+            </div>
+            <div class="detection-status hidden" id="detectionStatus" aria-live="polite">
+              <div class="detection-status-head">
+                <span id="detectionMessage">解析準備中…</span>
+                <span class="progress-number" id="detectionProgressText"></span>
+              </div>
+              <progress id="detectionProgress" max="100" value="0"></progress>
+            </div>
+            <p class="helper detection-warning" id="detectionWarning">音声ピークと画面変化を組み合わせて候補を作ります。確定ではないので、検出後にSceneを確認してください。</p>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <div>
                 <p class="eyebrow">SCENES</p>
                 <h2>Combat Scene確認</h2>
               </div>
               <span class="badge" id="sceneCount">0 scenes</span>
             </div>
-            <p class="helper">自動検出は次段階で実装予定。現時点では手動追加・編集のUIを先に検証できます。</p>
+            <p class="helper">自動検出後、ずれている開始・終了位置は0.1秒単位で修正できます。漏れた場面は動画から手動追加してください。</p>
             <div class="scene-list" id="sceneList"></div>
           </section>
 
@@ -78,7 +106,7 @@
               </div>
             </div>
             <div class="status-callout pending">
-              コンタクトシート生成とZIP出力は未実装です。Scene編集が安定した後に追加します。
+              コンタクトシート生成とZIP出力はまだ未実装です。Scene検出・修正を先に安定させます。
             </div>
             <button class="btn btn-primary full" type="button" disabled>ChatGPT解析パッケージを作成</button>
           </section>
@@ -89,6 +117,7 @@
 
   <script src="js/storage.js"></script>
   <script src="js/video.js"></script>
+  <script src="js/scene-detection.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/app.js"></script>
 </body>
