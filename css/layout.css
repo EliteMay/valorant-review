@@ -14,11 +14,75 @@
 .review-workspace { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, .9fr); gap: 18px; align-items: start; }
 .video-column, .scene-column { min-width: 0; }
 .scene-column { display: grid; gap: 18px; }
+
+@media (min-width: 981px) {
+  html, body { height: 100%; overflow: hidden; }
+  .app-shell { height: 100vh; min-height: 0; overflow: hidden; }
+  .sidebar { position: relative; top: auto; overflow-y: auto; overscroll-behavior: contain; }
+  .main-content { height: 100vh; overflow-y: auto; overscroll-behavior: contain; }
+
+  body.review-page.review-loaded .main-content {
+    width: 100%;
+    max-width: none;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 24px 28px;
+  }
+  body.review-page.review-loaded .page-header {
+    flex: 0 0 auto;
+    margin-bottom: 18px;
+  }
+  body.review-page.review-loaded .page-header.compact h1 {
+    font-size: clamp(1.75rem, 2.4vw, 2.5rem);
+    margin-bottom: 8px;
+  }
+  body.review-page.review-loaded #uploadPanel { display: none; }
+  body.review-page.review-loaded .review-workspace {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    align-items: stretch;
+  }
+  body.review-page.review-loaded .video-column {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  body.review-page.review-loaded .video-panel {
+    height: 100%;
+    min-height: 0;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  body.review-page.review-loaded .video-panel video {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    object-fit: contain;
+  }
+  body.review-page.review-loaded .scene-column {
+    display: block;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: 8px;
+  }
+  body.review-page.review-loaded .scene-column > .panel:last-child { margin-bottom: 0; }
+}
+
 @media (max-width: 980px) {
-  .app-shell { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+  html, body { height: auto; overflow: visible; }
+  .app-shell { grid-template-columns: 1fr; height: auto; overflow: visible; }
+  .sidebar { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); overflow: visible; }
   .nav-list { grid-template-columns: repeat(3, minmax(0,1fr)); }
-  .main-content { padding: 24px; }
+  .main-content { height: auto; overflow: visible; padding: 24px; }
   .review-workspace, .stats-grid, .workflow-grid { grid-template-columns: 1fr; }
   .span-2 { grid-column: auto; }
 }
