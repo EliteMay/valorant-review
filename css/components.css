@@ -10,6 +10,7 @@
 .btn-primary { border-color: var(--accent); background: var(--accent); color: white; }
 .btn-secondary { background: var(--panel-2); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-small { padding: 8px 11px; font-size: .8rem; white-space: nowrap; }
 .full { width: 100%; }
 .button-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; }
@@ -27,6 +28,8 @@
 .dropzone strong { font-size: 1.15rem; }
 .dropzone span { color: var(--muted); font-size: .9rem; }
 .video-panel video { width: 100%; max-height: 65vh; background: #000; border-radius: 12px; display: block; }
+.video-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.video-toolbar .video-meta { margin-bottom: 0; flex: 1; min-width: 0; }
 .video-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; color: var(--muted); font-size: .84rem; }
 .badge { border: 1px solid var(--border); background: var(--panel-2); border-radius: 999px; padding: 7px 10px; color: var(--muted); font-size: .8rem; }
 .badge-reason { color: #9eb0c2; font-size: .72rem; }
@@ -69,8 +72,17 @@
 .notes-field textarea { width: 100%; resize: vertical; min-height: 82px; border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; background: #0d1116; color: var(--text); font: inherit; line-height: 1.5; }
 .notes-field textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
 .progress-number { font-variant-numeric: tabular-nums; }
+
+@media (min-width: 981px) {
+  body.review-page.review-loaded .scene-column::-webkit-scrollbar { width: 10px; }
+  body.review-page.review-loaded .scene-column::-webkit-scrollbar-track { background: transparent; }
+  body.review-page.review-loaded .scene-column::-webkit-scrollbar-thumb { background: #303844; border-radius: 999px; border: 2px solid var(--bg); }
+}
+
 @media (max-width: 720px) {
   .detect-controls { align-items: stretch; }
   .detect-controls .btn, .select-field { width: 100%; }
   .scene-card .time-row { grid-template-columns: 1fr; }
+  .video-toolbar { align-items: stretch; flex-direction: column; }
+  .video-toolbar .btn { width: 100%; }
 }
