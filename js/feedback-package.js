@@ -2,17 +2,16 @@ window.VReviewFeedbackPackage = (() => {
   async function build(options = {}) {
     const { file, videoData, detectionRun, correctedScenes = [], notes = '', onProgress = () => {} } = options;
     if (!file || !videoData) throw new Error('元動画を読み込んでから提出用パッケージを作成してください。');
-    if (!window.JSZip) throw new Error('ZIPライブラリを読み込めませんでした。ページを再読み込みしてもう一度試してください。');
     if (!detectionRun) throw new Error('先にCombat Scene自動検出を実行してください。');
 
-    const zip = new JSZip();
     const originalScenes = Array.isArray(detectionRun.scenes) ? detectionRun.scenes : [];
     const corrected = Array.isArray(correctedScenes) ? correctedScenes : [];
     const timestamp = new Date().toISOString();
+    const files = [];
 
     const manifest = {
       schema: 'vreview-detector-feedback',
-      version: 1,
+      version: 2,
       created_at: timestamp,
       video: {
         name: file.name,
@@ -35,32 +34,30 @@ window.VReviewFeedbackPackage = (() => {
       }
     };
 
-    zip.file('README.txt', buildReadme());
-    zip.file('manifest.json', JSON.stringify(manifest, null, 2));
-    zip.file('auto-scenes.json', JSON.stringify(cleanScenes(originalScenes), null, 2));
-    zip.file('corrected-scenes.json', JSON.stringify(cleanScenes(corrected), null, 2));
-    zip.file('detector-diagnostics.json', JSON.stringify(detectionRun.diagnosticData || {}, null, 2));
-    zip.file('notes.txt', notes || 'ユーザーメモなし');
+    addText(files, 'README.txt', buildReadme());
+    addText(files, 'manifest.json', JSON.stringify(manifest, null, 2));
+    addText(files, 'auto-scenes.json', JSON.stringify(cleanScenes(originalScenes), null, 2));
+    addText(files, 'corrected-scenes.json', JSON.stringify(cleanScenes(corrected), null, 2));
+    addText(files, 'detector-diagnostics.json', JSON.stringify(detectionRun.diagnosticData || {}, null, 2));
+    addText(files, 'notes.txt', notes || 'ユーザーメモなし');
 
     const totalSheets = originalScenes.length + corrected.length;
     let sheetIndex = 0;
     const source = await createVideoSource(file);
     try {
-      const autoFolder = zip.folder('auto-scenes');
       for (let i = 0; i < originalScenes.length; i++) {
         const scene = originalScenes[i];
         onProgress(progressPart(sheetIndex, totalSheets), `自動検出Scene ${i + 1}/${originalScenes.length} の確認画像を作成しています…`);
         const blob = await createSceneSheet(source.video, scene, videoData.duration, `AUTO ${String(i + 1).padStart(2, '0')}`);
-        autoFolder.file(`auto_${String(i + 1).padStart(2, '0')}.jpg`, blob);
+        files.push({ name: `auto-scenes/auto_${String(i + 1).padStart(2, '0')}.jpg`, data: new Uint8Array(await blob.arrayBuffer()) });
         sheetIndex++;
       }
 
-      const correctedFolder = zip.folder('corrected-scenes');
       for (let i = 0; i < corrected.length; i++) {
         const scene = corrected[i];
         onProgress(progressPart(sheetIndex, totalSheets), `修正後Scene ${i + 1}/${corrected.length} の確認画像を作成しています…`);
         const blob = await createSceneSheet(source.video, scene, videoData.duration, `${String(scene.source || 'corrected').toUpperCase()} ${String(i + 1).padStart(2, '0')}`);
-        correctedFolder.file(`corrected_${String(i + 1).padStart(2, '0')}.jpg`, blob);
+        files.push({ name: `corrected-scenes/corrected_${String(i + 1).padStart(2, '0')}.jpg`, data: new Uint8Array(await blob.arrayBuffer()) });
         sheetIndex++;
       }
     } finally {
@@ -68,11 +65,9 @@ window.VReviewFeedbackPackage = (() => {
     }
 
     onProgress(0.9, 'ZIPを作成しています…');
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 5 } }, meta => {
-      onProgress(0.9 + (meta.percent / 100) * 0.1, 'ZIPを作成しています…');
-    });
-
+    const blob = buildStoreZip(files, value => onProgress(0.9 + value * 0.1, 'ZIPを作成しています…'));
     const base = sanitizeBaseName(file.name.replace(/\.[^.]+$/, '')) || 'clip';
+    onProgress(1, '検出改善用ZIPを作成しました。');
     return {
       blob,
       filename: `vreview_feedback_${base}.zip`,
@@ -137,17 +132,6 @@ window.VReviewFeedbackPackage = (() => {
       ctx.font = 'bold 14px system-ui, sans-serif';
       const marker = time < start ? 'PRE' : time > end ? 'POST' : 'IN';
       ctx.fillText(`${label}  F${String(i + 1).padStart(2, '0')}  ${formatTime(time)}  ${marker}`, x + 8, y + 17);
-
-      if (Math.abs(time - start) <= Math.max(0.12, (rangeEnd - rangeStart) / 15)) {
-        ctx.strokeStyle = '#57d38c';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(x + 2, y + 2, cellW - 4, cellH - 4);
-      }
-      if (Math.abs(time - end) <= Math.max(0.12, (rangeEnd - rangeStart) / 15)) {
-        ctx.strokeStyle = '#ffb15a';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(x + 4, y + 4, cellW - 8, cellH - 8);
-      }
     }
 
     return canvasToBlob(canvas, 'image/jpeg', 0.82);
@@ -202,7 +186,12 @@ window.VReviewFeedbackPackage = (() => {
       const fail = () => { cleanup(); reject(new Error('提出用画像のフレーム取得に失敗しました。')); };
       video.addEventListener('seeked', done, { once: true });
       video.addEventListener('error', fail, { once: true });
-      video.currentTime = time;
+      try {
+        video.currentTime = Math.max(0, time);
+      } catch (error) {
+        cleanup();
+        reject(error);
+      }
     });
   }
 
@@ -226,6 +215,103 @@ window.VReviewFeedbackPackage = (() => {
     return new Promise((resolve, reject) => {
       canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('画像の書き出しに失敗しました。')), type, quality);
     });
+  }
+
+  function addText(files, name, text) {
+    files.push({ name, data: new TextEncoder().encode(text) });
+  }
+
+  function buildStoreZip(files, onProgress = () => {}) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+
+    files.forEach((file, index) => {
+      const nameBytes = encoder.encode(file.name);
+      const data = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);
+      const crc = crc32(data);
+      const dos = dosDateTime(new Date());
+
+      const local = new Uint8Array(30 + nameBytes.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, dos.time, true);
+      lv.setUint16(12, dos.date, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, data.length, true);
+      lv.setUint32(22, data.length, true);
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+      localParts.push(local, data);
+
+      const central = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(central.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, dos.time, true);
+      cv.setUint16(14, dos.date, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      central.set(nameBytes, 46);
+      centralParts.push(central);
+
+      offset += local.length + data.length;
+      onProgress((index + 1) / Math.max(1, files.length));
+    });
+
+    const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
+    const end = new Uint8Array(22);
+    const ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    ev.setUint16(20, 0, true);
+
+    return new Blob([...localParts, ...centralParts, end], { type: 'application/zip' });
+  }
+
+  const CRC_TABLE = (() => {
+    const table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      table[n] = c >>> 0;
+    }
+    return table;
+  })();
+
+  function crc32(data) {
+    let crc = 0xffffffff;
+    for (let i = 0; i < data.length; i++) crc = CRC_TABLE[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function dosDateTime(date) {
+    const year = Math.max(1980, date.getFullYear());
+    return {
+      time: ((date.getHours() & 31) << 11) | ((date.getMinutes() & 63) << 5) | ((Math.floor(date.getSeconds() / 2)) & 31),
+      date: (((year - 1980) & 127) << 9) | (((date.getMonth() + 1) & 15) << 5) | (date.getDate() & 31)
+    };
   }
 
   function cleanScenes(scenes) {
@@ -254,7 +340,7 @@ window.VReviewFeedbackPackage = (() => {
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
   }
 
   function formatTime(seconds) {
