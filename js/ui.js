@@ -21,10 +21,12 @@ window.VReviewUI = (() => {
 
     els.setStartBtn?.addEventListener('click', () => {
       state.draftStart = Number(els.video.currentTime || 0);
+      flashButton(els.setStartBtn, `開始 ${formatShort(state.draftStart)}`);
     });
 
     els.setEndBtn?.addEventListener('click', () => {
       state.draftEnd = Number(els.video.currentTime || 0);
+      flashButton(els.setEndBtn, `終了 ${formatShort(state.draftEnd)}`);
     });
 
     els.addSceneBtn?.addEventListener('click', () => {
@@ -34,7 +36,7 @@ window.VReviewUI = (() => {
         alert('開始位置と終了位置を正しい順番で設定してください。');
         return;
       }
-      addScene(start, end);
+      addScene(start, end, { source: 'manual', confidence: null });
       state.draftStart = null;
       state.draftEnd = null;
     });
@@ -45,29 +47,36 @@ window.VReviewUI = (() => {
     render();
   }
 
-  function addScene(start, end) {
-    const scene = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `scene-${Date.now()}-${Math.random()}`,
-      start: clamp(start, 0, state.duration),
-      end: clamp(end, 0, state.duration),
-      fps: 'auto'
-    };
+  function addScene(start, end, extra = {}) {
+    const scene = normalizeScene({
+      id: createId(),
+      start,
+      end,
+      fps: 'auto',
+      source: 'manual',
+      confidence: null,
+      ...extra
+    });
+    if (!scene) return;
     state.scenes.push(scene);
-    state.scenes.sort((a, b) => a.start - b.start);
-    persist();
-    render();
+    sortAndPersist();
+  }
+
+  function replaceScenes(scenes) {
+    state.scenes = (Array.isArray(scenes) ? scenes : [])
+      .map(item => normalizeScene({ id: createId(), fps: 'auto', source: 'auto', ...item }))
+      .filter(Boolean);
+    sortAndPersist();
   }
 
   function updateScene(id, patch) {
     const scene = state.scenes.find(item => item.id === id);
     if (!scene) return;
     Object.assign(scene, patch);
-    scene.start = clamp(Number(scene.start || 0), 0, state.duration);
-    scene.end = clamp(Number(scene.end || 0), 0, state.duration);
-    if (scene.end <= scene.start) scene.end = Math.min(state.duration, scene.start + 0.1);
-    state.scenes.sort((a, b) => a.start - b.start);
-    persist();
-    render();
+    const normalized = normalizeScene(scene);
+    if (!normalized) return;
+    Object.assign(scene, normalized, { source: scene.source === 'auto' ? 'edited' : scene.source, confidence: scene.confidence });
+    sortAndPersist();
   }
 
   function removeScene(id) {
@@ -77,6 +86,7 @@ window.VReviewUI = (() => {
   }
 
   function seek(seconds) {
+    if (!els.video) return;
     els.video.currentTime = clamp(seconds, 0, state.duration);
     els.video.play().catch(() => {});
   }
@@ -87,11 +97,25 @@ window.VReviewUI = (() => {
     els.sceneList.innerHTML = '';
     els.timeline.innerHTML = '';
 
+    if (!state.scenes.length) {
+      const empty = document.createElement('p');
+      empty.className = 'helper scene-empty';
+      empty.textContent = 'Sceneはまだありません。自動検出するか、動画から手動で追加してください。';
+      els.sceneList.appendChild(empty);
+    }
+
     state.scenes.forEach((scene, index) => {
       const card = document.createElement('article');
       card.className = 'scene-card';
+      const detectionBadge = getDetectionBadge(scene);
       card.innerHTML = `
-        <header><strong>Scene ${String(index + 1).padStart(2, '0')}</strong><span class="badge">${scene.fps === 'auto' ? 'Auto FPS' : `${scene.fps}fps`}</span></header>
+        <header>
+          <strong>Scene ${String(index + 1).padStart(2, '0')}</strong>
+          <div class="scene-badges">
+            ${detectionBadge}
+            <span class="badge">${scene.fps === 'auto' ? 'Auto FPS' : `${scene.fps}fps`}</span>
+          </div>
+        </header>
         <div class="time-row">
           <label>Start<input data-role="start" type="number" min="0" step="0.01" value="${scene.start.toFixed(2)}"></label>
           <label>End<input data-role="end" type="number" min="0" step="0.01" value="${scene.end.toFixed(2)}"></label>
@@ -99,28 +123,57 @@ window.VReviewUI = (() => {
         <div class="scene-actions">
           <button class="btn btn-secondary" data-action="play">再生</button>
           <button class="btn btn-secondary" data-action="minus-start">開始 -0.1</button>
+          <button class="btn btn-secondary" data-action="plus-start">開始 +0.1</button>
+          <button class="btn btn-secondary" data-action="minus-end">終了 -0.1</button>
           <button class="btn btn-secondary" data-action="plus-end">終了 +0.1</button>
-          <button class="btn btn-secondary" data-action="delete">削除</button>
+          <button class="btn btn-secondary danger-text" data-action="delete">削除</button>
         </div>`;
 
       card.querySelector('[data-role="start"]').addEventListener('change', e => updateScene(scene.id, { start: Number(e.target.value) }));
       card.querySelector('[data-role="end"]').addEventListener('change', e => updateScene(scene.id, { end: Number(e.target.value) }));
       card.querySelector('[data-action="play"]').addEventListener('click', () => seek(scene.start));
       card.querySelector('[data-action="minus-start"]').addEventListener('click', () => updateScene(scene.id, { start: scene.start - 0.1 }));
+      card.querySelector('[data-action="plus-start"]').addEventListener('click', () => updateScene(scene.id, { start: scene.start + 0.1 }));
+      card.querySelector('[data-action="minus-end"]').addEventListener('click', () => updateScene(scene.id, { end: scene.end - 0.1 }));
       card.querySelector('[data-action="plus-end"]').addEventListener('click', () => updateScene(scene.id, { end: scene.end + 0.1 }));
       card.querySelector('[data-action="delete"]').addEventListener('click', () => removeScene(scene.id));
       els.sceneList.appendChild(card);
 
       if (state.duration > 0) {
         const bar = document.createElement('button');
-        bar.className = 'timeline-scene';
+        bar.className = `timeline-scene${scene.source === 'manual' ? ' manual' : ''}`;
         bar.style.left = `${(scene.start / state.duration) * 100}%`;
         bar.style.width = `${Math.max(((scene.end - scene.start) / state.duration) * 100, .4)}%`;
-        bar.title = `Scene ${index + 1}`;
+        bar.title = `Scene ${index + 1} ${formatShort(scene.start)} - ${formatShort(scene.end)}`;
         bar.addEventListener('click', () => seek(scene.start));
         els.timeline.appendChild(bar);
       }
     });
+  }
+
+  function getDetectionBadge(scene) {
+    if (!Number.isFinite(scene.confidence)) return '<span class="badge badge-manual">MANUAL</span>';
+    const percent = Math.round(scene.confidence * 100);
+    const level = percent >= 80 ? 'HIGH' : percent >= 60 ? 'MEDIUM' : 'LOW';
+    return `<span class="badge confidence-${level.toLowerCase()}">${level} ${percent}%</span>`;
+  }
+
+  function normalizeScene(scene) {
+    const start = clamp(Number(scene.start || 0), 0, state.duration);
+    const end = clamp(Number(scene.end || 0), 0, state.duration);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+    return {
+      ...scene,
+      start,
+      end,
+      fps: ['auto', 30, 60, '30', '60'].includes(scene.fps) ? scene.fps : 'auto'
+    };
+  }
+
+  function sortAndPersist() {
+    state.scenes.sort((a, b) => a.start - b.start);
+    persist();
+    render();
   }
 
   function persist() {
@@ -129,15 +182,39 @@ window.VReviewUI = (() => {
 
   function clearScenes() {
     state.scenes = [];
+    state.draftStart = null;
+    state.draftEnd = null;
     persist();
     render();
+  }
+
+  function getScenes() {
+    return state.scenes.map(scene => ({ ...scene }));
+  }
+
+  function createId() {
+    return crypto.randomUUID ? crypto.randomUUID() : `scene-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function flashButton(button, text) {
+    if (!button) return;
+    const original = button.dataset.originalLabel || button.textContent;
+    button.dataset.originalLabel = original;
+    button.textContent = text;
+    clearTimeout(Number(button.dataset.resetTimer || 0));
+    const timer = setTimeout(() => { button.textContent = original; }, 1200);
+    button.dataset.resetTimer = String(timer);
+  }
+
+  function formatShort(seconds) {
+    return window.VReviewVideo?.formatTime(seconds) || Number(seconds).toFixed(2);
   }
 
   function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
   }
 
-  return { init, setDuration, addScene, clearScenes };
+  return { init, setDuration, addScene, replaceScenes, clearScenes, getScenes };
 })();
 
 document.addEventListener('DOMContentLoaded', () => window.VReviewUI.init());
