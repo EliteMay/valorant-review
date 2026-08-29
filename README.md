@@ -1,99 +1,132 @@
 # VReview
 
-**Current version: v0.4.1**
+**Current version: v0.4.2**
 
-VALORANTのクリップからCombat Sceneを抽出し、ChatGPT PlusでAIM / Movementをレビューするための個人用Webツールです。
+VALORANTクリップから必要なキルSceneを抽出し、最終的にChatGPT Plusへ高fpsの解析パッケージを渡してAIM / Movementをレビューする個人用Webツールです。
 
-## 目的
+## 現在の開発段階
 
-- VALORANTクリップからCombat Scene候補を自動検出する
-- 自動検出結果をユーザーが確認・修正できるようにする
-- 自動検出結果とユーザー修正後の正解データを提出ZIPへまとめ、実クリップを使って検出器を反復改善する
-- 将来的に戦闘区間を30〜60fps相当でフレーム化し、ChatGPTへ解析パッケージとして渡す
-- ChatGPTから固定JSONで返されたAIM / Movement評価をVReviewへ読み込み、弱点と優先練習を表示する
+いまはAI採点より先に、**キルScene自動検出の精度改善**を優先しています。
+
+実クリップで
+
+```text
+自動検出
+↓
+ユーザーが確認
+↓
+Sceneへ正解ラベルを付ける
+↓
+検出改善用ZIPを作成
+↓
+ChatGPTで失敗原因を解析
+↓
+Detectorを更新
+```
+
+という反復方式で改善します。
 
 ## 崩してはいけない仕様
 
-1. GitHub Pagesで利用できる静的構成を優先する
+1. GitHub Pagesで利用できる静的Web構成
 2. OpenAI APIなどの有料APIを必須にしない
-3. APIキー・パスワードなどの秘密情報を公開リポジトリへ保存しない
-4. AI解析は基本的に `VReview -> ChatGPT Plus -> VReview` の手動受け渡し方式とする
-5. Combat Sceneは自動検出を基本とし、手動で追加・削除・開始終了調整・結合・分割できるようにする
-6. 1クリップ内の全Combat Sceneをまとめて扱えるようにする
-7. 採点対象v1はAIM + Movementとする
-8. 採点基準はImmortal / Radiant上位レベルを基準とする
-9. Kill / Deathの結果だけで採点しない
-10. 映像から判断できない項目は無理に採点せず `null` を許可する
-11. 元動画をユーザー操作なしに外部へアップロードしない
-12. ユーザーデータや動画をGitHubへ自動保存しない
-13. 検出改善では「自動検出直後」と「ユーザー修正後」の両データを保持する
-14. サイト上へ現在のバージョンを常時表示し、変更時はREADME・作業報告書も更新する
+3. AI採点は基本 `VReview -> ChatGPT Plus -> VReview` の手動受け渡し
+4. APIキー・パスワード・元動画を公開リポジトリへ保存しない
+5. 元動画をユーザー操作なしに外部送信しない
+6. 自動検出は必ず手動修正可能にする
+7. 1クリップ内の連続キルは必要に応じて1Sceneへまとめる
+8. 採点対象v1はAIM + Movement
+9. 採点基準はImmortal / Radiant上位レベル
+10. Kill / Deathの結果だけで採点しない
+11. 判断できない採点項目は `null` を許可する
+12. AI返却は固定JSON Schema
+13. サイト上に現在バージョンを常時表示する
+14. READMEと作業報告もバージョン変更時に更新する
 
-## 基本フロー
+## Detector v0.4.2
 
-```text
-動画を選択
-  ↓
-Combat Scene自動検出
-  ↓
-ユーザー確認・手動修正
-  ↓
-検出改善用ZIPを作成
-  ↓
-実クリップを基準にDetectorを改善
-  ↓
-30 / 60fps採点用フレーム生成（今後）
-  ↓
-ChatGPT Plusへ解析パッケージを渡す（今後）
-  ↓
-固定JSONをVReviewへ読み込む（今後）
-```
+### 方針変更
 
-## Combat Scene Detector
+v0.4.1までは「戦闘らしい場面」を広めに拾っていたため、実際にはキルしていない撃ち合いやリロード・UI変化もSceneになっていました。
 
-### v0.4.1
+v0.4.2では、**キル確認をScene生成の中心証拠に変更**しています。
 
-2回目の実クリップ検証をもとに更新。
+### 利用する特徴
 
-主な変更:
+- 音声ピーク / トランジェント
+- 画面中央の変化
+- 右上キルフィード領域
+- 右下弾数HUD領域
+- **画面下中央のキル確認UI領域**
+- 上中央のラウンドUI変化
 
-- 全画面Motion
-- 中央領域Motion
-- 右上Killfeed領域Motion
-- **弾数HUD領域Motion**
-- 上部中央のラウンド遷移UI Motion
-- 音声RMS / Peak / Rise / Crest
+### Scene生成
 
-を別々に計算してCombat判定へ利用する。
+標準感度では主に、
 
-#### v0.4.1で改善した問題
+- 下中央のキル確認UIが強く変化した
+- または、キルフィード変化の近くに射撃証拠がある
 
-1. Phoenixアビリティの誤検出
-   - v0.4.0では約9.4〜13.35秒をCombatとして誤検出
-   - 音声・中央映像だけでなく弾数HUD変化を追加し、銃撃らしさを補強
-   - 音声だけ大きい、または疎な映像イベントだけ続くSceneは作りにくくした
+場合をキルAnchorとしてSceneを作ります。
 
-2. 戦闘終了後UIの誤検出
-   - v0.4.0では約18.55秒〜動画終了を別Sceneとして誤検出
-   - Killfeed領域だけ変化してもCombat Sceneを作らない
-   - Killfeedは音声/中央映像/弾数HUDなどのローカルCombat証拠がある場合のみ強い証拠として使う
-   - ラウンド遷移時の上部中央UI変化も補助的に検出して抑制する
+単なる
 
-3. 解析間隔
-   - 35秒以下: 0.16秒
-   - 35〜75秒: 0.20秒
-   - 75秒超: 0.25秒
+- アビリティ音
+- リロード
+- スコアボード
+- ラウンド終了/購入フェーズ
+- Killfeedだけの変化
+- 撃ち合っただけ
 
-### Scene範囲
+はScene化しにくくします。
 
-- 最初のCombatイベント約0.7秒前から開始
-- 最後のCombatイベント約0.8秒後まで
-- 近いイベントは同一Sceneへまとめる
-- 連続キルは無理に分割せず、1つのCombat Sceneとして扱ってよい
+高感度のみ、キル確認UIが取れなかった場合の保険として密な射撃群も候補にできます。
 
-## 検出改善用ZIP
+### 解析間隔
 
-New Review画面で自動検出後、誤検出を削除・見逃しを追加・範囲を修正してから作成する。
+- 35秒以下: 約0.12秒
+- 35〜75秒: 約0.16秒
+- 75秒超: 約0.22秒
+
+## 実クリップで分かったこと
+
+### クリップA: 23.067秒
+
+旧版ではPhoenixアビリティを誤検出していました。
+
+v0.4.1ではこの誤検出が消え、約14秒以降の連続キルを1Sceneへまとめることに成功しました。
+
+ただしScene終端がラウンド終了側まで伸びる傾向が残っています。
+
+### クリップB: 28.317秒
+
+v0.4.1では4Scene検出。
+
+ユーザーフィードバックでは、
+
+- 1つ目のキル: 検出
+- 2つ目のキル: ぎりぎり検出
+- それ以外: 不要な切り抜き
+
+という結果でした。
+
+後半では射撃・HUD変化を「Combat」として拾っていましたが、欲しいキルSceneではありませんでした。
+
+この結果を受け、v0.4.2ではCombat検出からKill-confirm中心へ変更しました。
+
+## Scene正解ラベル
+
+v0.4.2から各Sceneに以下を付けられます。
+
+- `kill` — 欲しいキルScene
+- `death` — 欲しいデスScene
+- `fight` — 戦闘ではあるがキル/デスではない
+- `false_positive` — 不要・誤検出
+- `unreviewed` — 未確認
+
+次回からメモ文章だけではなく、このラベルを機械的に比較してDetectorを改善します。
+
+## 検出改善用ZIP v3
 
 ```text
 vreview_feedback_<clip>.zip
@@ -104,27 +137,38 @@ vreview_feedback_<clip>.zip
 ├─ detector-diagnostics.json
 ├─ notes.txt
 ├─ auto-scenes/
-│  └─ auto_XX.jpg
+│  └─ *.jpg
 └─ corrected-scenes/
-   └─ corrected_XX.jpg
+   └─ *.jpg
 ```
 
-`detector-diagnostics.json` には以下を保存する。
+`corrected-scenes.json` には以下も保存します。
 
-- audio score / RMS / Peak / Rise / Crest
-- overall motion
-- center motion
-- killfeed motion / excess / ratio / score
-- ammo motion / excess / ratio / score
-- top-center motion / score
-- 採用したCombat event
-- **抑制した候補eventと抑制理由**
+- `feedback_label`
+- `detector_reason`
+- `anchor_count`
+- `shot_evidence_count`
 
-これにより「なぜ拾ったか」だけでなく「なぜ拾わなかったか」も次回の改善材料にできる。
+`detector-diagnostics.json` には、
 
-元動画そのものはZIPへ含めない。
+- 採用イベント
+- 抑制イベント
+- killConfirmScore
+- killfeedScore
+- ammoScore
+- topCenterScore
 
-## v1 採点対象
+などを保存します。
+
+## 最終的なレビュー構想
+
+自動検出が安定した後は、各Sceneについて
+
+- Overview: 約5fps
+- Detail: Auto / 30fps / 60fps
+- Frame ID + timestamp付きコンタクトシート
+
+を生成し、1クリップ内の全SceneをChatGPT Plusへまとめて渡します。
 
 ### AIM
 
@@ -145,123 +189,50 @@ vreview_feedback_<clip>.zip
 - Reposition
 - Movement Control
 
-該当しない項目は0点ではなく `null` とする。
+## 保存
 
-## 採点用コンタクトシート（今後実装）
-
-- Overview: 約5fps
-- Detail: Auto / 30fps / 60fps
-- 30fps: 5列 x 4行 = 20フレーム/シートを基本
-- 60fps: 4列 x 4行 = 16フレーム/シートを基本
-- 各フレームにFrame IDとタイムスタンプを表示
-
-## ページ構成
-
-- Dashboard
-- New Review
-- Import / Result
-- History
-- Training
-- Settings
-
-PCでの動画解析を主用途とし、スマホは結果閲覧を中心にする。
-
-## 保存方法
-
-### ブラウザ保存
+### ブラウザ内
 
 - 設定: localStorage
-- レビュー結果・履歴: IndexedDBを優先予定
-- Scene調整情報: ブラウザ内保存
+- Scene編集情報: localStorage
+- 将来のレビュー履歴: IndexedDB予定
 
-### 保存しないもの
+### 保存しない
 
 - 元動画
 - APIキー
 - パスワード
-- 個人データをGitHubへ自動保存する処理
-
-## ファイル構成
-
-```text
-/
-├─ index.html
-├─ review.html
-├─ result.html
-├─ history.html
-├─ training.html
-├─ settings.html
-├─ css/
-│  ├─ base.css
-│  ├─ layout.css
-│  └─ components.css
-├─ js/
-│  ├─ app.js
-│  ├─ video.js
-│  ├─ ui.js
-│  ├─ storage.js
-│  ├─ scene-detection-v040.js
-│  ├─ scene-detection-v041.js
-│  └─ feedback-package-v2.js
-├─ README.md
-└─ 作業報告書.md
-```
-
-旧Detectorファイルは比較・ロールバック用として当面残す。
-
-## 外部依存
-
-検出改善用ZIP生成は外部ZIPライブラリを使用せず、VReview内蔵のStore方式ZIP生成で完結する。
-
-- APIキー不要
-- ZIP生成にCDN不要
-- 元動画の外部送信なし
 
 ## GitHub Pages
 
-静的HTML / CSS / JavaScriptだけで利用できる構成を維持する。
+静的HTML / CSS / JavaScriptで構成し、GitHub Pagesから利用します。
 
 ## 現在の実装状況
 
 ### 実装済み
 
 - 基本UI
-- サイト上のバージョン表示
+- 常時バージョン表示
 - MP4 / WebM読み込み
-- 動画プレビュー / メタ情報表示
-- Scene手動追加・削除・開始終了調整
-- Combat Scene Detector v0.4.1
+- 動画プレビュー / メタ情報
+- Scene手動追加 / 削除 / 時間調整
+- キルScene Detector v0.4.2
 - Confidence表示
-- 検出改善用ZIP生成
-- 自動検出 / 修正後Sceneの16コマ確認画像
-- 詳細な検出診断データ出力
+- Scene正解ラベル
+- 検出改善用ZIP v3
+- 確認用16コマ画像
+- 採用 / 抑制診断データ
 
-### 未実装 / 改善中
+### 改善中 / 未実装
 
-- Combat Scene Detectorの複数クリップ検証
+- Detector v0.4.2の実クリップ検証
+- Death専用検出
 - Scene結合 / 分割の本UI
 - 自動30 / 60fps判定
-- 採点用高fpsフレーム抽出
-- 採点用Overview / Detailコンタクトシート
-- ChatGPT採点用ZIP
-- prompt自動生成
+- 採点用高fpsコンタクトシート
+- ChatGPT採点用パッケージ
 - result JSON検証 / 表示
-- History / Training / Settings本実装
-
-## v1 完成条件
-
-- 動画読み込み
-- Combat Scene自動検出が実用精度に到達
-- Scene手動修正
-- 30 / 60fpsフレーム抽出
-- 採点用コンタクトシート生成
-- ChatGPT解析パッケージ生成
-- 固定JSON結果読み込み
-- AIM / Movement結果画面
-- タイムスタンプジャンプ
-- ローカル保存
-- README / 作業報告書更新
-- GitHub Pagesで主要機能が利用可能
+- History / Training
 
 ## 優先順位
 
