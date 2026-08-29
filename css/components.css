@@ -56,6 +56,11 @@
 .confidence-low { color: #e98b8b; border-color: rgba(233, 139, 139, .35); background: rgba(233, 139, 139, .07); }
 .danger-text { color: #e98b8b; }
 .scene-empty { margin: 0; padding: 14px; border: 1px dashed var(--border); border-radius: 10px; }
+.feedback-panel { border-color: rgba(255,70,85,.32); }
+.notes-field { display: grid; gap: 8px; margin: 16px 0; color: var(--muted); font-size: .8rem; font-weight: 800; }
+.notes-field textarea { width: 100%; resize: vertical; min-height: 82px; border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; background: #0d1116; color: var(--text); font: inherit; line-height: 1.5; }
+.notes-field textarea:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+.progress-number { font-variant-numeric: tabular-nums; }
 @media (max-width: 720px) {
   .detect-controls { align-items: stretch; }
   .detect-controls .btn, .select-field { width: 100%; }
