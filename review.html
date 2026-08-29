@@ -77,7 +77,7 @@
 
           <section class="panel feedback-panel">
             <div class="section-heading"><div><p class="eyebrow">DETECTOR FEEDBACK</p><h2>検出改善用パッケージ</h2></div></div>
-            <p class="helper">Detector v0.4.5ではdiagnosticsに本命 / 弱候補の分類結果も保存します。要確認候補にも可能な範囲でラベルを付けてください。</p>
+            <p class="helper">Feedback Package v4では、本命 / 要確認候補の区別、弱候補理由、Classifier証拠もScene JSONへ保存します。要確認候補にも可能な範囲でラベルを付けてください。</p>
             <label class="notes-field"><span>メモ（任意）</span><textarea id="feedbackNotes" rows="3" placeholder="例: 要確認候補の1番は本物 / Scene 2は不要 / 連キルの区切りが長い"></textarea></label>
             <button class="btn btn-primary full" id="feedbackPackageBtn" type="button" disabled>検出改善用ZIPを作成</button>
             <div class="detection-status hidden" id="feedbackStatus" aria-live="polite"><div class="detection-status-head"><span id="feedbackMessage">準備中…</span><span class="progress-number" id="feedbackProgressText"></span></div><progress id="feedbackProgress" max="100" value="0"></progress></div>
@@ -99,7 +99,7 @@
   <script src="js/scene-detection-v043.js?v=20260829-10"></script>
   <script src="js/scene-detection-v044.js?v=20260829-10"></script>
   <script src="js/scene-detection-v045.js?v=20260829-10"></script>
-  <script src="js/feedback-package-v3.js?v=20260829-10"></script>
+  <script src="js/feedback-package-v4.js?v=20260829-10"></script>
   <script src="js/ui.js?v=20260829-10"></script>
   <script src="js/app.js?v=20260829-10"></script>
 </body>
