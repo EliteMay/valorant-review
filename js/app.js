@@ -115,7 +115,7 @@ function initReviewPage() {
       }
 
       if (savedMeta?.sensitivity && sensitivity) sensitivity.value = savedMeta.sensitivity;
-      if (feedbackNotes) feedbackNotes.value = savedMeta?.notes || '';
+      if (feedbackNotes) feedbackNotes.value = restored ? (savedMeta?.notes || '') : '';
       sceneColumn && (sceneColumn.scrollTop = 0);
 
       if (autoDetectBtn) {
