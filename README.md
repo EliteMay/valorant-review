@@ -1,206 +1,166 @@
 # VReview
 
-**Current site version: v0.4.6**  
-**Current Detector: v0.4.5**  
-**Current Detector Feedback Package: v4**
+VALORANTのクリップから戦闘Sceneを抽出し、最終的にChatGPT Plusへ高fps解析パッケージを渡してAIM / Movementをレビューする個人用Webツールです。
 
-VALORANTクリップから必要なキルSceneを抽出し、最終的にChatGPT Plusへ高fps解析パッケージを渡してAIM / Movementをレビューする個人用Webツールです。
+## 現在のバージョン
+
+バージョン番号は `js/version.js` を唯一の表示元として管理します。
+
+- VReview: **v0.5.0**
+- Detector: **v0.5.0**
+- Feedback Package: **v5**
 
 ## 現在の開発段階
 
-現在はAI採点より先に、**キルScene自動検出の汎化性能改善**を優先しています。
+AI採点機能より先に、**キルScene自動検出の汎化性能と、検出結果を修正・検証しやすい作業環境**を固めています。
 
 ```text
-動画
+動画を選択
 ↓
-自動検出
+Detector v0.5.0
 ↓
-本命Scene / 要確認候補へ分類
+本命Scene / 要確認候補
 ↓
-ユーザーが確認・ラベル付け
+ユーザー確認・時間修正・ラベル付け
 ↓
-検出改善用ZIP
+Feedback Package v5
 ↓
-複数クリップをまとめて比較
+Detector Testで複数ZIPを集計
 ↓
-共通失敗だけDetectorへ反映
+共通失敗だけ次のDetectorへ反映
 ```
 
 ## 崩してはいけない仕様
 
-1. GitHub Pagesで動く静的Web構成
+1. GitHub Pagesで利用できる静的HTML / CSS / JavaScript構成を維持する
 2. OpenAI APIなどの有料APIを必須にしない
-3. AI採点は基本 `VReview -> ChatGPT Plus -> VReview` の手動受け渡し
+3. AI採点は基本 `VReview -> ChatGPT Plus -> VReview` の手動受け渡し方式
 4. APIキー・パスワード・元動画を公開リポジトリへ保存しない
 5. 元動画をユーザー操作なしに外部送信しない
-6. 自動検出は必ず手動修正可能にする
-7. 連続キルは必要に応じて1Sceneへまとめる
-8. PrecisionよりRecallをやや優先する。ただし弱候補は本命Sceneと分離して操作性を落とさない
+6. 自動検出結果は必ず手動修正できる
+7. PrecisionよりRecallをやや優先するが、弱候補は本命Sceneと分離する
+8. PC版New Reviewは **左ナビ固定 / 中央動画固定 / 右Sceneペインのみスクロール** を維持する
 9. 採点対象v1はAIM + Movement
 10. 採点基準はImmortal / Radiant上位レベル
 11. Kill / Death結果だけで採点しない
 12. 判断できない採点項目は `null` を許可する
-13. AI返却は固定JSON Schema
-14. サイト上に現在バージョンを常時表示する
-15. README / 作業報告書もバージョン変更時に更新する
-16. PC版New Reviewは左ナビ固定・中央動画固定・右Sceneペインのみスクロールを維持する
+13. AI返却データは固定JSON Schemaにする
+14. 現在バージョンをサイト上へ常時表示する
+15. 未実装機能を完成済み機能のように見せない
 
-## New Review UI
+## v0.5.0 基盤改修
 
-PCでは動画読み込み後、以下の3領域で使います。
-
-```text
-左: ナビゲーション固定
-中央: 動画 / Timeline / Scene追加操作を固定
-右: 自動検出 / Scene一覧 / Feedback / AI Packageのみ縦スクロール
-```
-
-動画読み込み後は大きなアップロード枠を隠し、中央上部の `動画を変更` から別クリップへ切り替えられます。
-
-980px以下では固定3ペインを解除し、通常の縦スクロールへ戻します。
-
-## Detector構成
+v0.4系ではDetectorを
 
 ```text
-v0.4.2 Base Detector
-↓
-v0.4.3 Scene Refiner
-↓
-v0.4.4 Recall Guard
-↓
-v0.4.5 Candidate Classifier
+v0.4.2 -> v0.4.3 -> v0.4.4 -> v0.4.5
 ```
 
-### v0.4.2 Base Detector
+のように別JSで順番に上書きしていました。
 
-ブラウザ内で以下を解析します。
+v0.5.0ではこの構造を廃止し、`js/detector.js` の単一Pipelineへ統合しました。
+
+内部処理は以下の順です。
+
+```text
+Audio / Visual Analysis
+↓
+Evidence Builder
+↓
+Base Scene Builder
+↓
+Scene Refiner
+↓
+Recall Guard
+↓
+Candidate Classifier
+↓
+primary / weak
+```
+
+今後は過去版Detector JSを上書きして修正するのではなく、このPipeline内の担当処理を修正します。
+
+## Detector v0.5.0
+
+ブラウザ内で主に以下を利用します。
 
 - 音声ピーク / トランジェント
 - 画面中央Motion
 - 右上Killfeed領域
 - 右下Ammo HUD領域
-- 下中央Kill-confirm領域
+- 下中央Kill Confirm領域
 - 上中央Round UI領域
 
-解析間隔:
-
-- 35秒以下: 約0.12秒
-- 35〜75秒: 約0.16秒
-- 75秒超: 約0.22秒
-
-### v0.4.3 Scene Refiner
-
-- 巨大Sceneを実戦密度の高い区間へ絞る
-- キル根拠の弱い候補を除外する
-- 短いSceneへPre-rollを追加する
-
-### v0.4.4 Recall Guard
-
-v0.4.3で本物キルまで消える例が複数クリップで確認されたため、
-
-- Hard Dropされた候補をLOWとして復元
-- Focus Window後ろ側に強い戦闘証拠が続く場合はScene終端を復元
-
-するRecall優先レイヤーです。
-
-### v0.4.5 Candidate Classifier
-
-v0.4.4再検証5本では、**復元LOW候補5件中1件だけが本物キル、4件が誤検出**でした。
-
-ただし1件は実際に見逃し防止へ役立ったため、LOW候補を再び完全削除するのではなく、
+### Scene分類
 
 - `primary` — 本命Scene
-- `weak` — 要確認候補
+- `weak` — 見逃し防止用の要確認候補
+- `manual` — ユーザーが手動追加したScene
 
-へ分類します。
+### 解析キャンセル
 
-要確認候補は右Scene一覧の折りたたみ領域へ分離し、通常利用時の邪魔を減らします。
+v0.5.0から解析中にキャンセルできます。
 
-#### 復元候補を本命へ戻す条件
+長尺動画では解析間隔を自動的に少し広げ、警告を表示します。
 
-`recovered-low-confidence` の候補でも、以下のどれかがある場合は本命扱いします。
+## New Review
 
-- Shot証拠あり
-- Combat Supportが2件以上
-- Killfeedがあり、Audioと中央Motionも一定以上
+PCでは動画読み込み後、以下の3領域になります。
 
-それ以外は見逃し保険として `weak` に残します。
+```text
+左: ナビゲーション固定
+中央: 動画 / Timeline / Scene追加操作を固定
+右: 自動検出 / Scene一覧 / Feedbackのみ縦スクロール
+```
 
-#### Shot証拠0の通常候補
+### Scene操作
 
-v0.4.4再検証では、通常候補でも `shot_evidence_count = 0` のSceneが複数誤検出でした。
+- 自動検出
+- 本命 / 要確認候補の分離表示
+- Scene再生
+- Start / End直接入力
+- Start / End ±0.1秒
+- Scene削除
+- 手動Scene追加
+- 正解ラベル設定
+- タイムラインクリックでシーク
+- 現在再生位置Playhead表示
+- Scene選択表示
 
-そのためv0.4.5では削除せず `weak` へ分離します。
+### キーボード
 
-`detector-diagnostics.json` には `candidateClassifier.primary / weak` を保存します。
+- `Space`: 再生 / 停止
+- `I`: 現在位置をScene開始候補へ
+- `O`: 現在位置をScene終了候補へ
+- `← / →`: ±0.1秒
+- `Shift + ← / →`: ±0.5秒
+- `Delete`: 選択Scene削除
 
-## Detector v0.4.5 既知5クリップ再検証
+## 途中保存
 
-同じ5クリップをDetector v0.4.5で再実行した結果:
+元動画そのものは保存しません。
 
-- primary: **13件**
-- weak: **7件**
-- primary内 `kill`: **11件**
-- primary内 `fight`: **1件**
-- primary内 `false_positive`: **1件**
+動画の以下からFingerprintを作り、Scene編集を動画ごとに `localStorage` へ保存します。
 
-`fight`もレビュー対象として有効と数える場合、primaryの有効Scene率は **12 / 13 = 約92.3%**。
+- ファイル名
+- ファイルサイズ
+- lastModified
+- 動画時間
+- 解像度
 
-ユーザーメモ:
+同じ動画を再選択すると、前回Sceneを復元するか確認します。
 
-- ace: `完璧`
-- 4k: `完璧`
-- ace2: `いいかんじ`
-- ace4-1: `最初のイラン`
+保存対象:
 
-ace4-1型の重複Sceneだけは継続して残っています。
+- Scene範囲
+- Sceneラベル
+- 本命 / weak情報
+- 検出感度
+- Feedbackメモ
 
-weak 7件は今回ラベルが `unreviewed` のままだったため正式なPrecision計算には入れていませんが、確認画像上は明確な本人キルSceneには見えませんでした。
+Detectorの巨大な診断データはlocalStorageへ保存しません。Feedback ZIPを再作成する場合は自動検出を再実行します。
 
-ただしこの5本はClassifier設計に使用した既知データでもあるため、**Detector v0.4.5はまだ完成扱いにしません**。
-
-次は未使用クリップで汎化性能を確認します。
-
-## v0.4.4再検証5本の結果
-
-| クリップ | 結果 |
-|---|---|
-| ace4-1 | 1 false positive / 1 kill。重複問題は継続 |
-| ace2 | 全キルを切り抜けた。Tail Recovery成功。不要Scene増加あり |
-| ace | 復元LOW 1件が本物キル、別LOW 1件は誤検出 |
-| 4k | 全キルを切り抜けた。復元LOW 2件は両方誤検出 |
-| ace3 | 2 kill + 復元LOW 1件は誤検出。Tail Recoveryあり |
-
-### 集計
-
-- 復元LOW候補: **5件**
-- 本物キル: **1件**
-- 誤検出: **4件**
-- 復元LOW候補Precision: **20%**
-
-一方、ace / ace2ではRecall Guardが実際に見逃し改善へ役立ったため、Recall Guard自体は維持します。
-
-## まだ残っている問題
-
-- ace4-1型の重複 / 連キル境界
-- fightだけのSceneをキルSceneと誤認するケース
-- 長い連キルをどこで分割するか
-- Death専用検出
-- HUDスケール差
-- Firefox / Chrome差
-- 長尺動画性能
-
-## Scene正解ラベル
-
-各Sceneに以下を設定できます。
-
-- `kill` — 欲しいキルScene
-- `death` — 欲しいデスScene
-- `fight` — 戦闘ではあるがキル/デスではない
-- `false_positive` — 不要・誤検出
-- `unreviewed` — 未確認
-
-## 検出改善用ZIP v4
+## Feedback Package v5
 
 ```text
 vreview_feedback_<clip>.zip
@@ -209,12 +169,23 @@ vreview_feedback_<clip>.zip
 ├─ auto-scenes.json
 ├─ corrected-scenes.json
 ├─ detector-diagnostics.json
+├─ scene-image-map.json
 ├─ notes.txt
-├─ auto-scenes/
-└─ corrected-scenes/
+└─ scene-images/
+   ├─ scene_001_full.jpg
+   ├─ scene_001_roi.jpg
+   └─ ...
 ```
 
-Scene JSONには以下を保存します。
+### v5変更点
+
+- auto / correctedで同じ範囲のScene画像を二重生成しない
+- 全画面画像を `contain` で描画し、HUDをクロップしない
+- 均等16枚よりDetectorイベント時刻を優先してフレーム取得
+- Killfeed / Ammo / Kill Confirm / Round UIのROI拡大画像を追加
+- `scene-image-map.json` でSceneと共有画像を対応付ける
+
+Scene JSONには以下を含みます。
 
 - `feedback_label`
 - `review_tier`
@@ -227,26 +198,102 @@ Scene JSONには以下を保存します。
 - `anchor_count`
 - `shot_evidence_count`
 
-manifestには `counts.review_tiers` を追加し、primary / weak / manualの件数を直接確認できます。
+## Detector Test
 
-確認用16コマ画像のラベルにも `PRIMARY / WEAK / MANUAL` を表示します。
+`detector-test.html` へ複数のVReview Feedback ZIPをまとめて入れると、以下を自動集計します。
 
-診断には以下を含みます。
+- Precision
+- Recall
+- primary Precision
+- TP / FP / FN
+- weakへ落ちた有効Scene数
+- 未確認ラベル数
+- Detectorバージョン別集計
 
-- events / suppressed
-- refiner.dropped / adjusted
-- recallGuard.recovered / expanded
-- candidateClassifier.primary / weak
+Recallでは、`manual` で追加された `kill / death / fight` を見逃しとして扱います。
 
-## 最終的なAIレビュー構想
+これは元動画なしでDetector自体を再実行する回帰テストではありません。**提出結果の定量比較ツール**です。
 
-Detectorが安定した後、各Sceneについて
+## GitHub Actions
+
+`.github/workflows/validate.yml` でpushごとに以下を確認します。
+
+- JavaScript / MJSの構文
+- HTMLから参照しているローカルファイルの存在
+- `review.html` が現行 `js/detector.js` を読み込んでいること
+- `review.html` がFeedback Package v5を読み込んでいること
+- 旧versioned Detectorを読み込んでいないこと
+
+## GitHub Pages
+
+公開URL:
+
+`https://elitemay.github.io/vreview/`
+
+GitHub Pagesでそのまま開ける構成を維持します。
+
+## ファイル構成
+
+```text
+/
+├─ index.html
+├─ review.html
+├─ detector-test.html
+├─ result.html          # 開発中
+├─ history.html         # 開発中
+├─ training.html        # 開発中
+├─ settings.html        # 開発中
+├─ css/
+│  ├─ base.css
+│  ├─ layout.css
+│  └─ components.css
+├─ js/
+│  ├─ version.js
+│  ├─ app.js
+│  ├─ video.js
+│  ├─ ui.js
+│  ├─ storage.js
+│  ├─ detector.js
+│  ├─ detector-test.js
+│  └─ feedback-package-v5.js
+├─ scripts/
+│  └─ validate.mjs
+├─ .github/workflows/
+│  └─ validate.yml
+├─ README.md
+└─ 作業報告書.md
+```
+
+旧Detector / Feedback Package JSはGit履歴に残っているため、本番フォルダから削除しました。
+
+## 未実装 / 改善中
+
+- 未使用クリップでDetector v0.5.0の汎化検証
+- ace4-1型の重複Scene処理
+- 長い連キルの適切な自動分割
+- Death専用検出
+- HUD Scale / アスペクト比差への耐性
+- 固定ROIの自動キャリブレーション
+- 長尺動画のさらなる高速化
+- Timeline上でStart / Endを直接ドラッグするハンドル
+- Auto 30 / 60fps判定
+- ChatGPT採点用高fpsパッケージ
+- result JSON読み込み / 表示
+- History
+- Training
+- Settings
+
+未実装のResult / History / Training / Settingsは通常ナビから外し、直接アクセス時も開発中であることを明示します。
+
+## 最終AIレビュー構想
+
+Detector安定後、1クリップ内の全Sceneについて
 
 - Overview: 約5fps
 - Detail: Auto / 30fps / 60fps
 - Frame ID + timestamp付きコンタクトシート
 
-を生成し、1クリップ内の全SceneをChatGPT Plusへまとめて渡します。
+を生成し、ChatGPT Plusへまとめて渡します。
 
 ### AIM
 
@@ -266,53 +313,6 @@ Detectorが安定した後、各Sceneについて
 - Strafe
 - Reposition
 - Movement Control
-
-## 保存
-
-ブラウザ内:
-
-- 設定: localStorage
-- Scene編集情報: localStorage
-- 将来のレビュー履歴: IndexedDB予定
-
-保存しないもの:
-
-- 元動画
-- APIキー
-- パスワード
-
-## 現在の実装状況
-
-### 実装済み
-
-- 基本UI
-- 常時バージョン表示
-- PC版固定3ペインレイアウト
-- 動画固定表示 + 右Sceneペインのみスクロール
-- 動画変更ボタン
-- MP4 / WebM読み込み
-- Scene手動追加 / 削除 / 時間調整
-- Detector v0.4.2 Base
-- Detector v0.4.3 Refiner
-- Detector v0.4.4 Recall Guard
-- Detector v0.4.5 Candidate Classifier
-- 本命Scene / 要確認候補の分離表示
-- Confidence表示
-- Scene正解ラベル
-- 検出改善用ZIP v4
-- 確認用16コマ画像
-
-### 改善中 / 未実装
-
-- 未使用クリップでのv0.4.5汎化検証
-- 重複Scene処理
-- 長い連キルの自動分割
-- Death専用検出
-- 自動30 / 60fps判定
-- 採点用高fpsコンタクトシート
-- ChatGPT採点用パッケージ
-- result JSON検証 / 表示
-- History / Training
 
 ## 優先順位
 
