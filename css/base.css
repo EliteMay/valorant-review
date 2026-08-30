@@ -11,7 +11,6 @@
   --good: #46d39a;
   --warn: #f0b35a;
   --radius: 16px;
-  --app-version: "v0.4.6";
 }
 
 * { box-sizing: border-box; }
@@ -25,7 +24,7 @@ body {
 }
 
 body::after {
-  content: "VReview " var(--app-version);
+  content: "VReview " attr(data-vreview-version);
   position: fixed;
   right: 12px;
   bottom: 10px;
