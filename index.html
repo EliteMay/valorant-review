@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=050">
-  <link rel="stylesheet" href="css/layout.css?v=050">
-  <link rel="stylesheet" href="css/components.css?v=050">
+  <link rel="stylesheet" href="css/base.css?v=20260830-2">
+  <link rel="stylesheet" href="css/layout.css?v=20260830-2">
+  <link rel="stylesheet" href="css/components.css?v=20260830-2">
 </head>
 <body>
   <div class="app-shell">
@@ -15,11 +15,11 @@
       <a class="brand" href="index.html">VReview</a>
       <p class="brand-sub">VALORANT Clip Analysis</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
-        <a class="nav-item active" href="index.html">Dashboard</a>
+        <a class="nav-item active" href="index.html" aria-current="page">Dashboard</a>
         <a class="nav-item" href="review.html">New Review</a>
         <a class="nav-item" href="detector-test.html">Detector Test</a>
       </nav>
-      <div class="nav-coming-soon">
+      <div class="nav-coming-soon" aria-label="開発中の機能">
         <span>Import / Result — 開発中</span>
         <span>History — 開発中</span>
         <span>Training — 開発中</span>
@@ -63,31 +63,31 @@
       <section class="panel">
         <div class="section-heading"><div><p class="eyebrow">WORKFLOW</p><h2>現在の実用フロー</h2></div></div>
         <div class="workflow-grid">
-          <div class="workflow-step"><span>01</span><strong>動画を選択</strong><p>同じ動画なら前回Sceneの復元が可能。</p></div>
+          <div class="workflow-step"><span>01</span><strong>動画を選択</strong><p>同じ動画ならDraft / Backupから復元できます。</p></div>
           <div class="workflow-step"><span>02</span><strong>自動検出</strong><p>本命Sceneと要確認候補へ分類。途中キャンセル可能。</p></div>
           <div class="workflow-step"><span>03</span><strong>Scene確認</strong><p>動画固定表示のまま右ペインで修正・ラベル付け。</p></div>
-          <div class="workflow-step"><span>04</span><strong>検証</strong><p>Feedback ZIPをDetector Testでまとめて集計。</p></div>
+          <div class="workflow-step"><span>04</span><strong>検証</strong><p>Schema検証済みFeedback ZIPをDetector Testで集計。</p></div>
         </div>
       </section>
 
       <section class="panel">
-        <div class="section-heading"><div><p class="eyebrow">STATUS</p><h2>v0.5.0 基盤改修</h2></div></div>
+        <div class="section-heading"><div><p class="eyebrow">STATUS</p><h2>現在の基盤状態</h2></div></div>
         <div class="status-list">
-          <div class="status-row"><span>Detector継ぎ足し構造</span><strong class="status-ready">Single Pipeline</strong></div>
-          <div class="status-row"><span>動画Blob URL管理</span><strong class="status-ready">Fixed</strong></div>
-          <div class="status-row"><span>Scene state検証</span><strong class="status-ready">Fixed</strong></div>
-          <div class="status-row"><span>動画ごとの途中保存</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>解析キャンセル</span><strong class="status-ready">Ready</strong></div>
+          <div class="status-row"><span>Web Project Guide</span><strong class="status-ready"><span data-guide-version>--</span></strong></div>
+          <div class="status-row"><span>Project Profiles</span><strong class="status-ready">STATIC / MEDIA / AI-HANDOFF / TOOL</strong></div>
+          <div class="status-row"><span>Detector Runtime</span><strong class="status-ready">Single Pipeline</strong></div>
+          <div class="status-row"><span>Scene Draft</span><strong class="status-ready">Schema v1 + Backup</strong></div>
+          <div class="status-row"><span>Storage failure / tab conflict</span><strong class="status-ready">Visible warning</strong></div>
           <div class="status-row"><span>Feedback Package</span><strong class="status-ready"><span data-feedback-version>--</span></strong></div>
-          <div class="status-row"><span>Detector Test</span><strong class="status-ready">Ready</strong></div>
+          <div class="status-row"><span>Detector Test Import</span><strong class="status-ready">Schema validation</strong></div>
           <div class="status-row"><span>ChatGPT採点パッケージ</span><strong class="status-pending">After detector validation</strong></div>
         </div>
       </section>
     </main>
   </div>
 
-  <script src="js/version.js?v=050"></script>
-  <script src="js/storage.js?v=050"></script>
-  <script src="js/app.js?v=050"></script>
+  <script src="js/version.js?v=20260830-2"></script>
+  <script src="js/storage.js?v=20260830-2"></script>
+  <script src="js/app.js?v=20260830-2"></script>
 </body>
 </html>
