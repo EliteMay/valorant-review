@@ -1,4 +1,5 @@
 window.VReviewUI = (() => {
+  const DRAFT_SCHEMA = 1;
   const state = {
     duration: 0,
     scenes: [],
@@ -6,7 +7,8 @@ window.VReviewUI = (() => {
     draftEnd: null,
     draftKey: null,
     selectedId: null,
-    weakPanelOpen: false
+    weakPanelOpen: false,
+    lastRemoved: null
   };
 
   const els = {};
@@ -107,21 +109,45 @@ window.VReviewUI = (() => {
     state.draftKey = key || null;
   }
 
+  function readSavedScenes(storageKey) {
+    const saved = window.VReviewStorage?.getVersioned(storageKey, [], { schemaVersion: DRAFT_SCHEMA }) ?? [];
+    return Array.isArray(saved) ? saved : [];
+  }
+
   function hasSavedDraft(key = state.draftKey) {
     if (!key) return false;
-    const saved = window.VReviewStorage?.get(`draft-scenes:${key}`, null);
-    return Array.isArray(saved) && saved.length > 0;
+    return readSavedScenes(`draft-scenes:${key}`).length > 0;
+  }
+
+  function hasSavedBackup(key = state.draftKey) {
+    if (!key) return false;
+    return readSavedScenes(`draft-backup:${key}`).length > 0;
+  }
+
+  function applySavedScenes(saved) {
+    state.scenes = saved.map(item => normalizeScene({ ...item })).filter(Boolean);
+    state.selectedId = null;
+    state.lastRemoved = null;
+    state.scenes.sort((a, b) => a.start - b.start);
+    render();
+    return state.scenes.length;
   }
 
   function restoreSavedDraft(key = state.draftKey) {
     if (!key) return 0;
-    const saved = window.VReviewStorage?.get(`draft-scenes:${key}`, []);
-    if (!Array.isArray(saved)) return 0;
-    state.scenes = saved.map(item => normalizeScene({ ...item })).filter(Boolean);
-    state.selectedId = null;
-    state.scenes.sort((a, b) => a.start - b.start);
-    render();
-    return state.scenes.length;
+    return applySavedScenes(readSavedScenes(`draft-scenes:${key}`));
+  }
+
+  function restoreSavedBackup(key = state.draftKey) {
+    if (!key) return 0;
+    const count = applySavedScenes(readSavedScenes(`draft-backup:${key}`));
+    if (count) persist();
+    return count;
+  }
+
+  function backupSavedDraft(key = state.draftKey) {
+    if (!key || !hasSavedDraft(key)) return false;
+    return Boolean(window.VReviewStorage?.copy(`draft-scenes:${key}`, `draft-backup:${key}`));
   }
 
   function addScene(start, end, extra = {}) {
@@ -132,6 +158,7 @@ window.VReviewUI = (() => {
     if (!scene) return false;
     state.scenes.push(scene);
     state.selectedId = scene.id;
+    state.lastRemoved = null;
     sortAndPersist();
     return true;
   }
@@ -141,6 +168,7 @@ window.VReviewUI = (() => {
       .map(item => normalizeScene({ id: createId(), fps: 'auto', source: 'auto', feedbackLabel: 'unreviewed', ...item }))
       .filter(Boolean);
     state.selectedId = state.scenes[0]?.id || null;
+    state.lastRemoved = null;
     sortAndPersist();
   }
 
@@ -164,10 +192,22 @@ window.VReviewUI = (() => {
   }
 
   function removeScene(id) {
-    state.scenes = state.scenes.filter(item => item.id !== id);
-    if (state.selectedId === id) state.selectedId = state.scenes[0]?.id || null;
+    const index = state.scenes.findIndex(item => item.id === id);
+    if (index < 0) return;
+    state.lastRemoved = { scene: { ...state.scenes[index] }, index };
+    state.scenes.splice(index, 1);
+    if (state.selectedId === id) state.selectedId = state.scenes[Math.min(index, state.scenes.length - 1)]?.id || null;
     persist();
     render();
+  }
+
+  function undoRemoveScene() {
+    if (!state.lastRemoved) return;
+    const { scene, index } = state.lastRemoved;
+    state.scenes.splice(Math.min(Math.max(index, 0), state.scenes.length), 0, scene);
+    state.selectedId = scene.id;
+    state.lastRemoved = null;
+    sortAndPersist();
   }
 
   function selectScene(id, seekToStart = false) {
@@ -182,6 +222,21 @@ window.VReviewUI = (() => {
     els.video.currentTime = clamp(Number(seconds || 0), 0, state.duration);
     updatePlayhead();
     if (autoplay) els.video.play().catch(() => {});
+  }
+
+  function renderUndo() {
+    if (!state.lastRemoved || !els.sceneList) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'status-callout pending scene-undo';
+    const text = document.createElement('span');
+    text.textContent = 'Sceneを削除しました。';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-secondary btn-small';
+    button.textContent = '元に戻す';
+    button.addEventListener('click', undoRemoveScene);
+    wrap.append(text, button);
+    els.sceneList.appendChild(wrap);
   }
 
   function render() {
@@ -203,6 +258,8 @@ window.VReviewUI = (() => {
     playhead.className = 'timeline-playhead';
     playhead.id = 'timelinePlayhead';
     els.timeline.appendChild(playhead);
+
+    renderUndo();
 
     if (!state.scenes.length) {
       const empty = document.createElement('p');
@@ -241,6 +298,7 @@ window.VReviewUI = (() => {
       bar.style.left = `${(scene.start / state.duration) * 100}%`;
       bar.style.width = `${Math.max(((scene.end - scene.start) / state.duration) * 100, .4)}%`;
       bar.title = `${scene.reviewTier === 'weak' ? '要確認候補' : `Scene ${index + 1}`} ${formatShort(scene.start)} - ${formatShort(scene.end)}`;
+      bar.setAttribute('aria-label', bar.title);
       bar.addEventListener('click', event => {
         event.stopPropagation();
         selectScene(scene.id, true);
@@ -349,8 +407,8 @@ window.VReviewUI = (() => {
   }
 
   function persist() {
-    if (!state.draftKey) return;
-    window.VReviewStorage?.set(`draft-scenes:${state.draftKey}`, state.scenes);
+    if (!state.draftKey) return true;
+    return Boolean(window.VReviewStorage?.setVersioned(`draft-scenes:${state.draftKey}`, state.scenes, { schemaVersion: DRAFT_SCHEMA }));
   }
 
   function clearScenes(options = {}) {
@@ -358,13 +416,19 @@ window.VReviewUI = (() => {
     state.draftStart = null;
     state.draftEnd = null;
     state.selectedId = null;
+    state.lastRemoved = null;
     if (options.persist !== false) persist();
     render();
   }
 
   function clearSavedDraft(key = state.draftKey) {
-    if (!key) return;
-    window.VReviewStorage?.remove(`draft-scenes:${key}`);
+    if (!key) return false;
+    return Boolean(window.VReviewStorage?.remove(`draft-scenes:${key}`));
+  }
+
+  function clearSavedBackup(key = state.draftKey) {
+    if (!key) return false;
+    return Boolean(window.VReviewStorage?.remove(`draft-backup:${key}`));
   }
 
   function getScenes() {
@@ -400,8 +464,9 @@ window.VReviewUI = (() => {
   }
 
   return {
-    init, setDuration, setDraftKey, hasSavedDraft, restoreSavedDraft,
-    addScene, replaceScenes, clearScenes, clearSavedDraft, getScenes
+    init, setDuration, setDraftKey,
+    hasSavedDraft, hasSavedBackup, restoreSavedDraft, restoreSavedBackup, backupSavedDraft,
+    addScene, replaceScenes, clearScenes, clearSavedDraft, clearSavedBackup, getScenes
   };
 })();
 
