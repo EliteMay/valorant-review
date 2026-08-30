@@ -1,0 +1,25 @@
+{
+  "project": "VReview",
+  "guideVersion": "1.1.0",
+  "profiles": ["STATIC", "MEDIA", "AI-HANDOFF", "TOOL"],
+  "sourceOfTruth": {
+    "runtimeVersion": "js/version.js",
+    "projectSpecification": "SPEC.md",
+    "currentOverview": "README.md",
+    "workHistory": "作業報告書.md"
+  },
+  "storage": {
+    "schemaVersion": 1,
+    "primary": "localStorage",
+    "storesMedia": false
+  },
+  "aiHandoff": {
+    "feedbackSchema": "vreview-detector-feedback",
+    "feedbackSchemaVersion": 1,
+    "packageVersion": 5
+  },
+  "deployment": {
+    "type": "github-pages",
+    "basePath": "/vreview/"
+  }
+}
