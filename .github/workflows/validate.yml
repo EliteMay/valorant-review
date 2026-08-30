@@ -24,7 +24,10 @@ jobs:
           set -euo pipefail
           while IFS= read -r -d '' file; do
             node --check "$file"
-          done < <(find js scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0)
+          done < <(find js scripts tests -type f \( -name '*.js' -o -name '*.mjs' \) -print0)
 
-      - name: Validate local references
+      - name: Validate project structure and references
         run: node scripts/validate.mjs
+
+      - name: Run storage regression tests
+        run: node tests/storage.test.mjs
