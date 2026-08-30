@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "packageSchema": "vreview-detector-feedback",
+  "supportedPackageVersions": [4, 5],
+  "requiredFiles": [
+    "manifest.json",
+    "corrected-scenes.json"
+  ],
+  "feedbackLabels": [
+    "unreviewed",
+    "kill",
+    "death",
+    "fight",
+    "false_positive"
+  ],
+  "reviewTiers": [
+    "primary",
+    "weak",
+    "manual"
+  ],
+  "sceneSources": [
+    "auto",
+    "edited",
+    "manual"
+  ],
+  "scene": {
+    "required": ["start", "end"],
+    "start": { "type": "number", "minimum": 0 },
+    "end": { "type": "number", "exclusiveMinimumFrom": "start" },
+    "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "feedbackLabelField": ["feedback_label", "feedbackLabel"],
+    "reviewTierField": ["review_tier", "reviewTier"]
+  },
+  "limits": {
+    "maxZipBytes": 262144000,
+    "maxEntries": 5000,
+    "maxJsonBytes": 8388608,
+    "maxScenesPerClip": 2000
+  }
+}
