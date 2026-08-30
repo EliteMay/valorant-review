@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>Detector Test | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=050">
-  <link rel="stylesheet" href="css/layout.css?v=050">
-  <link rel="stylesheet" href="css/components.css?v=050">
+  <link rel="stylesheet" href="css/base.css?v=20260830-2">
+  <link rel="stylesheet" href="css/layout.css?v=20260830-2">
+  <link rel="stylesheet" href="css/components.css?v=20260830-2">
 </head>
 <body>
   <div class="app-shell">
@@ -17,9 +17,9 @@
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item" href="index.html">Dashboard</a>
         <a class="nav-item" href="review.html">New Review</a>
-        <a class="nav-item active" href="detector-test.html">Detector Test</a>
+        <a class="nav-item active" href="detector-test.html" aria-current="page">Detector Test</a>
       </nav>
-      <div class="nav-coming-soon">
+      <div class="nav-coming-soon" aria-label="開発中の機能">
         <span>Import / Result — 開発中</span>
         <span>History — 開発中</span>
         <span>Training — 開発中</span>
@@ -32,25 +32,27 @@
         <div>
           <p class="eyebrow">DETECTOR TEST · <span data-app-version>--</span></p>
           <h1>Feedback ZIPをまとめて採点</h1>
-          <p class="lead">VReviewで作った複数のFeedback ZIPを読み込み、Precision / Recall / primary精度 / weakに落ちた本物Sceneを自動集計します。</p>
+          <p class="lead">VReviewで作った複数のFeedback ZIPをSchema検証してから読み込み、Precision / Recall / primary精度 / weakに落ちた本物Sceneを自動集計します。</p>
         </div>
       </header>
 
       <section class="panel">
-        <label class="dropzone test-dropzone" id="testDropzone" for="testZipInput">
+        <label class="dropzone test-dropzone" id="testDropzone" for="testZipInput" role="button" tabindex="0" aria-describedby="testZipHelp">
           <input id="testZipInput" type="file" accept=".zip,application/zip" multiple hidden>
           <strong>Feedback ZIPをまとめてドロップ</strong>
-          <span>複数選択OK。元動画は不要です。</span>
+          <span id="testZipHelp">複数選択OK。クリック / Enter / Spaceでも選択できます。元動画は不要です。</span>
         </label>
         <p class="helper" style="margin:14px 0 0">Recallは「手動追加された有効Scene」を見逃しとして計算します。未確認ラベルが残っている場合は暫定値です。</p>
       </section>
 
-      <section id="testSummary"></section>
+      <section id="testSummary" aria-live="polite">
+        <div class="status-callout pending">Feedback ZIPを選ぶと、Schema検証後に集計します。</div>
+      </section>
       <section id="testResults"></section>
     </main>
   </div>
 
-  <script src="js/version.js?v=050"></script>
-  <script src="js/detector-test.js?v=050"></script>
+  <script src="js/version.js?v=20260830-2"></script>
+  <script src="js/detector-test.js?v=20260830-2"></script>
 </body>
 </html>
