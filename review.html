@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=050">
-  <link rel="stylesheet" href="css/layout.css?v=050">
-  <link rel="stylesheet" href="css/components.css?v=050">
+  <link rel="stylesheet" href="css/base.css?v=20260830-2">
+  <link rel="stylesheet" href="css/layout.css?v=20260830-2">
+  <link rel="stylesheet" href="css/components.css?v=20260830-2">
 </head>
 <body class="review-page">
   <div class="app-shell">
@@ -16,7 +16,7 @@
       <p class="brand-sub">VALORANT Clip Analysis</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item" href="index.html">Dashboard</a>
-        <a class="nav-item active" href="review.html">New Review</a>
+        <a class="nav-item active" href="review.html" aria-current="page">New Review</a>
         <a class="nav-item" href="detector-test.html">Detector Test</a>
       </nav>
       <div class="nav-coming-soon" aria-label="開発中の機能">
@@ -37,25 +37,29 @@
       </header>
 
       <section class="panel" id="uploadPanel">
-        <label class="dropzone" id="dropzone" for="videoInput">
+        <label class="dropzone" id="dropzone" for="videoInput" role="button" tabindex="0" aria-describedby="uploadHelp uploadStatus">
           <input id="videoInput" type="file" accept="video/mp4,video/webm" hidden>
           <strong>動画をここにドロップ</strong>
-          <span>またはクリックして MP4 / WebM を選択</span>
+          <span id="uploadHelp">またはクリック / Enter / Space で MP4 / WebM を選択</span>
         </label>
+        <div class="status-callout pending hidden" id="uploadStatus" aria-live="polite"></div>
       </section>
 
       <section class="review-workspace hidden" id="workspace">
         <div class="video-column">
           <section class="panel video-panel">
             <div class="video-toolbar">
-              <div class="video-meta" id="videoMeta"></div>
+              <div class="video-meta" id="videoMeta" aria-label="動画情報"></div>
               <button class="btn btn-secondary btn-small" id="changeVideoBtn" type="button">動画を変更</button>
             </div>
 
-            <div class="status-callout success resume-notice hidden" id="resumeNotice"></div>
+            <div class="status-callout success resume-notice hidden" id="resumeNotice" aria-live="polite"></div>
+            <div class="status-callout pending hidden" id="storageStatus" aria-live="assertive"></div>
 
-            <video id="videoPreview" controls preload="metadata"></video>
-            <div class="timeline-wrap"><div class="timeline" id="timeline" aria-label="動画タイムライン"></div></div>
+            <video id="videoPreview" controls preload="metadata" aria-label="解析対象動画"></video>
+            <div class="timeline-wrap">
+              <div class="timeline" id="timeline" aria-label="動画タイムライン。空いている場所をクリックするとその時刻へ移動します。"></div>
+            </div>
             <div class="button-row">
               <button class="btn btn-secondary" id="setStartBtn" type="button">現在位置を開始に設定</button>
               <button class="btn btn-secondary" id="setEndBtn" type="button">現在位置を終了に設定</button>
@@ -91,14 +95,14 @@
             </div>
             <div class="detection-status hidden" id="detectionStatus" aria-live="polite">
               <div class="detection-status-head"><span id="detectionMessage">解析準備中…</span><span class="progress-number" id="detectionProgressText"></span></div>
-              <progress id="detectionProgress" max="100" value="0"></progress>
+              <progress id="detectionProgress" max="100" value="0" aria-label="Detector解析進捗"></progress>
             </div>
             <p class="helper detection-warning" id="detectionWarning">Detector <span data-detector-version>--</span>は本命Sceneと要確認候補を分けて表示します。</p>
           </section>
 
           <section class="panel">
             <div class="section-heading"><div><p class="eyebrow">SCENES</p><h2>Scene確認</h2></div><span class="badge" id="sceneCount">0 scenes</span></div>
-            <p class="helper">本命Sceneを先に確認してください。弱い候補は折りたたみ内に残しています。Start / Endの直接入力、±0.1秒調整、タイムラインクリック、キーボード操作が使えます。</p>
+            <p class="helper">本命Sceneを先に確認してください。弱い候補は折りたたみ内に残しています。削除したSceneは直後なら「元に戻す」で復元できます。</p>
             <div class="scene-list" id="sceneList"></div>
           </section>
 
@@ -109,26 +113,27 @@
             <button class="btn btn-primary full" id="feedbackPackageBtn" type="button" disabled>検出改善用ZIPを作成</button>
             <div class="detection-status hidden" id="feedbackStatus" aria-live="polite">
               <div class="detection-status-head"><span id="feedbackMessage">準備中…</span><span class="progress-number" id="feedbackProgressText"></span></div>
-              <progress id="feedbackProgress" max="100" value="0"></progress>
+              <progress id="feedbackProgress" max="100" value="0" aria-label="Feedback ZIP生成進捗"></progress>
             </div>
           </section>
 
           <section class="panel">
             <div class="section-heading"><div><p class="eyebrow">AI REVIEW PACKAGE</p><h2>ChatGPT採点用パッケージ</h2></div></div>
             <div class="status-callout pending">自動検出の汎化検証後に30 / 60fps採点用パッケージを有効化します。</div>
-            <button class="btn btn-primary full" type="button" disabled>ChatGPT解析パッケージを作成</button>
+            <button class="btn btn-primary full" type="button" disabled aria-describedby="aiPackageDisabledReason">ChatGPT解析パッケージを作成</button>
+            <span class="sr-only" id="aiPackageDisabledReason">この機能は現在開発中です。</span>
           </section>
         </div>
       </section>
     </main>
   </div>
 
-  <script src="js/version.js?v=050"></script>
-  <script src="js/storage.js?v=050"></script>
-  <script src="js/video.js?v=050"></script>
-  <script src="js/detector.js?v=050"></script>
-  <script src="js/feedback-package-v5.js?v=050"></script>
-  <script src="js/ui.js?v=050"></script>
-  <script src="js/app.js?v=050"></script>
+  <script src="js/version.js?v=20260830-2"></script>
+  <script src="js/storage.js?v=20260830-2"></script>
+  <script src="js/video.js?v=20260830-2"></script>
+  <script src="js/detector.js?v=20260830-2"></script>
+  <script src="js/feedback-package-v5.js?v=20260830-2"></script>
+  <script src="js/ui.js?v=20260830-2"></script>
+  <script src="js/app.js?v=20260830-2"></script>
 </body>
 </html>
