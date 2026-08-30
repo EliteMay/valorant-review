@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260829-10">
-  <link rel="stylesheet" href="css/layout.css?v=20260829-10">
-  <link rel="stylesheet" href="css/components.css?v=20260829-10">
+  <link rel="stylesheet" href="css/base.css?v=050">
+  <link rel="stylesheet" href="css/layout.css?v=050">
+  <link rel="stylesheet" href="css/components.css?v=050">
 </head>
 <body>
   <div class="app-shell">
@@ -16,58 +16,78 @@
       <p class="brand-sub">VALORANT Clip Analysis</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item active" href="index.html">Dashboard</a>
-        <a class="nav-item" href="review.html?v=20260829-10">New Review</a>
-        <a class="nav-item" href="result.html">Import / Result</a>
-        <a class="nav-item" href="history.html">History</a>
-        <a class="nav-item" href="training.html">Training</a>
-        <a class="nav-item" href="settings.html">Settings</a>
+        <a class="nav-item" href="review.html">New Review</a>
+        <a class="nav-item" href="detector-test.html">Detector Test</a>
       </nav>
+      <div class="nav-coming-soon">
+        <span>Import / Result — 開発中</span>
+        <span>History — 開発中</span>
+        <span>Training — 開発中</span>
+        <span>Settings — 開発中</span>
+      </div>
     </aside>
 
     <main class="main-content">
       <header class="page-header">
         <div>
-          <p class="eyebrow">DASHBOARD · v0.4.6</p>
-          <h1>プレイを、感覚ではなく記録で見直す。</h1>
-          <p class="lead">クリップからキルSceneを整理し、最終的にChatGPT PlusでAIM / Movementを採点するためのレビュー環境。</p>
+          <p class="eyebrow">DASHBOARD · <span data-app-version>--</span></p>
+          <h1>まずScene検出を、ちゃんと使える品質へ。</h1>
+          <p class="lead">現在はAI採点より先に、VALORANTクリップのScene自動検出と検証フローを安定させています。未実装ページは前面から外しています。</p>
         </div>
-        <a class="btn btn-primary" href="review.html?v=20260829-10">New Review</a>
+        <a class="btn btn-primary" href="review.html">New Review</a>
       </header>
 
-      <section class="stats-grid" aria-label="レビュー概要">
-        <article class="stat-card"><span class="stat-label">AIM AVG</span><strong class="stat-value" id="aimAvg">--</strong><span class="stat-note">レビュー読み込み後に表示</span></article>
-        <article class="stat-card"><span class="stat-label">MOVEMENT AVG</span><strong class="stat-value" id="movementAvg">--</strong><span class="stat-note">レビュー読み込み後に表示</span></article>
-        <article class="stat-card span-2"><span class="stat-label">CURRENT PRIORITY</span><strong class="priority-value" id="priorityTraining">No review yet</strong><span class="stat-note">最優先の改善項目</span></article>
+      <section class="stats-grid" aria-label="Detector概要">
+        <article class="stat-card">
+          <span class="stat-label">DETECTOR</span>
+          <strong class="stat-value" id="detectorVersionCard">--</strong>
+          <span class="stat-note">単一Pipeline版</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">LAST PRIMARY</span>
+          <strong class="stat-value" id="lastPrimaryCount">--</strong>
+          <span class="stat-note">直近クリップの本命Scene</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">LAST WEAK</span>
+          <strong class="stat-value" id="lastWeakCount">--</strong>
+          <span class="stat-note">直近の要確認候補</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">LAST CLIP</span>
+          <strong class="priority-value" id="lastClipName">No clip yet</strong>
+          <span class="stat-note">New Reviewで解析すると更新</span>
+        </article>
       </section>
 
       <section class="panel">
-        <div class="section-heading"><div><p class="eyebrow">WORKFLOW</p><h2>レビューの流れ</h2></div></div>
+        <div class="section-heading"><div><p class="eyebrow">WORKFLOW</p><h2>現在の実用フロー</h2></div></div>
         <div class="workflow-grid">
-          <div class="workflow-step"><span>01</span><strong>動画を選択</strong><p>MP4 / WebMをブラウザ内で読み込み。</p></div>
-          <div class="workflow-step"><span>02</span><strong>Scene確認</strong><p>本命Sceneと要確認候補を確認。</p></div>
-          <div class="workflow-step"><span>03</span><strong>検出改善</strong><p>Feedback ZIPで実クリップを基準にDetectorを改善。</p></div>
-          <div class="workflow-step"><span>04</span><strong>ChatGPT採点</strong><p>検出安定後に30 / 60fps解析Packと結果JSONを実装。</p></div>
+          <div class="workflow-step"><span>01</span><strong>動画を選択</strong><p>同じ動画なら前回Sceneの復元が可能。</p></div>
+          <div class="workflow-step"><span>02</span><strong>自動検出</strong><p>本命Sceneと要確認候補へ分類。途中キャンセル可能。</p></div>
+          <div class="workflow-step"><span>03</span><strong>Scene確認</strong><p>動画固定表示のまま右ペインで修正・ラベル付け。</p></div>
+          <div class="workflow-step"><span>04</span><strong>検証</strong><p>Feedback ZIPをDetector Testでまとめて集計。</p></div>
         </div>
       </section>
 
       <section class="panel">
-        <div class="section-heading"><div><p class="eyebrow">STATUS</p><h2>v1 実装状況</h2></div></div>
+        <div class="section-heading"><div><p class="eyebrow">STATUS</p><h2>v0.5.0 基盤改修</h2></div></div>
         <div class="status-list">
-          <div class="status-row"><span>UI土台</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>動画読み込み</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>Scene手動修正</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>キルScene自動検出</span><strong class="status-ready">Testing Detector v0.4.5</strong></div>
-          <div class="status-row"><span>本命 / 要確認候補の分離</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>固定動画 + 右ペインスクロール</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>Scene正解ラベル</span><strong class="status-ready">Ready</strong></div>
-          <div class="status-row"><span>検出改善ZIP</span><strong class="status-ready">Ready v4</strong></div>
-          <div class="status-row"><span>採点用コンタクトシート</span><strong class="status-pending">Next</strong></div>
-          <div class="status-row"><span>ChatGPT採点ZIP</span><strong class="status-pending">Next</strong></div>
+          <div class="status-row"><span>Detector継ぎ足し構造</span><strong class="status-ready">Single Pipeline</strong></div>
+          <div class="status-row"><span>動画Blob URL管理</span><strong class="status-ready">Fixed</strong></div>
+          <div class="status-row"><span>Scene state検証</span><strong class="status-ready">Fixed</strong></div>
+          <div class="status-row"><span>動画ごとの途中保存</span><strong class="status-ready">Ready</strong></div>
+          <div class="status-row"><span>解析キャンセル</span><strong class="status-ready">Ready</strong></div>
+          <div class="status-row"><span>Feedback Package</span><strong class="status-ready">v<span data-feedback-version>--</span></strong></div>
+          <div class="status-row"><span>Detector Test</span><strong class="status-ready">Ready</strong></div>
+          <div class="status-row"><span>ChatGPT採点パッケージ</span><strong class="status-pending">After detector validation</strong></div>
         </div>
       </section>
     </main>
   </div>
-  <script src="js/storage.js?v=20260829-10"></script>
-  <script src="js/app.js?v=20260829-10"></script>
+
+  <script src="js/version.js?v=050"></script>
+  <script src="js/storage.js?v=050"></script>
+  <script src="js/app.js?v=050"></script>
 </body>
 </html>
