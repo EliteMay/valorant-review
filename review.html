@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260829-10">
-  <link rel="stylesheet" href="css/layout.css?v=20260829-10">
-  <link rel="stylesheet" href="css/components.css?v=20260829-10">
+  <link rel="stylesheet" href="css/base.css?v=050">
+  <link rel="stylesheet" href="css/layout.css?v=050">
+  <link rel="stylesheet" href="css/components.css?v=050">
 </head>
 <body class="review-page">
   <div class="app-shell">
@@ -16,18 +16,21 @@
       <p class="brand-sub">VALORANT Clip Analysis</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item" href="index.html">Dashboard</a>
-        <a class="nav-item active" href="review.html?v=20260829-10">New Review</a>
-        <a class="nav-item" href="result.html">Import / Result</a>
-        <a class="nav-item" href="history.html">History</a>
-        <a class="nav-item" href="training.html">Training</a>
-        <a class="nav-item" href="settings.html">Settings</a>
+        <a class="nav-item active" href="review.html">New Review</a>
+        <a class="nav-item" href="detector-test.html">Detector Test</a>
       </nav>
+      <div class="nav-coming-soon" aria-label="開発中の機能">
+        <span>Import / Result — 開発中</span>
+        <span>History — 開発中</span>
+        <span>Training — 開発中</span>
+        <span>Settings — 開発中</span>
+      </div>
     </aside>
 
     <main class="main-content">
       <header class="page-header compact">
         <div>
-          <p class="eyebrow">NEW REVIEW · BUILD 0.4.6</p>
+          <p class="eyebrow">NEW REVIEW · BUILD <span data-build-version>--</span></p>
           <h1>クリップ解析</h1>
           <p class="lead">動画はブラウザ内で処理します。元動画を外部へ自動送信しません。</p>
         </div>
@@ -48,12 +51,23 @@
               <div class="video-meta" id="videoMeta"></div>
               <button class="btn btn-secondary btn-small" id="changeVideoBtn" type="button">動画を変更</button>
             </div>
+
+            <div class="status-callout success resume-notice hidden" id="resumeNotice"></div>
+
             <video id="videoPreview" controls preload="metadata"></video>
-            <div class="timeline-wrap"><div class="timeline" id="timeline"></div></div>
+            <div class="timeline-wrap"><div class="timeline" id="timeline" aria-label="動画タイムライン"></div></div>
             <div class="button-row">
               <button class="btn btn-secondary" id="setStartBtn" type="button">現在位置を開始に設定</button>
               <button class="btn btn-secondary" id="setEndBtn" type="button">現在位置を終了に設定</button>
               <button class="btn btn-primary" id="addSceneBtn" type="button">Scene追加</button>
+            </div>
+            <div class="shortcut-hint" aria-label="キーボードショートカット">
+              <span><kbd>Space</kbd> 再生/停止</span>
+              <span><kbd>I</kbd> 開始</span>
+              <span><kbd>O</kbd> 終了</span>
+              <span><kbd>←</kbd><kbd>→</kbd> ±0.1秒</span>
+              <span><kbd>Shift</kbd> + ←/→ ±0.5秒</span>
+              <span><kbd>Delete</kbd> 選択Scene削除</span>
             </div>
           </section>
         </div>
@@ -62,30 +76,46 @@
           <section class="panel">
             <div class="section-heading"><div><p class="eyebrow">AUTO DETECTION</p><h2>キルScene自動検出</h2></div></div>
             <div class="detect-controls">
-              <label class="select-field"><span>検出感度</span><select id="detectSensitivity"><option value="low">低い</option><option value="standard" selected>標準</option><option value="high">高い（見逃し優先）</option></select></label>
-              <button class="btn btn-primary" id="autoDetectBtn" type="button" disabled>キルSceneを自動検出</button>
+              <label class="select-field">
+                <span>検出感度</span>
+                <select id="detectSensitivity">
+                  <option value="low">低い</option>
+                  <option value="standard" selected>標準</option>
+                  <option value="high">高い（見逃し優先）</option>
+                </select>
+              </label>
+              <div class="detect-actions">
+                <button class="btn btn-primary" id="autoDetectBtn" type="button" disabled>キルSceneを自動検出</button>
+                <button class="btn btn-danger hidden" id="cancelDetectBtn" type="button">解析をキャンセル</button>
+              </div>
             </div>
-            <div class="detection-status hidden" id="detectionStatus" aria-live="polite"><div class="detection-status-head"><span id="detectionMessage">解析準備中…</span><span class="progress-number" id="detectionProgressText"></span></div><progress id="detectionProgress" max="100" value="0"></progress></div>
-            <p class="helper detection-warning" id="detectionWarning">Detector v0.4.5では、v0.4.4の見逃し防止候補を維持したまま、本命Sceneと根拠の弱い要確認候補を分離します。要確認候補は折りたたみ表示されます。</p>
+            <div class="detection-status hidden" id="detectionStatus" aria-live="polite">
+              <div class="detection-status-head"><span id="detectionMessage">解析準備中…</span><span class="progress-number" id="detectionProgressText"></span></div>
+              <progress id="detectionProgress" max="100" value="0"></progress>
+            </div>
+            <p class="helper detection-warning" id="detectionWarning">Detector v<span data-detector-version>--</span>は本命Sceneと要確認候補を分けて表示します。</p>
           </section>
 
           <section class="panel">
             <div class="section-heading"><div><p class="eyebrow">SCENES</p><h2>Scene確認</h2></div><span class="badge" id="sceneCount">0 scenes</span></div>
-            <p class="helper">本命Sceneを先に確認してください。見逃し防止用の弱候補は下の「要確認候補」にまとめています。検証中は弱候補も開いて正解ラベルを付けてください。</p>
+            <p class="helper">本命Sceneを先に確認してください。弱い候補は折りたたみ内に残しています。Start / Endの直接入力、±0.1秒調整、タイムラインクリック、キーボード操作が使えます。</p>
             <div class="scene-list" id="sceneList"></div>
           </section>
 
           <section class="panel feedback-panel">
             <div class="section-heading"><div><p class="eyebrow">DETECTOR FEEDBACK</p><h2>検出改善用パッケージ</h2></div></div>
-            <p class="helper">Feedback Package v4では、本命 / 要確認候補の区別、弱候補理由、Classifier証拠もScene JSONへ保存します。要確認候補にも可能な範囲でラベルを付けてください。</p>
-            <label class="notes-field"><span>メモ（任意）</span><textarea id="feedbackNotes" rows="3" placeholder="例: 要確認候補の1番は本物 / Scene 2は不要 / 連キルの区切りが長い"></textarea></label>
+            <p class="helper">Feedback Package <span data-feedback-version>--</span>では、イベント時刻を優先した確認画像と、本命 / 弱候補の診断情報を保存します。</p>
+            <label class="notes-field"><span>メモ（任意）</span><textarea id="feedbackNotes" rows="3" placeholder="例: Scene 2は不要 / 3キル目の前を0.5秒長く / weak 1番は本物"></textarea></label>
             <button class="btn btn-primary full" id="feedbackPackageBtn" type="button" disabled>検出改善用ZIPを作成</button>
-            <div class="detection-status hidden" id="feedbackStatus" aria-live="polite"><div class="detection-status-head"><span id="feedbackMessage">準備中…</span><span class="progress-number" id="feedbackProgressText"></span></div><progress id="feedbackProgress" max="100" value="0"></progress></div>
+            <div class="detection-status hidden" id="feedbackStatus" aria-live="polite">
+              <div class="detection-status-head"><span id="feedbackMessage">準備中…</span><span class="progress-number" id="feedbackProgressText"></span></div>
+              <progress id="feedbackProgress" max="100" value="0"></progress>
+            </div>
           </section>
 
           <section class="panel">
             <div class="section-heading"><div><p class="eyebrow">AI REVIEW PACKAGE</p><h2>ChatGPT採点用パッケージ</h2></div></div>
-            <div class="status-callout pending">自動検出精度を複数クリップで検証中です。安定後に30 / 60fpsの採点用パッケージ生成を有効化します。</div>
+            <div class="status-callout pending">自動検出の汎化検証後に30 / 60fps採点用パッケージを有効化します。</div>
             <button class="btn btn-primary full" type="button" disabled>ChatGPT解析パッケージを作成</button>
           </section>
         </div>
@@ -93,14 +123,12 @@
     </main>
   </div>
 
-  <script src="js/storage.js?v=20260829-10"></script>
-  <script src="js/video.js?v=20260829-10"></script>
-  <script src="js/scene-detection-v042.js?v=20260829-10"></script>
-  <script src="js/scene-detection-v043.js?v=20260829-10"></script>
-  <script src="js/scene-detection-v044.js?v=20260829-10"></script>
-  <script src="js/scene-detection-v045.js?v=20260829-10"></script>
-  <script src="js/feedback-package-v4.js?v=20260829-10"></script>
-  <script src="js/ui.js?v=20260829-10"></script>
-  <script src="js/app.js?v=20260829-10"></script>
+  <script src="js/version.js?v=050"></script>
+  <script src="js/storage.js?v=050"></script>
+  <script src="js/video.js?v=050"></script>
+  <script src="js/detector.js?v=050"></script>
+  <script src="js/feedback-package-v5.js?v=050"></script>
+  <script src="js/ui.js?v=050"></script>
+  <script src="js/app.js?v=050"></script>
 </body>
 </html>
