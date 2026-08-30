@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function hydrateDashboard() {
-  const last = window.VReviewStorage?.get('last-detector-summary', null);
+  const last = window.VReviewStorage?.getVersioned('last-detector-summary', null, { schemaVersion: 1 });
   const file = document.getElementById('lastClipName');
   const detector = document.getElementById('detectorVersionCard');
   const main = document.getElementById('lastPrimaryCount');
@@ -20,6 +20,7 @@ function hydrateDashboard() {
 function initReviewPage() {
   const input = document.getElementById('videoInput');
   const dropzone = document.getElementById('dropzone');
+  const uploadStatus = document.getElementById('uploadStatus');
   const workspace = document.getElementById('workspace');
   const preview = document.getElementById('videoPreview');
   const meta = document.getElementById('videoMeta');
@@ -40,6 +41,7 @@ function initReviewPage() {
   const feedbackProgressText = document.getElementById('feedbackProgressText');
   const feedbackMessage = document.getElementById('feedbackMessage');
   const resumeNotice = document.getElementById('resumeNotice');
+  const storageStatus = document.getElementById('storageStatus');
   if (!input || !dropzone || !workspace || !preview) return;
 
   let currentFile = null;
@@ -49,6 +51,14 @@ function initReviewPage() {
   let exportingFeedback = false;
   let lastDetectionRun = null;
   let detectionController = null;
+
+  const setCallout = (element, message = '', tone = 'pending') => {
+    if (!element) return;
+    element.textContent = message;
+    element.classList.remove('pending', 'success');
+    element.classList.add(tone === 'success' ? 'success' : 'pending');
+    element.classList.toggle('hidden', !message);
+  };
 
   const setDetectionState = (progress, message, isActive = true) => {
     detectionStatus?.classList.toggle('hidden', !isActive);
@@ -67,21 +77,34 @@ function initReviewPage() {
   };
 
   const persistSessionMeta = () => {
-    if (!currentFingerprint) return;
-    window.VReviewStorage?.set(`draft-meta:${currentFingerprint}`, {
+    if (!currentFingerprint) return true;
+    return Boolean(window.VReviewStorage?.setVersioned(`draft-meta:${currentFingerprint}`, {
       sensitivity: sensitivity?.value || 'standard',
       notes: feedbackNotes?.value || '',
       fileName: currentFile?.name || '',
       updatedAt: new Date().toISOString()
-    });
+    }, { schemaVersion: 1 }));
+  };
+
+  const backupSessionMeta = fingerprint => {
+    if (!fingerprint) return false;
+    return Boolean(window.VReviewStorage?.copy(`draft-meta:${fingerprint}`, `draft-backup-meta:${fingerprint}`));
+  };
+
+  const readSessionMeta = (fingerprint, backup = false) => {
+    if (!fingerprint) return null;
+    const key = backup ? `draft-backup-meta:${fingerprint}` : `draft-meta:${fingerprint}`;
+    return window.VReviewStorage?.getVersioned(key, null, { schemaVersion: 1 }) ?? null;
   };
 
   const handleFile = async file => {
     if (!file || !isSupportedVideo(file)) {
-      alert('MP4 または WebM を選択してください。');
+      setCallout(uploadStatus, 'MP4 または WebM を選択してください。ファイルを選び直せます。');
       return;
     }
     if (detecting || exportingFeedback) return;
+
+    setCallout(uploadStatus, '動画を読み込んでいます…', 'pending');
 
     try {
       const data = await window.VReviewVideo.loadFile(preview, file);
@@ -94,33 +117,56 @@ function initReviewPage() {
       document.body.classList.add('review-loaded');
       window.VReviewUI?.setDuration(data.duration);
       window.VReviewUI?.setDraftKey(currentFingerprint);
+      setCallout(uploadStatus, '', 'success');
+      setCallout(storageStatus, '', 'pending');
 
-      const savedMeta = window.VReviewStorage?.get(`draft-meta:${currentFingerprint}`, null);
+      const savedMeta = readSessionMeta(currentFingerprint, false);
+      const backupMeta = readSessionMeta(currentFingerprint, true);
       const hasDraft = window.VReviewUI?.hasSavedDraft(currentFingerprint);
+      const hasBackup = window.VReviewUI?.hasSavedBackup(currentFingerprint);
       let restored = false;
+      let restoredBackup = false;
+      let freshBackupCreated = false;
+
       if (hasDraft) {
-        restored = confirm('この動画には前回のScene編集データがあります。続きから再開しますか？');
+        restored = confirm('この動画には前回のScene編集データがあります。\n\nOK: 続きから再開\nキャンセル: 新規開始（前回データはBackupへ残します）');
+        if (!restored) {
+          const sceneBackup = window.VReviewUI?.backupSavedDraft(currentFingerprint);
+          const metaBackup = backupSessionMeta(currentFingerprint);
+          freshBackupCreated = Boolean(sceneBackup || metaBackup);
+          window.VReviewUI?.clearSavedDraft(currentFingerprint);
+          window.VReviewUI?.clearScenes({ persist: false });
+        }
+      } else if (hasBackup) {
+        restoredBackup = confirm('この動画には以前のScene Backupがあります。復元しますか？');
       }
 
+      let activeMeta = null;
       if (restored) {
         const count = window.VReviewUI?.restoreSavedDraft(currentFingerprint) || 0;
-        if (resumeNotice) {
-          resumeNotice.textContent = `前回のScene ${count}件を復元しました。検出改善ZIPを作る場合は自動検出をもう一度実行してください。`;
-          resumeNotice.classList.remove('hidden');
-        }
+        activeMeta = savedMeta;
+        setCallout(resumeNotice, `前回のScene ${count}件を復元しました。Feedback ZIPを作る場合は自動検出をもう一度実行してください。`, 'success');
+      } else if (restoredBackup) {
+        const count = window.VReviewUI?.restoreSavedBackup(currentFingerprint) || 0;
+        activeMeta = backupMeta;
+        setCallout(resumeNotice, `BackupからScene ${count}件を復元しました。復元後の状態は現在Draftとして保存されます。`, 'success');
       } else {
-        if (hasDraft) window.VReviewUI?.clearSavedDraft(currentFingerprint);
         window.VReviewUI?.clearScenes({ persist: false });
-        resumeNotice?.classList.add('hidden');
+        activeMeta = null;
+        setCallout(
+          resumeNotice,
+          freshBackupCreated ? '新規開始しました。前回のSceneはBackupとして残しています。' : '',
+          freshBackupCreated ? 'pending' : 'success'
+        );
       }
 
-      if (savedMeta?.sensitivity && sensitivity) sensitivity.value = savedMeta.sensitivity;
-      if (feedbackNotes) feedbackNotes.value = restored ? (savedMeta?.notes || '') : '';
+      if (sensitivity) sensitivity.value = activeMeta?.sensitivity || 'standard';
+      if (feedbackNotes) feedbackNotes.value = activeMeta?.notes || '';
       sceneColumn && (sceneColumn.scrollTop = 0);
 
       if (autoDetectBtn) {
         autoDetectBtn.disabled = false;
-        autoDetectBtn.textContent = restored ? '自動検出を実行して更新' : 'キルSceneを自動検出';
+        autoDetectBtn.textContent = (restored || restoredBackup) ? '自動検出を実行して更新' : 'キルSceneを自動検出';
       }
       cancelDetectBtn?.classList.add('hidden');
       if (feedbackBtn) feedbackBtn.disabled = true;
@@ -128,18 +174,23 @@ function initReviewPage() {
       setFeedbackState(0, '', false);
 
       if (detectionWarning) {
-        detectionWarning.textContent = restored
+        detectionWarning.textContent = (restored || restoredBackup)
           ? 'Scene編集は復元済みです。Detector診断は保存していないため、Feedback ZIPを作る前に自動検出を再実行してください。'
-          : `Detector v${window.VReviewVersion?.detector || '0.5.0'}で本命Sceneと要確認候補を検出します。`;
+          : `Detector v${window.VReviewVersion?.detector || '--'}で本命Sceneと要確認候補を検出します。`;
       }
 
       if (meta) {
         const mb = (file.size / 1024 / 1024).toFixed(1);
-        meta.innerHTML = `<span>${escapeHtml(file.name)}</span><span>${window.VReviewVideo.formatTime(data.duration)}</span><span>${data.width}×${data.height}</span><span>${mb} MB</span>`;
+        meta.replaceChildren(
+          makeMetaChip(file.name),
+          makeMetaChip(window.VReviewVideo.formatTime(data.duration)),
+          makeMetaChip(`${data.width}×${data.height}`),
+          makeMetaChip(`${mb} MB`)
+        );
       }
       persistSessionMeta();
     } catch (error) {
-      alert(error.message || '動画を読み込めませんでした。');
+      setCallout(uploadStatus, `${error.message || '動画を読み込めませんでした。'} 別のMP4 / WebMを選んで再試行してください。`);
     }
   };
 
@@ -185,13 +236,13 @@ function initReviewPage() {
 
       const primary = result.scenes.filter(scene => scene.reviewTier !== 'weak').length;
       const weak = result.scenes.length - primary;
-      window.VReviewStorage?.set('last-detector-summary', {
+      window.VReviewStorage?.setVersioned('last-detector-summary', {
         fileName: currentFile.name,
         detectorVersion: result.detectorVersion,
         primary,
         weak,
         createdAt: new Date().toISOString()
-      });
+      }, { schemaVersion: 1 });
 
       if (detectionWarning) {
         detectionWarning.textContent = result.warnings?.length
@@ -208,7 +259,7 @@ function initReviewPage() {
         if (detectionWarning) detectionWarning.textContent = 'キャンセルしました。Scene編集データはそのまま残っています。';
       } else {
         setDetectionState(0, '自動検出に失敗しました。', true);
-        if (detectionWarning) detectionWarning.textContent = error.message || '解析中にエラーが発生しました。';
+        if (detectionWarning) detectionWarning.textContent = `${error.message || '解析中にエラーが発生しました。'} 手動Scene追加は引き続き利用できます。`;
       }
     } finally {
       detecting = false;
@@ -248,7 +299,7 @@ function initReviewPage() {
       window.VReviewFeedbackPackage.download(result.blob, result.filename);
       setFeedbackState(1, `${result.filename} を作成しました。`);
     } catch (error) {
-      setFeedbackState(0, error.message || '提出用ZIPの作成に失敗しました。');
+      setFeedbackState(0, `${error.message || '提出用ZIPの作成に失敗しました。'} JSON診断とScene編集はブラウザ内に残っています。`);
     } finally {
       exportingFeedback = false;
       feedbackBtn.disabled = false;
@@ -265,12 +316,35 @@ function initReviewPage() {
     dropzone.classList.remove('dragover');
   }));
   dropzone.addEventListener('drop', event => handleFile(event.dataTransfer?.files?.[0]));
+  dropzone.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    input.click();
+  });
+
+  window.addEventListener('vreview:storage-error', event => {
+    const detail = event.detail || {};
+    setCallout(storageStatus, `保存に失敗しました: ${detail.message || 'ブラウザStorageを利用できません。'} ページを閉じる前にScene内容を確認してください。`);
+  });
+
+  window.addEventListener('storage', event => {
+    if (!currentFingerprint || !window.VReviewStorage?.keyFor) return;
+    const draftKey = window.VReviewStorage.keyFor(`draft-scenes:${currentFingerprint}`);
+    if (event.key !== draftKey) return;
+    setCallout(storageStatus, '同じ動画のDraftが別タブで更新されました。このタブの保存で上書きする可能性があります。片方のタブだけで編集してください。');
+  });
 
   window.addEventListener('beforeunload', () => {
     persistSessionMeta();
     detectionController?.abort();
     window.VReviewVideo?.release(preview);
   });
+}
+
+function makeMetaChip(text) {
+  const span = document.createElement('span');
+  span.textContent = text;
+  return span;
 }
 
 function isSupportedVideo(file) {
@@ -284,12 +358,6 @@ function debounce(fn, wait) {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), wait);
   };
-}
-
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  })[char]);
 }
 
 function clamp(value, min, max) {
