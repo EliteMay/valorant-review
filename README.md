@@ -1,236 +1,125 @@
 # VReview
 
-VALORANTのクリップから戦闘Sceneを抽出し、最終的にChatGPT Plusへ高fps解析パッケージを渡してAIM / Movementをレビューする個人用Webツールです。
+VALORANTクリップから戦闘Scene候補を抽出し、ユーザーが修正した結果を使ってDetectorを改善する個人用Webツールです。
 
-## 現在のバージョン
+最終的には、確定したSceneを高fpsフレームへ変換してChatGPT Plusへ手動提出し、AIM / Movementレビューへつなげます。
 
-バージョン番号は `js/version.js` を唯一の表示元として管理します。
+## 公開URL
 
-- VReview: **v0.5.0**
+https://elitemay.github.io/vreview/
+
+GitHub Pagesで直接利用します。Node.jsやローカルサーバーは通常利用には不要です。
+
+## 現在の状態
+
+- VReview: **v0.5.1**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
+- Adopted Web Project Guide: **v1.1.0**
+- Profiles: **STATIC + MEDIA + AI-HANDOFF + TOOL**
 
-## 現在の開発段階
+表示VersionのRuntime正本は [`js/version.js`](js/version.js) です。上記はREADME更新時点のSnapshotです。
 
-AI採点機能より先に、**キルScene自動検出の汎化性能と、検出結果を修正・検証しやすい作業環境**を固めています。
+Project metadata: [`project-meta.json`](project-meta.json)  
+Current specification: [`SPEC.md`](SPEC.md)  
+Work history / verification: [`作業報告書.md`](作業報告書.md)
 
-```text
-動画を選択
-↓
-Detector v0.5.0
-↓
-本命Scene / 要確認候補
-↓
-ユーザー確認・時間修正・ラベル付け
-↓
-Feedback Package v5
-↓
-Detector Testで複数ZIPを集計
-↓
-共通失敗だけ次のDetectorへ反映
-```
+## 現在使える機能
 
-## 崩してはいけない仕様
+### New Review
 
-1. GitHub Pagesで利用できる静的HTML / CSS / JavaScript構成を維持する
-2. OpenAI APIなどの有料APIを必須にしない
-3. AI採点は基本 `VReview -> ChatGPT Plus -> VReview` の手動受け渡し方式
-4. APIキー・パスワード・元動画を公開リポジトリへ保存しない
-5. 元動画をユーザー操作なしに外部送信しない
-6. 自動検出結果は必ず手動修正できる
-7. PrecisionよりRecallをやや優先するが、弱候補は本命Sceneと分離する
-8. PC版New Reviewは **左ナビ固定 / 中央動画固定 / 右Sceneペインのみスクロール** を維持する
-9. 採点対象v1はAIM + Movement
-10. 採点基準はImmortal / Radiant上位レベル
-11. Kill / Death結果だけで採点しない
-12. 判断できない採点項目は `null` を許可する
-13. AI返却データは固定JSON Schemaにする
-14. 現在バージョンをサイト上へ常時表示する
-15. 未実装機能を完成済み機能のように見せない
+- MP4 / WebM読み込み
+- キルScene候補の自動検出
+- `primary` / `weak`候補の分離
+- Scene手動追加・削除・範囲修正
+- Scene正解ラベル
+- Timeline seek / Playhead
+- Detector解析キャンセル
+- 動画ごとのScene Draft保存
+- 旧Draft Backup / Restore
+- Scene削除Undo
+- Storage失敗・別タブ競合の警告
+- Detector改善用Feedback ZIP生成
 
-## v0.5.0 基盤改修
+PC版は、**左Navigation固定 / 中央動画固定 / 右Scene Paneのみ縦Scroll**を主要操作仕様として維持します。
 
-v0.4系ではDetectorを
+### Detector Test
 
-```text
-v0.4.2 -> v0.4.3 -> v0.4.4 -> v0.4.5
-```
-
-のように別JSで順番に上書きしていました。
-
-v0.5.0ではこの構造を廃止し、`js/detector.js` の単一Pipelineへ統合しました。
-
-内部処理は以下の順です。
-
-```text
-Audio / Visual Analysis
-↓
-Evidence Builder
-↓
-Base Scene Builder
-↓
-Scene Refiner
-↓
-Recall Guard
-↓
-Candidate Classifier
-↓
-primary / weak
-```
-
-今後は過去版Detector JSを上書きして修正するのではなく、このPipeline内の担当処理を修正します。
-
-## Detector v0.5.0
-
-ブラウザ内で主に以下を利用します。
-
-- 音声ピーク / トランジェント
-- 画面中央Motion
-- 右上Killfeed領域
-- 右下Ammo HUD領域
-- 下中央Kill Confirm領域
-- 上中央Round UI領域
-
-### Scene分類
-
-- `primary` — 本命Scene
-- `weak` — 見逃し防止用の要確認候補
-- `manual` — ユーザーが手動追加したScene
-
-### 解析キャンセル
-
-v0.5.0から解析中にキャンセルできます。
-
-長尺動画では解析間隔を自動的に少し広げ、警告を表示します。
-
-## New Review
-
-PCでは動画読み込み後、以下の3領域になります。
-
-```text
-左: ナビゲーション固定
-中央: 動画 / Timeline / Scene追加操作を固定
-右: 自動検出 / Scene一覧 / Feedbackのみ縦スクロール
-```
-
-### Scene操作
-
-- 自動検出
-- 本命 / 要確認候補の分離表示
-- Scene再生
-- Start / End直接入力
-- Start / End ±0.1秒
-- Scene削除
-- 手動Scene追加
-- 正解ラベル設定
-- タイムラインクリックでシーク
-- 現在再生位置Playhead表示
-- Scene選択表示
-
-### キーボード
-
-- `Space`: 再生 / 停止
-- `I`: 現在位置をScene開始候補へ
-- `O`: 現在位置をScene終了候補へ
-- `← / →`: ±0.1秒
-- `Shift + ← / →`: ±0.5秒
-- `Delete`: 選択Scene削除
-
-## 途中保存
-
-元動画そのものは保存しません。
-
-動画の以下からFingerprintを作り、Scene編集を動画ごとに `localStorage` へ保存します。
-
-- ファイル名
-- ファイルサイズ
-- lastModified
-- 動画時間
-- 解像度
-
-同じ動画を再選択すると、前回Sceneを復元するか確認します。
-
-保存対象:
-
-- Scene範囲
-- Sceneラベル
-- 本命 / weak情報
-- 検出感度
-- Feedbackメモ
-
-Detectorの巨大な診断データはlocalStorageへ保存しません。Feedback ZIPを再作成する場合は自動検出を再実行します。
-
-## Feedback Package v5
-
-```text
-vreview_feedback_<clip>.zip
-├─ README.txt
-├─ manifest.json
-├─ auto-scenes.json
-├─ corrected-scenes.json
-├─ detector-diagnostics.json
-├─ scene-image-map.json
-├─ notes.txt
-└─ scene-images/
-   ├─ scene_001_full.jpg
-   ├─ scene_001_roi.jpg
-   └─ ...
-```
-
-### v5変更点
-
-- auto / correctedで同じ範囲のScene画像を二重生成しない
-- 全画面画像を `contain` で描画し、HUDをクロップしない
-- 均等16枚よりDetectorイベント時刻を優先してフレーム取得
-- Killfeed / Ammo / Kill Confirm / Round UIのROI拡大画像を追加
-- `scene-image-map.json` でSceneと共有画像を対応付ける
-
-Scene JSONには以下を含みます。
-
-- `feedback_label`
-- `review_tier`
-- `needs_review`
-- `weak_reason`
-- `detector_reason`
-- `recall_guard`
-- `classifier_index`
-- `classifier_evidence`
-- `anchor_count`
-- `shot_evidence_count`
-
-## Detector Test
-
-`detector-test.html` へ複数のVReview Feedback ZIPをまとめて入れると、以下を自動集計します。
+複数のVReview Feedback ZIPを読み込み、以下を集計します。
 
 - Precision
 - Recall
 - primary Precision
 - TP / FP / FN
-- weakへ落ちた有効Scene数
-- 未確認ラベル数
-- Detectorバージョン別集計
+- weakへ落ちた有効Scene
+- Detector Version別集計
 
-Recallでは、`manual` で追加された `kill / death / fight` を見逃しとして扱います。
+Import前に `data/detector-feedback-schema.json` を使って、Package Version・Scene値・Label・Tier等をValidationします。
 
-これは元動画なしでDetector自体を再実行する回帰テストではありません。**提出結果の定量比較ツール**です。
+## 基本的な使い方
 
-## GitHub Actions
+1. `New Review`でVALORANTクリップを選ぶ
+2. `キルSceneを自動検出`を実行
+3. 本命Sceneと要確認候補を確認
+4. 誤検出は`不要・誤検出`、見逃しは手動追加、範囲ズレはStart / Endを修正
+5. `検出改善用ZIPを作成`
+6. 複数ZIPを`Detector Test`へ入れて傾向を確認
+7. 必要な場合はZIPをChatGPTへ渡してDetector改善に利用
 
-`.github/workflows/validate.yml` でpushごとに以下を確認します。
+## 保存
 
-- JavaScript / MJSの構文
-- HTMLから参照しているローカルファイルの存在
-- `review.html` が現行 `js/detector.js` を読み込んでいること
-- `review.html` がFeedback Package v5を読み込んでいること
-- 旧versioned Detectorを読み込んでいないこと
+### localStorage
 
-## GitHub Pages
+小さい編集データのみ保存します。
 
-公開URL:
+- Scene Draft
+- Scene Label
+- Detector感度
+- Feedbackメモ
+- 直近Detector概要
 
-`https://elitemay.github.io/vreview/`
+Storage Schemaはv1です。v0.5.0以前のplain Array / Object形式も読み込めるよう後方互換を維持しています。
 
-GitHub Pagesでそのまま開ける構成を維持します。
+新規開始時は既存DraftをBackupへ退避します。
+
+### 保存しないもの
+
+- 元動画
+- API Key
+- Password / Token
+- Detectorの巨大診断データ
+
+元動画を使った作業再開時は同じ動画を再選択します。
+
+## 外部サービス
+
+現在の主要機能はBackend / DB / CDN / OpenAI APIを必要としません。
+
+将来のAIレビューも、追加API料金を必須にせず、基本は
+
+```text
+VReview
+↓
+ChatGPT Plusへ手動提出
+↓
+固定JSONをVReviewへImport
+```
+
+とする予定です。
+
+## 崩してはいけない仕様
+
+詳細は [`SPEC.md`](SPEC.md) を正本とします。特に重要なものは以下です。
+
+- GitHub Pages対応を維持
+- 有料APIを必須にしない
+- 元動画を勝手に外部送信しない
+- Detector結果を必ず手動修正可能にする
+- weak候補をprimaryと分離する
+- PC版New Reviewの固定動画 + 右Pane Scrollを維持
+- Versioned Patch JSを再び積み上げない
+- 保存データをMigration / Backupなしに破棄しない
+- 未実装機能を完成済みのように見せない
 
 ## ファイル構成
 
@@ -239,10 +128,10 @@ GitHub Pagesでそのまま開ける構成を維持します。
 ├─ index.html
 ├─ review.html
 ├─ detector-test.html
-├─ result.html          # 開発中
-├─ history.html         # 開発中
-├─ training.html        # 開発中
-├─ settings.html        # 開発中
+├─ SPEC.md
+├─ project-meta.json
+├─ data/
+│  └─ detector-feedback-schema.json
 ├─ css/
 │  ├─ base.css
 │  ├─ layout.css
@@ -258,66 +147,51 @@ GitHub Pagesでそのまま開ける構成を維持します。
 │  └─ feedback-package-v5.js
 ├─ scripts/
 │  └─ validate.mjs
+├─ tests/
+│  ├─ storage.test.mjs
+│  └─ BROWSER_CHECKLIST.md
 ├─ .github/workflows/
 │  └─ validate.yml
-├─ README.md
 └─ 作業報告書.md
 ```
 
-旧Detector / Feedback Package JSはGit履歴に残っているため、本番フォルダから削除しました。
+`feedback-package-v5.js`の`v5`は旧Runtimeを上書きするPatch番号ではなく、ユーザーへ出力するFeedback Package Format Versionを表します。Detector Runtimeは`js/detector.js`へ一本化済みです。
 
-## 未実装 / 改善中
+## Validation
+
+GitHub Actionsでpush / pull request時に以下を確認します。
+
+- JavaScript / MJS構文
+- 必須ファイル
+- JSON構文
+- HTMLローカル参照
+- Cache Busting Version整合
+- HTML ID重複
+- Project Guide / Profile metadata
+- Storage / Feedback Schema Version整合
+- 旧Versioned Detector再混入
+- localhost / PC固有Path
+- 代表的なSecret Token混入
+- Storage後方互換Regression Test
+
+ローカルでNode.jsがある場合のみ、開発確認として次を実行できます。
+
+```bash
+node scripts/validate.mjs
+node tests/storage.test.mjs
+```
+
+## 未実装 / 既知の課題
 
 - 未使用クリップでDetector v0.5.0の汎化検証
-- ace4-1型の重複Scene処理
-- 長い連キルの適切な自動分割
+- ace4-1型の重複Scene
+- 長い連キルの自動分割
 - Death専用検出
-- HUD Scale / アスペクト比差への耐性
-- 固定ROIの自動キャリブレーション
+- HUD Scale / aspect ratio差
+- 固定ROI自動キャリブレーション
 - 長尺動画のさらなる高速化
-- Timeline上でStart / Endを直接ドラッグするハンドル
-- Auto 30 / 60fps判定
-- ChatGPT採点用高fpsパッケージ
-- result JSON読み込み / 表示
-- History
-- Training
-- Settings
+- Timeline Start / Endドラッグハンドル
+- ChatGPT採点用30 / 60fps Package
+- AI result JSON Import / History / Training
 
-未実装のResult / History / Training / Settingsは通常ナビから外し、直接アクセス時も開発中であることを明示します。
-
-## 最終AIレビュー構想
-
-Detector安定後、1クリップ内の全Sceneについて
-
-- Overview: 約5fps
-- Detail: Auto / 30fps / 60fps
-- Frame ID + timestamp付きコンタクトシート
-
-を生成し、ChatGPT Plusへまとめて渡します。
-
-### AIM
-
-- Crosshair Placement
-- Initial Correction
-- Flick
-- Micro Adjustment
-- First Shot Accuracy
-- Tracking
-- Target Switching
-
-### Movement
-
-- Stopping
-- Shoot Timing
-- Peek
-- Strafe
-- Reposition
-- Movement Control
-
-## 優先順位
-
-1. 操作性
-2. 分かりやすさ
-3. 軽量化
-4. 保守・修正しやすさ
-5. 見た目
+Static Validation成功だけではBrowser Validated扱いにしません。Firefox / Chromiumの実Media・Layout確認項目は [`tests/BROWSER_CHECKLIST.md`](tests/BROWSER_CHECKLIST.md) に分離しています。
