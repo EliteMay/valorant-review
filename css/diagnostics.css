@@ -1,0 +1,45 @@
+.diagnostic-log {
+  display: grid;
+  gap: 8px;
+}
+
+.diagnostic-log-row {
+  display: grid;
+  grid-template-columns: 86px minmax(140px, 220px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+  font-size: .82rem;
+  line-height: 1.5;
+}
+
+.diagnostic-log-row time {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.diagnostic-log-row strong {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.diagnostic-log-row span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+#diagnosticsStatus:not(.hidden) {
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  .diagnostic-log-row {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+}
