@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0d10">
+  <title>Diagnostics | VReview</title>
+  <link rel="stylesheet" href="css/base.css?v=20260831-1">
+  <link rel="stylesheet" href="css/layout.css?v=20260831-1">
+  <link rel="stylesheet" href="css/components.css?v=20260831-1">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="index.html">VReview</a>
+      <p class="brand-sub">VALORANT Clip Analysis</p>
+      <nav class="nav-list" aria-label="メインナビゲーション">
+        <a class="nav-item" href="index.html">Dashboard</a>
+        <a class="nav-item" href="review.html">New Review</a>
+        <a class="nav-item" href="detector-test.html">Detector Test</a>
+        <a class="nav-item active" href="diagnostics.html" aria-current="page">Diagnostics</a>
+      </nav>
+      <div class="nav-coming-soon" aria-label="開発中の機能">
+        <span>Import / Result — 開発中</span>
+        <span>History — 開発中</span>
+        <span>Training — 開発中</span>
+        <span>Settings — 開発中</span>
+      </div>
+    </aside>
+
+    <main class="main-content" id="diagnosticsRoot">
+      <header class="page-header compact">
+        <div>
+          <p class="eyebrow">DEVELOPMENT DIAGNOSTICS · <span data-app-version>--</span></p>
+          <h1>問題が起きた時の診断情報</h1>
+          <p class="lead">動画本体・Scene内容・入力メモ・Storage内容そのものは含めず、Version・環境・直前操作・Errorだけをローカルで記録します。</p>
+        </div>
+      </header>
+
+      <section class="stats-grid" aria-label="診断概要">
+        <article class="stat-card"><span class="stat-label">APP</span><strong class="priority-value" id="diagAppVersion">--</strong><span class="stat-note">Build <span id="diagBuild">--</span></span></article>
+        <article class="stat-card"><span class="stat-label">GUIDE</span><strong class="priority-value" id="diagGuide">--</strong><span class="stat-note">採用Guide</span></article>
+        <article class="stat-card"><span class="stat-label">BREADCRUMBS</span><strong class="stat-value" id="diagBreadcrumbCount">0</strong><span class="stat-note">このTabの直前操作</span></article>
+        <article class="stat-card"><span class="stat-label">ERRORS</span><strong class="stat-value" id="diagErrorCount">0</strong><span class="stat-note">このTabのRuntime Error</span></article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">SESSION</p><h2>現在の診断Session</h2></div></div>
+        <div class="status-list">
+          <div class="status-row"><span>Route</span><strong id="diagRoute">--</strong></div>
+          <div class="status-row"><span>Session ID</span><strong id="diagSession">--</strong></div>
+          <div class="status-row"><span>保存方式</span><strong class="status-ready">sessionStorage / Ring Buffer</strong></div>
+          <div class="status-row"><span>元動画・入力本文</span><strong class="status-ready">記録しない</strong></div>
+        </div>
+        <div class="button-row">
+          <button class="btn btn-primary" id="exportDiagnosticsBtn" type="button">diagnostics.jsonを書き出す</button>
+          <button class="btn btn-secondary" id="copyDiagnosticsBtn" type="button">JSONをコピー</button>
+          <button class="btn btn-danger" id="clearDiagnosticsBtn" type="button">診断履歴を消去</button>
+        </div>
+        <div class="status-callout success hidden" id="diagnosticsStatus" aria-live="polite"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">RECENT ERRORS</p><h2>最近のError</h2></div></div>
+        <div class="diagnostic-log" id="diagnosticErrors"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading"><div><p class="eyebrow">BREADCRUMBS</p><h2>直前操作</h2></div></div>
+        <p class="helper">mousemove / scroll / 入力文字列全文などのノイズは記録しません。</p>
+        <div class="diagnostic-log" id="diagnosticBreadcrumbs"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/version.js?v=20260831-1"></script>
+  <script src="js/diagnostics.js?v=20260831-1"></script>
+</body>
+</html>
