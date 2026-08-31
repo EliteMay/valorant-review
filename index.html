@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260830-2">
-  <link rel="stylesheet" href="css/layout.css?v=20260830-2">
-  <link rel="stylesheet" href="css/components.css?v=20260830-2">
+  <link rel="stylesheet" href="css/base.css?v=20260831-1">
+  <link rel="stylesheet" href="css/layout.css?v=20260831-1">
+  <link rel="stylesheet" href="css/components.css?v=20260831-1">
 </head>
 <body>
   <div class="app-shell">
@@ -18,6 +18,7 @@
         <a class="nav-item active" href="index.html" aria-current="page">Dashboard</a>
         <a class="nav-item" href="review.html">New Review</a>
         <a class="nav-item" href="detector-test.html">Detector Test</a>
+        <a class="nav-item" href="diagnostics.html">Diagnostics</a>
       </nav>
       <div class="nav-coming-soon" aria-label="開発中の機能">
         <span>Import / Result — 開発中</span>
@@ -32,7 +33,7 @@
         <div>
           <p class="eyebrow">DASHBOARD · <span data-app-version>--</span></p>
           <h1>まずScene検出を、ちゃんと使える品質へ。</h1>
-          <p class="lead">現在はAI採点より先に、VALORANTクリップのScene自動検出と検証フローを安定させています。未実装ページは前面から外しています。</p>
+          <p class="lead">Detectorの汎化検証を続けながら、失敗時に状況を再説明しなくても診断データから調査を始められる基盤を整えています。</p>
         </div>
         <a class="btn btn-primary" href="review.html">New Review</a>
       </header>
@@ -54,9 +55,9 @@
           <span class="stat-note">直近の要確認候補</span>
         </article>
         <article class="stat-card">
-          <span class="stat-label">LAST CLIP</span>
-          <strong class="priority-value" id="lastClipName">No clip yet</strong>
-          <span class="stat-note">New Reviewで解析すると更新</span>
+          <span class="stat-label">DIAGNOSTICS</span>
+          <strong class="priority-value">Local only</strong>
+          <span class="stat-note"><a href="diagnostics.html">問題時に診断JSONを出力</a></span>
         </article>
       </section>
 
@@ -66,7 +67,7 @@
           <div class="workflow-step"><span>01</span><strong>動画を選択</strong><p>同じ動画ならDraft / Backupから復元できます。</p></div>
           <div class="workflow-step"><span>02</span><strong>自動検出</strong><p>本命Sceneと要確認候補へ分類。途中キャンセル可能。</p></div>
           <div class="workflow-step"><span>03</span><strong>Scene確認</strong><p>動画固定表示のまま右ペインで修正・ラベル付け。</p></div>
-          <div class="workflow-step"><span>04</span><strong>検証</strong><p>Schema検証済みFeedback ZIPをDetector Testで集計。</p></div>
+          <div class="workflow-step"><span>04</span><strong>検証</strong><p>Feedback ZIPをDetector Testで集計。問題時はDiagnosticsを出力。</p></div>
         </div>
       </section>
 
@@ -75,19 +76,20 @@
         <div class="status-list">
           <div class="status-row"><span>Web Project Guide</span><strong class="status-ready"><span data-guide-version>--</span></strong></div>
           <div class="status-row"><span>Project Profiles</span><strong class="status-ready">STATIC / MEDIA / AI-HANDOFF / TOOL</strong></div>
+          <div class="status-row"><span>Project Memory</span><strong class="status-ready">PROJECT_LEARNINGS.md</strong></div>
+          <div class="status-row"><span>Development Diagnostics</span><strong class="status-ready">Local / Exportable</strong></div>
           <div class="status-row"><span>Detector Runtime</span><strong class="status-ready">Single Pipeline</strong></div>
           <div class="status-row"><span>Scene Draft</span><strong class="status-ready">Schema v1 + Backup</strong></div>
-          <div class="status-row"><span>Storage failure / tab conflict</span><strong class="status-ready">Visible warning</strong></div>
           <div class="status-row"><span>Feedback Package</span><strong class="status-ready"><span data-feedback-version>--</span></strong></div>
-          <div class="status-row"><span>Detector Test Import</span><strong class="status-ready">Schema validation</strong></div>
           <div class="status-row"><span>ChatGPT採点パッケージ</span><strong class="status-pending">After detector validation</strong></div>
         </div>
       </section>
     </main>
   </div>
 
-  <script src="js/version.js?v=20260830-2"></script>
-  <script src="js/storage.js?v=20260830-2"></script>
-  <script src="js/app.js?v=20260830-2"></script>
+  <script src="js/version.js?v=20260831-1"></script>
+  <script src="js/diagnostics.js?v=20260831-1"></script>
+  <script src="js/storage.js?v=20260831-1"></script>
+  <script src="js/app.js?v=20260831-1"></script>
 </body>
 </html>

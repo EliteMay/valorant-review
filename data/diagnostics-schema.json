@@ -1,0 +1,30 @@
+{
+  "schema": "vreview-development-diagnostics",
+  "schemaVersion": 1,
+  "limits": {
+    "maxBreadcrumbs": 120,
+    "maxErrors": 40,
+    "maxNetworkFailures": 30
+  },
+  "requiredTopLevel": [
+    "schema",
+    "schemaVersion",
+    "project",
+    "capture",
+    "environment",
+    "runtime",
+    "breadcrumbs",
+    "errors",
+    "networkFailures",
+    "storage",
+    "performance",
+    "notes"
+  ],
+  "privacy": {
+    "includeMediaBody": false,
+    "includeStorageValues": false,
+    "includeUserInputBody": false,
+    "includeFileName": false,
+    "autoUpload": false
+  }
+}

@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260830-2">
-  <link rel="stylesheet" href="css/layout.css?v=20260830-2">
-  <link rel="stylesheet" href="css/components.css?v=20260830-2">
+  <link rel="stylesheet" href="css/base.css?v=20260831-1">
+  <link rel="stylesheet" href="css/layout.css?v=20260831-1">
+  <link rel="stylesheet" href="css/components.css?v=20260831-1">
 </head>
 <body class="review-page">
   <div class="app-shell">
@@ -18,6 +18,7 @@
         <a class="nav-item" href="index.html">Dashboard</a>
         <a class="nav-item active" href="review.html" aria-current="page">New Review</a>
         <a class="nav-item" href="detector-test.html">Detector Test</a>
+        <a class="nav-item" href="diagnostics.html">Diagnostics</a>
       </nav>
       <div class="nav-coming-soon" aria-label="開発中の機能">
         <span>Import / Result — 開発中</span>
@@ -32,7 +33,7 @@
         <div>
           <p class="eyebrow">NEW REVIEW · BUILD <span data-build-version>--</span></p>
           <h1>クリップ解析</h1>
-          <p class="lead">動画はブラウザ内で処理します。元動画を外部へ自動送信しません。</p>
+          <p class="lead">動画はブラウザ内で処理します。元動画を外部へ自動送信しません。問題時はDiagnosticsから診断JSONを出力できます。</p>
         </div>
       </header>
 
@@ -118,6 +119,12 @@
           </section>
 
           <section class="panel">
+            <div class="section-heading"><div><p class="eyebrow">DEVELOPMENT SUPPORT</p><h2>問題が起きた場合</h2></div></div>
+            <p class="helper">Error ID・Version・直前操作をDiagnosticsへ記録します。動画本体や入力メモ本文は診断JSONへ入れません。</p>
+            <a class="btn btn-secondary full" href="diagnostics.html">Diagnosticsを開く</a>
+          </section>
+
+          <section class="panel">
             <div class="section-heading"><div><p class="eyebrow">AI REVIEW PACKAGE</p><h2>ChatGPT採点用パッケージ</h2></div></div>
             <div class="status-callout pending">自動検出の汎化検証後に30 / 60fps採点用パッケージを有効化します。</div>
             <button class="btn btn-primary full" type="button" disabled aria-describedby="aiPackageDisabledReason">ChatGPT解析パッケージを作成</button>
@@ -128,12 +135,13 @@
     </main>
   </div>
 
-  <script src="js/version.js?v=20260830-2"></script>
-  <script src="js/storage.js?v=20260830-2"></script>
-  <script src="js/video.js?v=20260830-2"></script>
-  <script src="js/detector.js?v=20260830-2"></script>
-  <script src="js/feedback-package-v5.js?v=20260830-2"></script>
-  <script src="js/ui.js?v=20260830-2"></script>
-  <script src="js/app.js?v=20260830-2"></script>
+  <script src="js/version.js?v=20260831-1"></script>
+  <script src="js/diagnostics.js?v=20260831-1"></script>
+  <script src="js/storage.js?v=20260831-1"></script>
+  <script src="js/video.js?v=20260831-1"></script>
+  <script src="js/detector.js?v=20260831-1"></script>
+  <script src="js/feedback-package-v5.js?v=20260831-1"></script>
+  <script src="js/ui.js?v=20260831-1"></script>
+  <script src="js/app.js?v=20260831-1"></script>
 </body>
 </html>

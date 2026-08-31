@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b0d10">
   <title>Detector Test | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260830-2">
-  <link rel="stylesheet" href="css/layout.css?v=20260830-2">
-  <link rel="stylesheet" href="css/components.css?v=20260830-2">
+  <link rel="stylesheet" href="css/base.css?v=20260831-1">
+  <link rel="stylesheet" href="css/layout.css?v=20260831-1">
+  <link rel="stylesheet" href="css/components.css?v=20260831-1">
 </head>
 <body>
   <div class="app-shell">
@@ -18,6 +18,7 @@
         <a class="nav-item" href="index.html">Dashboard</a>
         <a class="nav-item" href="review.html">New Review</a>
         <a class="nav-item active" href="detector-test.html" aria-current="page">Detector Test</a>
+        <a class="nav-item" href="diagnostics.html">Diagnostics</a>
       </nav>
       <div class="nav-coming-soon" aria-label="開発中の機能">
         <span>Import / Result — 開発中</span>
@@ -32,7 +33,7 @@
         <div>
           <p class="eyebrow">DETECTOR TEST · <span data-app-version>--</span></p>
           <h1>Feedback ZIPをまとめて採点</h1>
-          <p class="lead">VReviewで作った複数のFeedback ZIPをSchema検証してから読み込み、Precision / Recall / primary精度 / weakに落ちた本物Sceneを自動集計します。</p>
+          <p class="lead">複数Feedback ZIPをSchema検証してから読み込み、Precision / Recall / primary精度 / weakに落ちた本物Sceneを自動集計します。Import失敗はDiagnosticsにも残します。</p>
         </div>
       </header>
 
@@ -52,7 +53,8 @@
     </main>
   </div>
 
-  <script src="js/version.js?v=20260830-2"></script>
-  <script src="js/detector-test.js?v=20260830-2"></script>
+  <script src="js/version.js?v=20260831-1"></script>
+  <script src="js/diagnostics.js?v=20260831-1"></script>
+  <script src="js/detector-test.js?v=20260831-1"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # VReview Browser Validation Checklist
 
-`web-project-guide` v1.1.0 の `STATIC + MEDIA + AI-HANDOFF + TOOL` 用手動確認項目です。
+`web-project-guide` v1.8.0 の `STATIC + MEDIA + AI-HANDOFF + TOOL` 用手動確認項目です。
 
 このファイルが存在するだけでは Browser Validated 扱いにしません。実施結果は `作業報告書.md` へ記録します。
 
@@ -27,7 +27,7 @@
 - [ ] 動画変更を繰り返してもPreviewが壊れない
 - [ ] Detector開始→Progress表示→完了
 - [ ] Detector開始→Cancel→手動Scene操作を継続可能
-- [ ] Detector失敗時にError表示と手動復帰導線がある
+- [ ] Detector失敗時にError IDと手動復帰導線がある
 
 ## Scene Editing
 
@@ -56,6 +56,7 @@
 - [ ] 元動画そのものがZIPへ入っていない
 - [ ] Scene全画面画像でHUDがクロップされない
 - [ ] ROI画像が生成される
+- [ ] ZIP生成失敗時にError IDが表示され、Scene Draftは残る
 
 ## Detector Test
 
@@ -65,10 +66,25 @@
 - [ ] 壊れたJSONをErrorとして拒否
 - [ ] 未確認Sceneがある場合、暫定値と表示
 - [ ] 複数ZIPをまとめて集計可能
+- [ ] Schema/Import失敗がDiagnosticsへ記録される
+
+## Development Diagnostics
+
+- [ ] Dashboard / New Review / Detector Test → Diagnosticsへ移動可能
+- [ ] App Version / Build / Guide / Route / Session IDが表示される
+- [ ] 動画選択→Detector→Feedback Exportの重要操作がBreadcrumbへ記録される
+- [ ] 予期しないRuntime Error / Promise rejectionがError一覧へ記録される
+- [ ] Storage失敗がError一覧へ記録される
+- [ ] `diagnostics.json`を書き出せる
+- [ ] Clipboard対応Browserでは診断JSONをコピーできる
+- [ ] Clear DiagnosticsでこのTabの診断履歴を消去できる
+- [ ] 診断JSONへ動画本体・Scene本文・Feedbackメモ本文・localStorage値本体が含まれない
+- [ ] Breadcrumbが上限120件を超えて無限増加しない
+- [ ] Errorが上限40件を超えて無限増加しない
 
 ## GitHub Pages
 
-- [ ] Dashboard → New Review → Detector Testのリンクが正常
+- [ ] Dashboard → New Review → Detector Test → Diagnosticsのリンクが正常
 - [ ] CSS / JS 404なし
 - [ ] Consoleに重大Errorなし
 - [ ] `localhost`やPC固有Pathを要求しない

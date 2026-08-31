@@ -5,16 +5,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const summary = document.getElementById('testSummary');
   if (!input || !dropzone || !results || !summary) return;
 
+  const diagnostics = window.VReviewDiagnostics;
+  diagnostics?.breadcrumb('detector-test.init');
   const schemaPromise = loadFeedbackSchema();
 
   const processFiles = async files => {
     const list = [...files].filter(file => /\.zip$/i.test(file.name));
     if (!list.length) {
+      diagnostics?.breadcrumb('detector-test.import-rejected', { selectedCount: Number(files?.length || 0) });
       renderMessage(summary, 'VReview Feedback ZIPを選択してください。', 'pending');
       results.replaceChildren();
       return;
     }
 
+    const totalMB = Math.round(list.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024 * 10) / 10;
+    diagnostics?.breadcrumb('detector-test.import-start', { zipCount: list.length, totalMB });
     renderMessage(summary, `${list.length}件のFeedback ZIPを検証しています…`, 'pending');
     results.replaceChildren();
 
@@ -22,20 +27,30 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       schema = await schemaPromise;
     } catch (error) {
-      renderMessage(summary, `Schemaを読み込めませんでした: ${error.message || error} ページを再読み込みして再試行してください。`, 'pending');
+      const code = diagnostics?.captureError(error, 'DETECTOR-TEST-SCHEMA-001') || 'DETECTOR-TEST-SCHEMA-001';
+      renderMessage(summary, `Schemaを読み込めませんでした: ${error.message || error} ページを再読み込みして再試行してください。 Error: ${code}`, 'pending');
       return;
     }
 
     const records = [];
     const errors = [];
-    for (const file of list) {
+    for (const [index, file] of list.entries()) {
       try {
         records.push(await analyzeFeedbackZip(file, schema));
       } catch (error) {
+        diagnostics?.captureError(error, 'DETECTOR-TEST-IMPORT-001', {
+          index: index + 1,
+          sizeMB: Math.round(file.size / 1024 / 1024 * 10) / 10
+        });
         errors.push(`${file.name}: ${error.message || error}`);
       }
       await yieldToMain();
     }
+    diagnostics?.breadcrumb('detector-test.import-complete', {
+      selected: list.length,
+      accepted: records.length,
+      failed: errors.length
+    });
     renderResults(records, errors, results, summary);
   };
 
@@ -57,8 +72,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadFeedbackSchema() {
-  const response = await fetch('data/detector-feedback-schema.json');
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  let response;
+  try {
+    response = await fetch('data/detector-feedback-schema.json');
+  } catch (error) {
+    window.VReviewDiagnostics?.networkFailure({ resource: 'data/detector-feedback-schema.json', reason: error.message || 'fetch failed' });
+    throw error;
+  }
+  if (!response.ok) {
+    window.VReviewDiagnostics?.networkFailure({ resource: 'data/detector-feedback-schema.json', status: response.status, reason: 'schema fetch failed' });
+    throw new Error(`HTTP ${response.status}`);
+  }
   const schema = await response.json();
   if (!schema || schema.packageSchema !== 'vreview-detector-feedback') {
     throw new Error('Detector Feedback Schemaが不正です。');

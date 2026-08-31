@@ -1,17 +1,29 @@
 {
   "project": "VReview",
-  "guideVersion": "1.1.0",
+  "guideVersion": "1.8.0",
   "profiles": ["STATIC", "MEDIA", "AI-HANDOFF", "TOOL"],
   "sourceOfTruth": {
     "runtimeVersion": "js/version.js",
     "projectSpecification": "SPEC.md",
     "currentOverview": "README.md",
+    "projectLearnings": "PROJECT_LEARNINGS.md",
+    "agentRouter": "AGENTS.md",
     "workHistory": "作業報告書.md"
   },
   "storage": {
     "schemaVersion": 1,
     "primary": "localStorage",
     "storesMedia": false
+  },
+  "diagnostics": {
+    "schemaVersion": 1,
+    "runtime": "js/diagnostics.js",
+    "view": "diagnostics.html",
+    "storage": "sessionStorage",
+    "maxBreadcrumbs": 120,
+    "maxErrors": 40,
+    "storesMedia": false,
+    "autoUpload": false
   },
   "aiHandoff": {
     "feedbackSchema": "vreview-detector-feedback",
