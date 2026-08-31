@@ -1,5 +1,6 @@
 window.VReviewDiagnostics = (() => {
   const SESSION_KEY = 'vreview:diagnostics:v1';
+  const SCHEMA = 'vreview-development-diagnostics';
   const MAX_BREADCRUMBS = 120;
   const MAX_ERRORS = 40;
   const MAX_NETWORK = 30;
@@ -91,6 +92,7 @@ window.VReviewDiagnostics = (() => {
     const version = window.VReviewVersion || {};
     const storage = await storageSummary();
     return {
+      schema: SCHEMA,
       schemaVersion: 1,
       project: {
         name: 'VReview',
@@ -151,6 +153,7 @@ window.VReviewDiagnostics = (() => {
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
     breadcrumb('diagnostics.export', { errors: session.errors.length, breadcrumbs: session.breadcrumbs.length });
+    showStatus('diagnostics.jsonを作成しました。', 'success');
   }
 
   async function copyReport() {
@@ -205,7 +208,8 @@ window.VReviewDiagnostics = (() => {
         vreviewLocalStorageKeyCount: keyCount,
         vreviewLocalStorageApproxBytes: approximateBytes,
         diagnosticsBreadcrumbLimit: MAX_BREADCRUMBS,
-        diagnosticsErrorLimit: MAX_ERRORS
+        diagnosticsErrorLimit: MAX_ERRORS,
+        diagnosticsNetworkFailureLimit: MAX_NETWORK
       }
     };
   }
@@ -244,13 +248,16 @@ window.VReviewDiagnostics = (() => {
   function platformSummary() {
     const platform = navigator.userAgentData?.platform || navigator.platform || 'unknown';
     const ua = navigator.userAgent || '';
-    const browser = /Firefox\/(\d+)/.test(ua)
-      ? `Firefox ${RegExp.$1}`
-      : /Edg\/(\d+)/.test(ua)
-        ? `Edge ${RegExp.$1}`
-        : /Chrome\/(\d+)/.test(ua)
-          ? `Chromium ${RegExp.$1}`
-          : /Safari\/(\d+)/.test(ua)
+    const firefox = ua.match(/Firefox\/(\d+)/);
+    const edge = ua.match(/Edg\/(\d+)/);
+    const chrome = ua.match(/Chrome\/(\d+)/);
+    const browser = firefox
+      ? `Firefox ${firefox[1]}`
+      : edge
+        ? `Edge ${edge[1]}`
+        : chrome
+          ? `Chromium ${chrome[1]}`
+          : /Safari\//.test(ua)
             ? 'Safari'
             : 'Unknown browser';
     return `${platform} / ${browser}`;
@@ -335,6 +342,14 @@ window.VReviewDiagnostics = (() => {
     if (el) el.textContent = value;
   }
 
+  function showStatus(message, tone = 'success') {
+    const status = document.getElementById('diagnosticsStatus');
+    if (!status) return;
+    status.textContent = message;
+    status.classList.remove('hidden', 'pending', 'success');
+    status.classList.add(tone === 'success' ? 'success' : 'pending');
+  }
+
   function makeLogRow(at, label, message) {
     const row = document.createElement('div');
     row.className = 'diagnostic-log-row';
@@ -372,7 +387,8 @@ window.VReviewDiagnostics = (() => {
   });
 
   window.addEventListener('vreview:storage-error', event => {
-    captureError(event.detail?.message || 'Storage failure', 'STORAGE-001', { operation: event.detail?.operation || 'unknown' });
+    const code = captureError(event.detail?.message || 'Storage failure', 'STORAGE-001', { operation: event.detail?.operation || 'unknown' });
+    if (event.detail && typeof event.detail === 'object') event.detail.errorCode = code;
   });
 
   window.addEventListener('online', () => breadcrumb('network.online'));
@@ -381,24 +397,34 @@ window.VReviewDiagnostics = (() => {
   document.addEventListener('DOMContentLoaded', () => {
     breadcrumb('page.open', { route: currentRoute(), width: window.innerWidth, height: window.innerHeight });
     renderPage();
+
+    document.addEventListener('click', event => {
+      const target = event.target.closest?.('[data-action], #addSceneBtn, #setStartBtn, #setEndBtn');
+      if (!target) return;
+      const action = target.dataset?.action || target.id || 'unknown';
+      if (['play', 'minus-start', 'plus-start', 'minus-end', 'plus-end'].includes(action)) return;
+      breadcrumb('ui.action', { action });
+    });
+
     document.getElementById('exportDiagnosticsBtn')?.addEventListener('click', () => {
-      exportJson().catch(error => captureError(error, 'DIAGNOSTICS-EXPORT-001'));
+      exportJson().catch(error => {
+        const code = captureError(error, 'DIAGNOSTICS-EXPORT-001');
+        showStatus(`診断JSONの作成に失敗しました。Error: ${code}`, 'pending');
+      });
     });
     document.getElementById('copyDiagnosticsBtn')?.addEventListener('click', async () => {
-      const status = document.getElementById('diagnosticsStatus');
       try {
         await copyReport();
-        if (status) status.textContent = '診断JSONをClipboardへコピーしました。';
+        showStatus('診断JSONをClipboardへコピーしました。', 'success');
       } catch (error) {
         const code = captureError(error, 'DIAGNOSTICS-COPY-001');
-        if (status) status.textContent = `コピーに失敗しました。Error: ${code}`;
+        showStatus(`コピーに失敗しました。Error: ${code}`, 'pending');
       }
     });
     document.getElementById('clearDiagnosticsBtn')?.addEventListener('click', () => {
       if (!confirm('このタブの診断履歴を消去しますか？')) return;
       clear();
-      const status = document.getElementById('diagnosticsStatus');
-      if (status) status.textContent = '診断履歴を消去しました。';
+      showStatus('診断履歴を消去しました。', 'success');
     });
   });
 
