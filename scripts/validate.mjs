@@ -92,6 +92,10 @@ if (feedbackSchema && version) {
 if (diagnosticsSchema && version && projectMeta) {
   if (diagnosticsSchema.schema !== 'vreview-development-diagnostics') errors.push('diagnostics schema name is invalid');
   if (Number(diagnosticsSchema.schemaVersion) !== version.diagnosticsSchema) errors.push('diagnostics schemaVersion does not match js/version.js');
+  const requiredTopLevel = new Set(diagnosticsSchema.requiredTopLevel || []);
+  for (const key of ['schema', 'schemaVersion', 'project', 'capture', 'environment', 'runtime', 'breadcrumbs', 'errors', 'networkFailures', 'storage', 'performance', 'notes']) {
+    if (!requiredTopLevel.has(key)) errors.push(`diagnostics requiredTopLevel missing ${key}`);
+  }
   const limits = diagnosticsSchema.limits || {};
   const meta = projectMeta.diagnostics || {};
   if (Number(limits.maxBreadcrumbs) !== Number(meta.maxBreadcrumbs)) errors.push('diagnostics maxBreadcrumbs does not match project-meta');
@@ -241,7 +245,7 @@ function validateDocumentationSnapshots() {
   if (!readme.includes(`Adopted Web Project Guide: **v${version.guide}**`)) errors.push('README guide version snapshot does not match js/version.js');
   if (!spec.includes(`- App Version: ${version.app}`)) errors.push('SPEC app version does not match js/version.js');
   if (!spec.includes(`- Guide Version: ${version.guide}`)) errors.push('SPEC guide version does not match js/version.js');
-  if (!browser.includes(`web-project-guide\` v${version.guide}`)) errors.push('Browser checklist guide version does not match js/version.js');
+  if (!browser.includes(`v${version.guide}`)) errors.push('Browser checklist guide version does not match js/version.js');
   if (!readme.includes('PROJECT_LEARNINGS.md')) errors.push('README must link to PROJECT_LEARNINGS.md');
   if (!readme.includes('AGENTS.md')) errors.push('README must link to AGENTS.md');
 }
