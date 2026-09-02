@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07090c">
   <title>VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260902-1">
-  <link rel="stylesheet" href="css/layout.css?v=20260902-1">
-  <link rel="stylesheet" href="css/components.css?v=20260902-1">
+  <link rel="stylesheet" href="css/base.css?v=20260903-1">
+  <link rel="stylesheet" href="css/layout.css?v=20260903-1">
+  <link rel="stylesheet" href="css/components.css?v=20260903-1">
 </head>
 <body>
   <div class="app-shell">
@@ -60,7 +60,7 @@
           <div class="dashboard-section-head">
             <div>
               <p class="eyebrow">Review Flow</p>
-              <h2 class="dashboard-section-title" id="workflowTitle">1本のクリップを4段階で確認</h2>
+              <h2 class="dashboard-section-title" id="workflowTitle">複数クリップをまとめて提出</h2>
             </div>
             <a class="btn btn-secondary btn-small" href="review.html">Start</a>
           </div>
@@ -77,12 +77,12 @@
             </div>
             <div class="workflow-row">
               <span class="workflow-index">03</span>
-              <div><strong>映像を見ながら修正</strong><p>動画とTimelineを固定したまま、右Inspectorで時間・正解Labelを調整します。</p></div>
+              <div><strong>修正して保存</strong><p>右Inspectorで時間・正解Labelを調整し、ZIPを作らず改善データだけ端末へ保存します。</p></div>
               <span class="workflow-arrow">→</span>
             </div>
             <div class="workflow-row">
               <span class="workflow-index">04</span>
-              <div><strong>改善データを残す</strong><p>修正結果をFeedback ZIPへまとめ、Detector Testで複数クリップを比較します。</p></div>
+              <div><strong>最後に1回だけZIP化</strong><p>複数クリップをIndexedDBへ貯め、保存済みデータを1つのFeedback ZIPへまとめます。</p></div>
               <span class="workflow-arrow">✓</span>
             </div>
           </div>
@@ -99,6 +99,7 @@
             <div class="runtime-list">
               <div class="runtime-row"><span>Web Project Guide</span><strong class="status-ready"><span data-guide-version>--</span></strong></div>
               <div class="runtime-row"><span>Scene Draft</span><strong class="status-ready">Schema v1 + Backup</strong></div>
+              <div class="runtime-row"><span>Feedback Queue</span><strong class="status-ready">IndexedDB / 20 clips</strong></div>
               <div class="runtime-row"><span>Feedback Package</span><strong class="status-ready"><span data-feedback-version>--</span></strong></div>
               <div class="runtime-row"><span>Diagnostics</span><strong class="status-ready">Local only</strong></div>
               <div class="runtime-row"><span>AI Review</span><strong class="status-pending">After validation</strong></div>
@@ -122,9 +123,9 @@
     </main>
   </div>
 
-  <script src="js/version.js?v=20260902-1"></script>
-  <script src="js/diagnostics.js?v=20260902-1"></script>
-  <script src="js/storage.js?v=20260902-1"></script>
-  <script src="js/app.js?v=20260902-1"></script>
+  <script src="js/version.js?v=20260903-1"></script>
+  <script src="js/diagnostics.js?v=20260903-1"></script>
+  <script src="js/storage.js?v=20260903-1"></script>
+  <script src="js/app.js?v=20260903-1"></script>
 </body>
 </html>
