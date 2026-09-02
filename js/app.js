@@ -38,6 +38,11 @@ function initReviewPage() {
   const feedbackProgress = document.getElementById('feedbackProgress');
   const feedbackProgressText = document.getElementById('feedbackProgressText');
   const feedbackMessage = document.getElementById('feedbackMessage');
+  const savedFeedbackCount = document.getElementById('savedFeedbackCount');
+  const savedFeedbackSize = document.getElementById('savedFeedbackSize');
+  const feedbackQueueList = document.getElementById('feedbackQueueList');
+  const exportFeedbackBatchBtn = document.getElementById('exportFeedbackBatchBtn');
+  const clearFeedbackQueueBtn = document.getElementById('clearFeedbackQueueBtn');
   const resumeNotice = document.getElementById('resumeNotice');
   const storageStatus = document.getElementById('storageStatus');
   if (!input || !dropzone || !workspace || !preview) return;
@@ -50,8 +55,11 @@ function initReviewPage() {
   let currentFingerprint = null;
   let detecting = false;
   let exportingFeedback = false;
+  let batchExporting = false;
   let lastDetectionRun = null;
   let detectionController = null;
+
+  const isFeedbackBusy = () => exportingFeedback || batchExporting;
 
   const setCallout = (element, message = '', tone = 'pending') => {
     if (!element) return;
@@ -98,13 +106,88 @@ function initReviewPage() {
     return window.VReviewStorage?.getVersioned(key, null, { schemaVersion: 1 }) ?? null;
   };
 
+  const refreshFeedbackQueue = async () => {
+    if (!window.VReviewFeedbackLibrary || !feedbackQueueList) return [];
+    try {
+      const items = await window.VReviewFeedbackLibrary.list();
+      const bytes = items.reduce((sum, item) => sum + Number(item.byteSize || 0), 0);
+      if (savedFeedbackCount) savedFeedbackCount.textContent = String(items.length);
+      if (savedFeedbackSize) savedFeedbackSize.textContent = formatBytes(bytes);
+      if (exportFeedbackBatchBtn) exportFeedbackBatchBtn.disabled = !items.length || isFeedbackBusy();
+      if (clearFeedbackQueueBtn) clearFeedbackQueueBtn.disabled = !items.length || isFeedbackBusy();
+
+      feedbackQueueList.replaceChildren();
+      if (!items.length) {
+        const empty = document.createElement('p');
+        empty.className = 'helper';
+        empty.textContent = '保存済みデータはまだありません。';
+        feedbackQueueList.appendChild(empty);
+      } else {
+        items.forEach(item => feedbackQueueList.appendChild(createFeedbackQueueRow(item)));
+      }
+
+      if (feedbackBtn && currentFingerprint && lastDetectionRun) {
+        const saved = items.some(item => item.id === currentFingerprint);
+        feedbackBtn.textContent = saved ? 'このクリップの保存データを更新' : 'このクリップの改善データを保存';
+      }
+      return items;
+    } catch (error) {
+      const code = diagnostics?.captureError(error, 'FEEDBACK-LIBRARY-001', { action: 'list' }) || 'FEEDBACK-LIBRARY-001';
+      if (feedbackQueueList) {
+        feedbackQueueList.replaceChildren();
+        const message = document.createElement('p');
+        message.className = 'helper danger-text';
+        message.textContent = `保存済みFeedbackを読み込めませんでした。 Error: ${code}`;
+        feedbackQueueList.appendChild(message);
+      }
+      if (exportFeedbackBatchBtn) exportFeedbackBatchBtn.disabled = true;
+      if (clearFeedbackQueueBtn) clearFeedbackQueueBtn.disabled = true;
+      return [];
+    }
+  };
+
+  const createFeedbackQueueRow = item => {
+    const row = document.createElement('div');
+    row.className = 'feedback-queue-row';
+
+    const info = document.createElement('div');
+    info.className = 'feedback-queue-info';
+    const name = document.createElement('strong');
+    name.textContent = item.displayName || 'clip';
+    name.title = item.displayName || 'clip';
+    const detail = document.createElement('span');
+    detail.textContent = `${item.sceneCount} scenes · ${formatBytes(item.byteSize)}`;
+    info.append(name, detail);
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'feedback-queue-remove';
+    remove.textContent = '削除';
+    remove.setAttribute('aria-label', `${item.displayName || 'clip'} の保存済みFeedbackを削除`);
+    remove.addEventListener('click', async () => {
+      if (isFeedbackBusy()) return;
+      if (!confirm('この保存済みFeedbackを削除しますか？')) return;
+      try {
+        await window.VReviewFeedbackLibrary.remove(item.id);
+        diagnostics?.breadcrumb('feedback.queue-remove', { bytes: item.byteSize || 0 });
+        await refreshFeedbackQueue();
+      } catch (error) {
+        const code = diagnostics?.captureError(error, 'FEEDBACK-LIBRARY-001', { action: 'remove' }) || 'FEEDBACK-LIBRARY-001';
+        setFeedbackState(0, `保存済みFeedbackを削除できませんでした。 Error: ${code}`);
+      }
+    });
+
+    row.append(info, remove);
+    return row;
+  };
+
   const handleFile = async file => {
     if (!file || !isSupportedVideo(file)) {
       diagnostics?.breadcrumb('video.load.rejected', { mediaType: file?.type || 'unknown', extension: fileExtension(file?.name) });
       setCallout(uploadStatus, 'MP4 または WebM を選択してください。ファイルを選び直せます。');
       return;
     }
-    if (detecting || exportingFeedback) return;
+    if (detecting || isFeedbackBusy()) return;
 
     const sizeMB = round1(file.size / 1024 / 1024);
     diagnostics?.breadcrumb('video.load.start', { mediaType: file.type || 'unknown', extension: fileExtension(file.name), sizeMB });
@@ -124,11 +207,7 @@ function initReviewPage() {
       setCallout(uploadStatus, '', 'success');
       setCallout(storageStatus, '', 'pending');
       diagnostics?.breadcrumb('video.load.success', {
-        mediaType: file.type || 'unknown',
-        sizeMB,
-        duration: round1(data.duration),
-        width: data.width,
-        height: data.height
+        mediaType: file.type || 'unknown', sizeMB, duration: round1(data.duration), width: data.width, height: data.height
       });
 
       const savedMeta = readSessionMeta(currentFingerprint, false);
@@ -158,7 +237,7 @@ function initReviewPage() {
         const count = window.VReviewUI?.restoreSavedDraft(currentFingerprint) || 0;
         activeMeta = savedMeta;
         diagnostics?.breadcrumb('draft.restore', { sceneCount: count });
-        setCallout(resumeNotice, `前回のScene ${count}件を復元しました。Feedback ZIPを作る場合は自動検出をもう一度実行してください。`, 'success');
+        setCallout(resumeNotice, `前回のScene ${count}件を復元しました。改善データを保存する場合は自動検出をもう一度実行してください。`, 'success');
       } else if (restoredBackup) {
         const count = window.VReviewUI?.restoreSavedBackup(currentFingerprint) || 0;
         activeMeta = backupMeta;
@@ -167,11 +246,7 @@ function initReviewPage() {
       } else {
         window.VReviewUI?.clearScenes({ persist: false });
         activeMeta = null;
-        setCallout(
-          resumeNotice,
-          freshBackupCreated ? '新規開始しました。前回のSceneはBackupとして残しています。' : '',
-          freshBackupCreated ? 'pending' : 'success'
-        );
+        setCallout(resumeNotice, freshBackupCreated ? '新規開始しました。前回のSceneはBackupとして残しています。' : '', freshBackupCreated ? 'pending' : 'success');
       }
 
       if (sensitivity) sensitivity.value = activeMeta?.sensitivity || 'standard';
@@ -183,13 +258,16 @@ function initReviewPage() {
         autoDetectBtn.textContent = (restored || restoredBackup) ? '自動検出を実行して更新' : 'キルSceneを自動検出';
       }
       cancelDetectBtn?.classList.add('hidden');
-      if (feedbackBtn) feedbackBtn.disabled = true;
+      if (feedbackBtn) {
+        feedbackBtn.disabled = true;
+        feedbackBtn.textContent = 'このクリップの改善データを保存';
+      }
       setDetectionState(0, '', false);
       setFeedbackState(0, '', false);
 
       if (detectionWarning) {
         detectionWarning.textContent = (restored || restoredBackup)
-          ? 'Scene編集は復元済みです。Detector診断は保存していないため、Feedback ZIPを作る前に自動検出を再実行してください。'
+          ? 'Scene編集は復元済みです。Detector診断は保存していないため、改善データを保存する前に自動検出を再実行してください。'
           : `Detector v${window.VReviewVersion?.detector || '--'}で本命Sceneと要確認候補を検出します。`;
       }
 
@@ -203,18 +281,15 @@ function initReviewPage() {
         );
       }
       persistSessionMeta();
+      await refreshFeedbackQueue();
     } catch (error) {
-      const code = diagnostics?.captureError(error, 'MEDIA-LOAD-001', {
-        mediaType: file.type || 'unknown',
-        extension: fileExtension(file.name),
-        sizeMB
-      }) || 'MEDIA-LOAD-001';
+      const code = diagnostics?.captureError(error, 'MEDIA-LOAD-001', { mediaType: file.type || 'unknown', extension: fileExtension(file.name), sizeMB }) || 'MEDIA-LOAD-001';
       setCallout(uploadStatus, `${error.message || '動画を読み込めませんでした。'} 別のMP4 / WebMを選んで再試行してください。 Error: ${code}`);
     }
   };
 
   changeVideoBtn?.addEventListener('click', () => {
-    if (detecting || exportingFeedback) return;
+    if (detecting || isFeedbackBusy()) return;
     diagnostics?.breadcrumb('video.change-requested');
     input.value = '';
     input.click();
@@ -227,7 +302,7 @@ function initReviewPage() {
   feedbackNotes?.addEventListener('input', debounce(persistSessionMeta, 250));
 
   autoDetectBtn?.addEventListener('click', async () => {
-    if (!currentFile || !currentVideoData || detecting) return;
+    if (!currentFile || !currentVideoData || detecting || isFeedbackBusy()) return;
     const existing = window.VReviewUI?.getScenes?.() || [];
     if (existing.length && !confirm('現在のSceneを新しい自動検出結果で置き換えます。続けますか？')) return;
 
@@ -241,10 +316,7 @@ function initReviewPage() {
     if (detectionWarning) detectionWarning.textContent = '';
     setDetectionState(0.01, '自動検出を開始しています…');
     diagnostics?.breadcrumb('detector.start', {
-      sensitivity: sensitivity?.value || 'standard',
-      duration: round1(currentVideoData.duration),
-      width: currentVideoData.width,
-      height: currentVideoData.height
+      sensitivity: sensitivity?.value || 'standard', duration: round1(currentVideoData.duration), width: currentVideoData.width, height: currentVideoData.height
     });
 
     try {
@@ -274,10 +346,7 @@ function initReviewPage() {
       }, { schemaVersion: 1 });
 
       diagnostics?.breadcrumb('detector.success', {
-        detectorVersion: result.detectorVersion,
-        primary,
-        weak,
-        total: result.scenes.length,
+        detectorVersion: result.detectorVersion, primary, weak, total: result.scenes.length,
         warnings: Array.isArray(result.warnings) ? result.warnings.length : 0
       });
 
@@ -289,6 +358,7 @@ function initReviewPage() {
       autoDetectBtn.textContent = '自動検出をやり直す';
       if (feedbackBtn) feedbackBtn.disabled = false;
       sceneColumn && (sceneColumn.scrollTop = 0);
+      await refreshFeedbackQueue();
     } catch (error) {
       lastDetectionRun = null;
       if (error?.name === 'AbortError') {
@@ -296,10 +366,7 @@ function initReviewPage() {
         setDetectionState(0, '解析をキャンセルしました。', true);
         if (detectionWarning) detectionWarning.textContent = 'キャンセルしました。Scene編集データはそのまま残っています。';
       } else {
-        const code = diagnostics?.captureError(error, 'DETECTOR-RUN-001', {
-          sensitivity: sensitivity?.value || 'standard',
-          duration: round1(currentVideoData.duration)
-        }) || 'DETECTOR-RUN-001';
+        const code = diagnostics?.captureError(error, 'DETECTOR-RUN-001', { sensitivity: sensitivity?.value || 'standard', duration: round1(currentVideoData.duration) }) || 'DETECTOR-RUN-001';
         setDetectionState(0, `自動検出に失敗しました。 Error: ${code}`, true);
         if (detectionWarning) detectionWarning.textContent = `${error.message || '解析中にエラーが発生しました。'} 手動Scene追加は引き続き利用できます。`;
       }
@@ -320,38 +387,89 @@ function initReviewPage() {
   });
 
   feedbackBtn?.addEventListener('click', async () => {
-    if (!currentFile || !currentVideoData || !lastDetectionRun || exportingFeedback) return;
+    if (!currentFile || !currentVideoData || !lastDetectionRun || isFeedbackBusy()) return;
     const correctedScenes = window.VReviewUI?.getScenes?.() || [];
-    if (!correctedScenes.length && !confirm('修正後Sceneが0件です。この状態で提出用ZIPを作成しますか？')) return;
+    if (!correctedScenes.length && !confirm('修正後Sceneが0件です。この状態で改善データを保存しますか？')) return;
 
     exportingFeedback = true;
     feedbackBtn.disabled = true;
+    if (exportFeedbackBatchBtn) exportFeedbackBatchBtn.disabled = true;
+    if (clearFeedbackQueueBtn) clearFeedbackQueueBtn.disabled = true;
     preview.pause();
     persistSessionMeta();
-    setFeedbackState(0.01, '検出改善用パッケージを準備しています…');
-    diagnostics?.breadcrumb('feedback.export-start', { sceneCount: correctedScenes.length, packageVersion: window.VReviewVersion?.feedback || '' });
+    setFeedbackState(0.01, 'このクリップの改善データを準備しています…');
+    diagnostics?.breadcrumb('feedback.queue-save-start', { sceneCount: correctedScenes.length, packageVersion: window.VReviewVersion?.feedback || '' });
 
     try {
-      const result = await window.VReviewFeedbackPackage.build({
+      const prepared = await window.VReviewFeedbackPackage.prepare({
         file: currentFile,
         videoData: currentVideoData,
         detectionRun: lastDetectionRun,
         correctedScenes,
         notes: feedbackNotes?.value?.trim() || '',
-        onProgress: (progress, message) => setFeedbackState(progress, message)
+        onProgress: (progress, message) => setFeedbackState(progress * 0.92, message)
       });
-      window.VReviewFeedbackPackage.download(result.blob, result.filename);
-      diagnostics?.breadcrumb('feedback.export-success', { sceneCount: correctedScenes.length, bytes: result.blob?.size || 0 });
-      setFeedbackState(1, `${result.filename} を作成しました。`);
+      setFeedbackState(0.94, 'ブラウザへ保存しています…');
+      const summary = await window.VReviewFeedbackLibrary.save(currentFingerprint, prepared);
+      diagnostics?.breadcrumb('feedback.queue-save-success', {
+        sceneCount: correctedScenes.length,
+        bytes: summary.byteSize || 0,
+        packageVersion: window.VReviewVersion?.feedback || ''
+      });
+      setFeedbackState(1, `保存しました。最後に「保存済みをまとめてZIP作成」を1回押せばOKです。`, true);
     } catch (error) {
-      const code = diagnostics?.captureError(error, 'FEEDBACK-EXPORT-001', {
+      const code = diagnostics?.captureError(error, 'FEEDBACK-SAVE-001', {
         sceneCount: correctedScenes.length,
         packageVersion: window.VReviewVersion?.feedback || ''
-      }) || 'FEEDBACK-EXPORT-001';
-      setFeedbackState(0, `${error.message || '提出用ZIPの作成に失敗しました。'} JSON診断とScene編集はブラウザ内に残っています。 Error: ${code}`);
+      }) || 'FEEDBACK-SAVE-001';
+      setFeedbackState(0, `${error.message || '改善データを保存できませんでした。'} Scene編集は残っています。 Error: ${code}`);
     } finally {
       exportingFeedback = false;
       feedbackBtn.disabled = false;
+      await refreshFeedbackQueue();
+    }
+  });
+
+  exportFeedbackBatchBtn?.addEventListener('click', async () => {
+    if (isFeedbackBusy() || detecting) return;
+    batchExporting = true;
+    if (feedbackBtn) feedbackBtn.disabled = true;
+    exportFeedbackBatchBtn.disabled = true;
+    if (clearFeedbackQueueBtn) clearFeedbackQueueBtn.disabled = true;
+    setFeedbackState(0.01, '保存済みFeedbackを読み込んでいます…');
+    diagnostics?.breadcrumb('feedback.batch-export-start');
+
+    try {
+      const packages = await window.VReviewFeedbackLibrary.getAll();
+      const result = await window.VReviewFeedbackPackage.buildBatch(packages, {
+        onProgress: (progress, message) => setFeedbackState(progress, message)
+      });
+      window.VReviewFeedbackPackage.download(result.blob, result.filename);
+      diagnostics?.breadcrumb('feedback.batch-export-success', { clipCount: packages.length, bytes: result.blob?.size || 0 });
+      setFeedbackState(1, `${packages.length}クリップを ${result.filename} にまとめました。保存済みデータはまだ残っています。`, true);
+    } catch (error) {
+      const code = diagnostics?.captureError(error, 'FEEDBACK-BATCH-EXPORT-001', { packageVersion: window.VReviewVersion?.feedback || '' }) || 'FEEDBACK-BATCH-EXPORT-001';
+      setFeedbackState(0, `${error.message || 'まとめZIPを作成できませんでした。'} 保存済みデータは消えていません。 Error: ${code}`);
+    } finally {
+      batchExporting = false;
+      if (feedbackBtn) feedbackBtn.disabled = !lastDetectionRun;
+      await refreshFeedbackQueue();
+    }
+  });
+
+  clearFeedbackQueueBtn?.addEventListener('click', async () => {
+    if (isFeedbackBusy() || detecting) return;
+    const items = await window.VReviewFeedbackLibrary.list().catch(() => []);
+    if (!items.length) return;
+    if (!confirm(`保存済みFeedback ${items.length}件をすべて削除しますか？\nこの操作は元に戻せません。`)) return;
+    try {
+      await window.VReviewFeedbackLibrary.clear();
+      diagnostics?.breadcrumb('feedback.queue-clear', { count: items.length });
+      setFeedbackState(1, '保存済みFeedbackをすべて削除しました。', true);
+      await refreshFeedbackQueue();
+    } catch (error) {
+      const code = diagnostics?.captureError(error, 'FEEDBACK-LIBRARY-001', { action: 'clear' }) || 'FEEDBACK-LIBRARY-001';
+      setFeedbackState(0, `保存済みFeedbackを削除できませんでした。 Error: ${code}`);
     }
   });
 
@@ -389,6 +507,8 @@ function initReviewPage() {
     detectionController?.abort();
     window.VReviewVideo?.release(preview);
   });
+
+  refreshFeedbackQueue();
 }
 
 function makeMetaChip(text) {
@@ -404,6 +524,13 @@ function isSupportedVideo(file) {
 
 function fileExtension(name) {
   return String(name || '').match(/\.([A-Za-z0-9]+)$/)?.[1]?.toLowerCase() || '';
+}
+
+function formatBytes(value) {
+  const bytes = Math.max(0, Number(value || 0));
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function round1(value) {
