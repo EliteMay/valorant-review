@@ -1,6 +1,6 @@
 {
   "project": "VReview",
-  "guideVersion": "1.8.0",
+  "guideVersion": "1.13.0",
   "profiles": ["STATIC", "MEDIA", "AI-HANDOFF", "TOOL"],
   "sourceOfTruth": {
     "runtimeVersion": "js/version.js",
@@ -30,8 +30,15 @@
     "feedbackSchemaVersion": 1,
     "packageVersion": 5
   },
+  "visual": {
+    "direction": "review-workbench",
+    "ambition": "high",
+    "primaryDevice": "desktop",
+    "primaryContent": "video",
+    "desktopComposition": "fixed-video-right-inspector-scroll"
+  },
   "deployment": {
     "type": "github-pages",
-    "basePath": "/vreview/"
+    "basePath": "/valorant-review/"
   }
 }
