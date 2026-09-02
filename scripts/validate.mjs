@@ -4,7 +4,8 @@ import path from 'node:path';
 const root = process.cwd();
 const errors = [];
 const warnings = [];
-const EXPECTED_GUIDE = '1.8.0';
+const EXPECTED_GUIDE = '1.13.0';
+const EXPECTED_BASE_PATH = '/valorant-review/';
 
 const requiredFiles = [
   'README.md',
@@ -22,6 +23,9 @@ const requiredFiles = [
   'js/detector.js',
   'js/feedback-package-v5.js',
   'js/storage.js',
+  'css/base.css',
+  'css/layout.css',
+  'css/components.css',
   'css/diagnostics.css',
   'data/detector-feedback-schema.json',
   'data/diagnostics-schema.json',
@@ -79,6 +83,19 @@ if (projectMeta && version) {
   if (diagnostics.storage !== 'sessionStorage') errors.push('project-meta diagnostics storage must be sessionStorage');
   if (diagnostics.storesMedia !== false) errors.push('project-meta diagnostics must not store media');
   if (diagnostics.autoUpload !== false) errors.push('project-meta diagnostics must not auto upload');
+
+  const visual = projectMeta.visual || {};
+  if (visual.direction !== 'review-workbench') errors.push('project-meta visual.direction must be review-workbench');
+  if (visual.primaryDevice !== 'desktop') errors.push('project-meta visual.primaryDevice must be desktop');
+  if (visual.primaryContent !== 'video') errors.push('project-meta visual.primaryContent must be video');
+  if (visual.desktopComposition !== 'fixed-video-right-inspector-scroll') {
+    errors.push('project-meta visual.desktopComposition is invalid');
+  }
+
+  if (projectMeta?.deployment?.type !== 'github-pages') errors.push('project-meta deployment.type must be github-pages');
+  if (projectMeta?.deployment?.basePath !== EXPECTED_BASE_PATH) {
+    errors.push(`project-meta deployment.basePath must be ${EXPECTED_BASE_PATH}`);
+  }
 }
 
 if (feedbackSchema && version) {
@@ -135,16 +152,8 @@ if (fs.existsSync(jsDir)) {
   }
 }
 
-const reviewPath = path.join(root, 'review.html');
-if (fs.existsSync(reviewPath)) {
-  const review = fs.readFileSync(reviewPath, 'utf8');
-  if (!review.includes('js/detector.js')) errors.push('review.html must load js/detector.js');
-  if (!review.includes('js/feedback-package-v5.js')) errors.push('review.html must load current feedback package runtime');
-  if (/scene-detection-v0\d+/i.test(review)) errors.push('review.html still loads legacy versioned detector scripts');
-  const diagIndex = review.indexOf('js/diagnostics.js');
-  const appIndex = review.indexOf('js/app.js');
-  if (diagIndex < 0 || appIndex < 0 || diagIndex > appIndex) errors.push('review.html must load diagnostics before app.js');
-}
+validateReviewRuntime();
+validateVisualWorkbench();
 
 const detectorPath = path.join(root, 'js/detector.js');
 if (fs.existsSync(detectorPath) && version?.detector) {
@@ -188,6 +197,59 @@ if (errors.length) {
 
 console.log(`VReview validation passed (${htmlFiles.length} HTML, ${runtimeFiles.length} runtime/data files checked, guide ${version?.guide || '?'}).`);
 for (const warning of warnings) console.warn(`Warning: ${warning}`);
+
+function validateReviewRuntime() {
+  const reviewPath = path.join(root, 'review.html');
+  if (!fs.existsSync(reviewPath)) return;
+  const review = fs.readFileSync(reviewPath, 'utf8');
+  if (!review.includes('js/detector.js')) errors.push('review.html must load js/detector.js');
+  if (!review.includes('js/feedback-package-v5.js')) errors.push('review.html must load current feedback package runtime');
+  if (/scene-detection-v0\d+/i.test(review)) errors.push('review.html still loads legacy versioned detector scripts');
+  const diagIndex = review.indexOf('js/diagnostics.js');
+  const appIndex = review.indexOf('js/app.js');
+  if (diagIndex < 0 || appIndex < 0 || diagIndex > appIndex) errors.push('review.html must load diagnostics before app.js');
+}
+
+function validateVisualWorkbench() {
+  const review = readText('review.html');
+  const index = readText('index.html');
+  const layout = readText('css/layout.css');
+  const components = readText('css/components.css');
+  if (!review || !index || !layout || !components) return;
+
+  const requiredReviewMarkers = [
+    'review-workspace',
+    'video-column',
+    'player-shell',
+    'timeline-zone',
+    'scene-column',
+    'inspector-section',
+    'sceneList',
+    'feedbackPackageBtn'
+  ];
+  for (const marker of requiredReviewMarkers) {
+    if (!review.includes(marker)) errors.push(`review workbench missing marker: ${marker}`);
+  }
+
+  if (review.includes('aiPackageDisabledReason')) errors.push('review.html must not restore the large disabled AI package card');
+  if (!index.includes('metric-strip')) errors.push('index.html must use compact metric-strip for detector summary');
+  if (!index.includes('dashboard-grid')) errors.push('index.html must use review-oriented dashboard-grid');
+
+  if (!layout.includes('body.review-page.review-loaded .scene-column')) errors.push('layout.css missing loaded scene-column rule');
+  if (!layout.includes('overflow-y: auto')) errors.push('layout.css missing scrollable inspector behavior');
+  if (!layout.includes('.player-shell')) errors.push('layout.css missing player-shell sizing rule');
+  if (!layout.includes('@media (max-width: 980px)')) errors.push('layout.css missing narrow viewport fallback');
+
+  if (!components.includes('.scene-column > .panel') || !components.includes('.inspector-section')) {
+    errors.push('components.css missing continuous inspector section styling');
+  }
+  if (!components.includes('.scene-card.selected::before')) errors.push('components.css missing selected scene visual marker');
+  if (!components.includes('.timeline-playhead')) errors.push('components.css missing timeline playhead styling');
+
+  if (projectMeta?.visual?.direction === 'review-workbench' && !readText('tests/BROWSER_CHECKLIST.md').includes('Visual Review')) {
+    errors.push('Browser checklist must include Visual Review for review-workbench direction');
+  }
+}
 
 function validateHtml(htmlFile) {
   const html = fs.readFileSync(path.join(root, htmlFile), 'utf8');
@@ -238,9 +300,9 @@ function validatePublicRuntime(relative, content) {
 
 function validateDocumentationSnapshots() {
   if (!version) return;
-  const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-  const spec = fs.readFileSync(path.join(root, 'SPEC.md'), 'utf8');
-  const browser = fs.readFileSync(path.join(root, 'tests/BROWSER_CHECKLIST.md'), 'utf8');
+  const readme = readText('README.md');
+  const spec = readText('SPEC.md');
+  const browser = readText('tests/BROWSER_CHECKLIST.md');
   if (!readme.includes(`VReview: **v${version.app}**`)) errors.push('README app version snapshot does not match js/version.js');
   if (!readme.includes(`Adopted Web Project Guide: **v${version.guide}**`)) errors.push('README guide version snapshot does not match js/version.js');
   if (!spec.includes(`- App Version: ${version.app}`)) errors.push('SPEC app version does not match js/version.js');
@@ -248,6 +310,8 @@ function validateDocumentationSnapshots() {
   if (!browser.includes(`v${version.guide}`)) errors.push('Browser checklist guide version does not match js/version.js');
   if (!readme.includes('PROJECT_LEARNINGS.md')) errors.push('README must link to PROJECT_LEARNINGS.md');
   if (!readme.includes('AGENTS.md')) errors.push('README must link to AGENTS.md');
+  if (!readme.includes('https://elitemay.github.io/valorant-review/')) errors.push('README public URL is stale');
+  if (!spec.includes('repository subpath `/valorant-review/`')) errors.push('SPEC GitHub Pages base path is stale');
 }
 
 function readVersionFile(file) {
@@ -282,6 +346,12 @@ function readJsonFile(relative) {
     errors.push(`${relative}: invalid JSON (${error.message})`);
     return null;
   }
+}
+
+function readText(relative) {
+  const file = path.join(root, relative);
+  if (!fs.existsSync(file)) return '';
+  return fs.readFileSync(file, 'utf8');
 }
 
 function collectFiles(dirs, predicate) {

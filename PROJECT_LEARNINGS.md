@@ -84,7 +84,27 @@
 - Prevention: Static Validated / Browser Validated / User Validatedを別に記録する。
 - Related Issue / PR / Commit: v0.5.1 Guide準拠改修
 - Guide candidate: yes
-- Guide note: Guide v1.8.0のDevelopment Observabilityとも整合。
+- Guide note: Development Observability / Visual Verificationとも整合。
+
+### PL-F-005 全情報をPanel / Card化して動画レビューToolのHierarchyを失った
+
+- Date: 2026-09-02
+- Status: monitoring
+- Severity: medium
+- Cost: high
+- Symptom: 機能は使えるが、Dashboard・Review画面ともCard / Panel / Eyebrow /大きいButtonが反復し、「動画解析Tool」よりGenericなAI Dashboard Templateに見えた。
+- Expected: Gameplayが主役で、TimelineとScene Inspectorを素早く往復できる高密度Review Workbenchに見える。
+- Actual: 動画、Detector、Scene、Feedback、開発中機能が似たSurface強度で並び、重要度の差が弱かった。Scene 1件の縦幅も大きく確認速度を落としていた。
+- Trigger / Reproduction: 新機能を追加するたび独立`panel`として縦に積み、見た目の修正をSpacing / Color / Card追加中心で繰り返す。
+- Root Cause: Domain固有のPrimary Taskより、汎用Dashboard Componentを先に使った。Visual変更前の同種Tool調査とKEEP / FIX / REMOVEが不足していた。
+- Final Fix: `web-project-guide` v1.13.0のDomain-first Visual Researchを実施し、Review WorkbenchへFoundation Reset。中央のGameplay + TimelineをVisual Priority 1–2、右側をContinuous Inspectorへ変更し、開発中CardをPrimary Workflowから除外した。
+- Affected files / systems: `index.html`, `review.html`, `css/base.css`, `css/layout.css`, `css/components.css`, development pages
+- Detection method: ユーザーからの見た目修正要求、Guide Visual Quality監査、同種Video Review Tool比較。
+- Regression Guard: `scripts/validate.mjs`でReview Workbenchの必須DOM構造を確認し、`tests/BROWSER_CHECKLIST.md`でVideo Priority / Inspector / right-only scroll / Zoom / low-heightをVisual Reviewする。
+- Prevention: 意味のあるVisual変更では先にTarget Type → Domain Research → KEEP / FIX / REMOVEを行う。Panel追加をDefaultにせず、Section / List / Timeline / InspectorをContent semanticsで使い分ける。
+- Related Issue / PR / Commit: v0.7.0 visual-workbench redesign
+- Guide candidate: no
+- Guide note: Domain-first Visual Research / Visual Foundation ResetはGuide v1.13.0へ既に存在するため、VReview固有Evidenceとして残す。
 
 ---
 

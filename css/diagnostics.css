@@ -1,28 +1,31 @@
 .diagnostic-log {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .diagnostic-log-row {
   display: grid;
-  grid-template-columns: 86px minmax(140px, 220px) minmax(0, 1fr);
+  grid-template-columns: 78px minmax(140px, 210px) minmax(0, 1fr);
   gap: 12px;
   align-items: start;
-  padding: 11px 12px;
+  padding: 9px 10px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel-2);
-  font-size: .82rem;
-  line-height: 1.5;
+  border-radius: 6px;
+  background: #0a0f15;
+  font-size: .76rem;
+  line-height: 1.45;
 }
 
 .diagnostic-log-row time {
-  color: var(--muted);
+  color: var(--muted-2);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
 .diagnostic-log-row strong {
-  color: var(--text);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: .7rem;
   overflow-wrap: anywhere;
 }
 
@@ -33,7 +36,7 @@
 }
 
 #diagnosticsStatus:not(.hidden) {
-  margin-top: 14px;
+  margin-top: 12px;
   margin-bottom: 0;
 }
 
