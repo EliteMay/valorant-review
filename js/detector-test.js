@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const totalMB = Math.round(list.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024 * 10) / 10;
     diagnostics?.breadcrumb('detector-test.import-start', { zipCount: list.length, totalMB });
-    renderMessage(summary, `${list.length}件のFeedback ZIPを検証しています…`, 'pending');
+    renderMessage(summary, `${list.length}件のZIPを検証しています… Batch ZIPもそのまま読み込めます。`, 'pending');
     results.replaceChildren();
 
     let schema;
@@ -36,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const errors = [];
     for (const [index, file] of list.entries()) {
       try {
-        records.push(await analyzeFeedbackZip(file, schema));
+        const analyzed = await analyzeFeedbackZip(file, schema);
+        records.push(...analyzed);
       } catch (error) {
         diagnostics?.captureError(error, 'DETECTOR-TEST-IMPORT-001', {
           index: index + 1,
@@ -46,9 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       await yieldToMain();
     }
+
     diagnostics?.breadcrumb('detector-test.import-complete', {
       selected: list.length,
-      accepted: records.length,
+      acceptedClips: records.length,
       failed: errors.length
     });
     renderResults(records, errors, results, summary);
@@ -84,24 +86,61 @@ async function loadFeedbackSchema() {
     throw new Error(`HTTP ${response.status}`);
   }
   const schema = await response.json();
-  if (!schema || schema.packageSchema !== 'vreview-detector-feedback') {
+  if (!schema || schema.packageSchema !== 'vreview-detector-feedback' || !schema.batchSchema) {
     throw new Error('Detector Feedback Schemaが不正です。');
   }
   return schema;
 }
 
 async function analyzeFeedbackZip(file, schema) {
-  const maxZipBytes = Number(schema?.limits?.maxZipBytes || 262144000);
-  if (file.size > maxZipBytes) {
-    throw new Error(`ZIPが大きすぎます（上限 ${(maxZipBytes / 1024 / 1024).toFixed(0)}MB）。`);
+  const maxBatchBytes = Number(schema?.limits?.maxBatchZipBytes || 419430400);
+  if (file.size > maxBatchBytes) {
+    throw new Error(`ZIPが大きすぎます（上限 ${(maxBatchBytes / 1024 / 1024).toFixed(0)}MB）。`);
   }
 
-  const requiredFiles = new Set(schema.requiredFiles || ['manifest.json', 'corrected-scenes.json']);
-  const entries = parseStoredZip(await file.arrayBuffer(), schema, requiredFiles);
+  const entries = parseStoredZipJson(await file.arrayBuffer(), schema);
+  if (entries.has('batch-manifest.json')) return analyzeBatchEntries(file, entries, schema);
+
+  const maxZipBytes = Number(schema?.limits?.maxZipBytes || 262144000);
+  if (file.size > maxZipBytes) {
+    throw new Error(`単体Feedback ZIPが大きすぎます（上限 ${(maxZipBytes / 1024 / 1024).toFixed(0)}MB）。`);
+  }
   const manifest = readJson(entries, 'manifest.json', schema);
   const corrected = readJson(entries, 'corrected-scenes.json', schema);
   validateFeedbackData(manifest, corrected, schema);
+  return [summarizeFeedback(manifest, corrected, file.name)];
+}
 
+function analyzeBatchEntries(file, entries, schema) {
+  const batch = readJson(entries, 'batch-manifest.json', schema);
+  if (!batch || typeof batch !== 'object' || Array.isArray(batch)) throw new Error('batch-manifest.jsonが不正です。');
+  if (batch.schema !== schema.batchSchema) throw new Error('VReview Feedback Batch形式ではありません。');
+  const supported = new Set((schema.supportedBatchVersions || []).map(Number));
+  if (!supported.has(Number(batch.version))) throw new Error(`Feedback Batch v${String(batch.version || '?')}は未対応です。`);
+
+  const clips = Array.isArray(batch.clips) ? batch.clips : [];
+  const maxClips = Number(schema?.limits?.maxBatchClips || 20);
+  if (!clips.length) throw new Error('Batch内にクリップがありません。');
+  if (clips.length > maxClips) throw new Error(`Batch内クリップ数が多すぎます（上限 ${maxClips}）。`);
+  if (Number(batch.clip_count) !== clips.length) throw new Error('Batchのclip_countとclips配列が一致しません。');
+
+  const seen = new Set();
+  return clips.map((clip, index) => {
+    const folder = normalizeFolder(clip?.folder);
+    if (!folder || !folder.startsWith('clips/')) throw new Error(`Batch Clip ${index + 1} のfolderが不正です。`);
+    if (seen.has(folder)) throw new Error(`Batch内folderが重複しています: ${folder}`);
+    seen.add(folder);
+
+    const manifestName = `${folder}/manifest.json`;
+    const correctedName = `${folder}/corrected-scenes.json`;
+    const manifest = readJson(entries, manifestName, schema);
+    const corrected = readJson(entries, correctedName, schema);
+    validateFeedbackData(manifest, corrected, schema);
+    return summarizeFeedback(manifest, corrected, `${file.name} / ${folder}`);
+  });
+}
+
+function summarizeFeedback(manifest, corrected, sourceName) {
   let tp = 0;
   let fp = 0;
   let fn = 0;
@@ -136,10 +175,10 @@ async function analyzeFeedbackZip(file, schema) {
   }
 
   return {
-    file: file.name,
+    file: sourceName,
     detector: manifest?.detection?.detector_version || 'unknown',
     packageVersion: manifest?.version || '?',
-    clip: manifest?.video?.name || file.name,
+    clip: manifest?.video?.name || sourceName,
     tp,
     fp,
     fn,
@@ -155,17 +194,11 @@ async function analyzeFeedbackZip(file, schema) {
 }
 
 function validateFeedbackData(manifest, corrected, schema) {
-  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
-    throw new Error('manifest.jsonがありません。');
-  }
-  if (manifest.schema !== schema.packageSchema) {
-    throw new Error(`VReview Feedback形式ではありません（schema: ${String(manifest.schema || 'missing')}）。`);
-  }
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) throw new Error('manifest.jsonがありません。');
+  if (manifest.schema !== schema.packageSchema) throw new Error(`VReview Feedback形式ではありません（schema: ${String(manifest.schema || 'missing')}）。`);
 
   const supported = Array.isArray(schema.supportedPackageVersions) ? schema.supportedPackageVersions.map(Number) : [];
-  if (!supported.includes(Number(manifest.version))) {
-    throw new Error(`Feedback Package v${String(manifest.version || '?')}は未対応です。`);
-  }
+  if (!supported.includes(Number(manifest.version))) throw new Error(`Feedback Package v${String(manifest.version || '?')}は未対応です。`);
   if (!Array.isArray(corrected)) throw new Error('corrected-scenes.jsonがありません。');
 
   const maxScenes = Number(schema?.limits?.maxScenesPerClip || 2000);
@@ -177,32 +210,22 @@ function validateFeedbackData(manifest, corrected, schema) {
   const videoDuration = Number(manifest?.video?.duration);
 
   corrected.forEach((scene, index) => {
-    if (!scene || typeof scene !== 'object' || Array.isArray(scene)) {
-      throw new Error(`Scene ${index + 1} がObjectではありません。`);
-    }
+    if (!scene || typeof scene !== 'object' || Array.isArray(scene)) throw new Error(`Scene ${index + 1} がObjectではありません。`);
     const start = Number(scene.start);
     const end = Number(scene.end);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
-      throw new Error(`Scene ${index + 1} のStart / Endが不正です。`);
-    }
-    if (Number.isFinite(videoDuration) && end > videoDuration + 1.5) {
-      throw new Error(`Scene ${index + 1} が動画時間を大きく超えています。`);
-    }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) throw new Error(`Scene ${index + 1} のStart / Endが不正です。`);
+    if (Number.isFinite(videoDuration) && end > videoDuration + 1.5) throw new Error(`Scene ${index + 1} が動画時間を大きく超えています。`);
 
     const label = scene.feedback_label || scene.feedbackLabel || 'unreviewed';
     if (!labels.has(label)) throw new Error(`Scene ${index + 1} のfeedback labelが不正です。`);
-
     const source = scene.source || null;
     if (source && !sources.has(source)) throw new Error(`Scene ${index + 1} のsourceが不正です。`);
-
     const tier = scene.review_tier || scene.reviewTier || (source === 'manual' ? 'manual' : 'primary');
     if (!tiers.has(tier)) throw new Error(`Scene ${index + 1} のreview tierが不正です。`);
 
     if (scene.confidence != null) {
       const confidence = Number(scene.confidence);
-      if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
-        throw new Error(`Scene ${index + 1} のconfidenceが不正です。`);
-      }
+      if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) throw new Error(`Scene ${index + 1} のconfidenceが不正です。`);
     }
   });
 }
@@ -254,18 +277,7 @@ function renderResults(records, errors, results, summary) {
   const tbody = document.createElement('tbody');
   records.forEach(item => {
     const row = document.createElement('tr');
-    const values = [
-      item.clip,
-      `v${item.detector}`,
-      pct(item.precision),
-      pct(item.recall),
-      pct(item.primaryPrecision),
-      item.tp,
-      item.fp,
-      item.fn,
-      item.weakUseful,
-      item.unreviewed
-    ];
+    const values = [item.clip, `v${item.detector}`, pct(item.precision), pct(item.recall), pct(item.primaryPrecision), item.tp, item.fp, item.fn, item.weakUseful, item.unreviewed];
     values.forEach(value => {
       const td = document.createElement('td');
       td.textContent = String(value);
@@ -282,7 +294,14 @@ function renderResults(records, errors, results, summary) {
   versionPanel.className = 'panel';
   const heading = document.createElement('div');
   heading.className = 'section-heading';
-  heading.innerHTML = '<div><p class="eyebrow">BY DETECTOR</p><h2>Detector別集計</h2></div>';
+  const headingInner = document.createElement('div');
+  const eyebrow = document.createElement('p');
+  eyebrow.className = 'eyebrow';
+  eyebrow.textContent = 'BY DETECTOR';
+  const title = document.createElement('h2');
+  title.textContent = 'Detector別集計';
+  headingInner.append(eyebrow, title);
+  heading.appendChild(headingInner);
   const statusList = document.createElement('div');
   statusList.className = 'status-list';
   for (const [version, data] of grouped.entries()) {
@@ -342,7 +361,7 @@ function groupByDetector(records) {
   return map;
 }
 
-function parseStoredZip(buffer, schema, requiredFiles) {
+function parseStoredZipJson(buffer, schema) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
   const decoder = new TextDecoder('utf-8');
@@ -376,7 +395,7 @@ function parseStoredZip(buffer, schema, requiredFiles) {
     const name = decoder.decode(bytes.slice(nameStart, nameStart + nameLength));
     if (name.includes('../') || name.startsWith('/') || name.includes('\\')) throw new Error('ZIP内Pathが不正です。');
 
-    if (requiredFiles.has(name)) {
+    if (/\.json$/i.test(name)) {
       if (compressedSize > maxJsonBytes) throw new Error(`${name}が大きすぎます。`);
       if (entries.has(name)) throw new Error(`${name}が重複しています。`);
       entries.set(name, bytes.slice(dataStart, dataEnd));
@@ -384,15 +403,12 @@ function parseStoredZip(buffer, schema, requiredFiles) {
     offset = dataEnd;
   }
 
-  for (const required of requiredFiles) {
-    if (!entries.has(required)) throw new Error(`${required}がありません。`);
-  }
   return entries;
 }
 
 function readJson(entries, name, schema) {
   const data = entries.get(name);
-  if (!data) return null;
+  if (!data) throw new Error(`${name}がありません。`);
   const maxJsonBytes = Number(schema?.limits?.maxJsonBytes || 8388608);
   if (data.byteLength > maxJsonBytes) throw new Error(`${name}が大きすぎます。`);
   try {
@@ -400,6 +416,12 @@ function readJson(entries, name, schema) {
   } catch {
     throw new Error(`${name}のJSONが壊れています。`);
   }
+}
+
+function normalizeFolder(value) {
+  const folder = String(value || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  if (!folder || folder.includes('../') || folder.startsWith('..')) return '';
+  return folder;
 }
 
 function ratio(a, b) {

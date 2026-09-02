@@ -21,11 +21,13 @@ const requiredFiles = [
   'js/version.js',
   'js/diagnostics.js',
   'js/detector.js',
+  'js/feedback-library.js',
   'js/feedback-package-v5.js',
   'js/storage.js',
   'css/base.css',
   'css/layout.css',
   'css/components.css',
+  'css/feedback-queue.css',
   'css/diagnostics.css',
   'data/detector-feedback-schema.json',
   'data/diagnostics-schema.json',
@@ -48,6 +50,7 @@ if (version) {
   if (!version.build) errors.push('js/version.js build is missing');
   if (!Number.isInteger(version.storageSchema)) errors.push('js/version.js storageSchema must be an integer');
   if (!Number.isInteger(version.feedbackSchema)) errors.push('js/version.js feedbackSchema must be an integer');
+  if (!Number.isInteger(version.feedbackBatchSchema)) errors.push('js/version.js feedbackBatchSchema must be an integer');
   if (!Number.isInteger(version.diagnosticsSchema)) errors.push('js/version.js diagnosticsSchema must be an integer');
 }
 
@@ -73,8 +76,19 @@ if (projectMeta && version) {
   }
 
   if (Number(projectMeta?.storage?.schemaVersion) !== version.storageSchema) errors.push('project-meta storage schemaVersion does not match js/version.js');
+  const queue = projectMeta?.storage?.feedbackQueue || {};
+  if (queue.backend !== 'IndexedDB') errors.push('project-meta feedbackQueue.backend must be IndexedDB');
+  if (queue.database !== 'vreview-feedback-library') errors.push('project-meta feedbackQueue.database is invalid');
+  if (Number(queue.schemaVersion) !== 1) errors.push('project-meta feedbackQueue.schemaVersion must be 1');
+  if (Number(queue.maxItems) !== 20) errors.push('project-meta feedbackQueue.maxItems must be 20');
+  if (Number(queue.maxBytes) !== 367001600) errors.push('project-meta feedbackQueue.maxBytes must be 367001600');
+  if (queue.storesSourceVideo !== false) errors.push('feedback queue must not store source video');
+  if (queue.storesGeneratedImages !== true) errors.push('feedback queue generated image policy is missing');
+
   if (Number(projectMeta?.aiHandoff?.feedbackSchemaVersion) !== version.feedbackSchema) errors.push('project-meta feedbackSchemaVersion does not match js/version.js');
   if (String(projectMeta?.aiHandoff?.packageVersion) !== String(version.feedback)) errors.push('project-meta packageVersion does not match js/version.js feedback');
+  if (projectMeta?.aiHandoff?.batchSchema !== 'vreview-detector-feedback-batch') errors.push('project-meta batchSchema is invalid');
+  if (Number(projectMeta?.aiHandoff?.batchSchemaVersion) !== version.feedbackBatchSchema) errors.push('project-meta batchSchemaVersion does not match js/version.js');
 
   const diagnostics = projectMeta.diagnostics || {};
   if (Number(diagnostics.schemaVersion) !== version.diagnosticsSchema) errors.push('project-meta diagnostics schemaVersion does not match js/version.js');
@@ -88,14 +102,10 @@ if (projectMeta && version) {
   if (visual.direction !== 'review-workbench') errors.push('project-meta visual.direction must be review-workbench');
   if (visual.primaryDevice !== 'desktop') errors.push('project-meta visual.primaryDevice must be desktop');
   if (visual.primaryContent !== 'video') errors.push('project-meta visual.primaryContent must be video');
-  if (visual.desktopComposition !== 'fixed-video-right-inspector-scroll') {
-    errors.push('project-meta visual.desktopComposition is invalid');
-  }
+  if (visual.desktopComposition !== 'fixed-video-right-inspector-scroll') errors.push('project-meta visual.desktopComposition is invalid');
 
   if (projectMeta?.deployment?.type !== 'github-pages') errors.push('project-meta deployment.type must be github-pages');
-  if (projectMeta?.deployment?.basePath !== EXPECTED_BASE_PATH) {
-    errors.push(`project-meta deployment.basePath must be ${EXPECTED_BASE_PATH}`);
-  }
+  if (projectMeta?.deployment?.basePath !== EXPECTED_BASE_PATH) errors.push(`project-meta deployment.basePath must be ${EXPECTED_BASE_PATH}`);
 }
 
 if (feedbackSchema && version) {
@@ -104,6 +114,12 @@ if (feedbackSchema && version) {
   if (!Array.isArray(feedbackSchema.supportedPackageVersions) || !feedbackSchema.supportedPackageVersions.map(String).includes(String(version.feedback))) {
     errors.push('detector feedback schema does not support current feedback package version');
   }
+  if (feedbackSchema.batchSchema !== 'vreview-detector-feedback-batch') errors.push('detector feedback batchSchema is invalid');
+  if (!Array.isArray(feedbackSchema.supportedBatchVersions) || !feedbackSchema.supportedBatchVersions.map(Number).includes(Number(version.feedbackBatchSchema))) {
+    errors.push('detector feedback schema does not support current batch schema version');
+  }
+  if (Number(feedbackSchema?.limits?.maxBatchClips) !== 20) errors.push('feedback schema maxBatchClips must be 20');
+  if (Number(feedbackSchema?.limits?.maxBatchZipBytes) < 367001600) errors.push('feedback schema maxBatchZipBytes is too small for queue limit');
 }
 
 if (diagnosticsSchema && version && projectMeta) {
@@ -154,6 +170,7 @@ if (fs.existsSync(jsDir)) {
 
 validateReviewRuntime();
 validateVisualWorkbench();
+validateFeedbackQueue();
 
 const detectorPath = path.join(root, 'js/detector.js');
 if (fs.existsSync(detectorPath) && version?.detector) {
@@ -167,6 +184,8 @@ if (fs.existsSync(feedbackPath) && version?.feedback) {
   const feedbackText = fs.readFileSync(feedbackPath, 'utf8');
   const match = feedbackText.match(/const\s+VERSION\s*=\s*(\d+)/);
   if (match && match[1] !== String(version.feedback)) errors.push(`feedback package VERSION ${match[1]} does not match js/version.js feedback ${version.feedback}`);
+  const batchMatch = feedbackText.match(/const\s+BATCH_VERSION\s*=\s*(\d+)/);
+  if (!batchMatch || Number(batchMatch[1]) !== Number(version.feedbackBatchSchema)) errors.push('feedback package BATCH_VERSION does not match js/version.js');
 }
 
 const diagnosticsPath = path.join(root, 'js/diagnostics.js');
@@ -177,9 +196,7 @@ if (fs.existsSync(diagnosticsPath)) {
   if (!text.includes('const MAX_ERRORS = 40')) errors.push('diagnostics error ring limit is not 40');
   if (!text.includes('const MAX_NETWORK = 30')) errors.push('diagnostics network ring limit is not 30');
   if (!text.includes('sessionStorage')) errors.push('diagnostics runtime must use sessionStorage');
-  if (/\bsendBeacon\s*\(/.test(text) || /\bXMLHttpRequest\b/.test(text) || /\bfetch\s*\(/.test(text)) {
-    errors.push('diagnostics runtime must not automatically send telemetry');
-  }
+  if (/\bsendBeacon\s*\(/.test(text) || /\bXMLHttpRequest\b/.test(text) || /\bfetch\s*\(/.test(text)) errors.push('diagnostics runtime must not automatically send telemetry');
   if (!text.includes('User-entered notes and file names are not included.')) errors.push('diagnostics export privacy note is missing');
 }
 
@@ -199,15 +216,17 @@ console.log(`VReview validation passed (${htmlFiles.length} HTML, ${runtimeFiles
 for (const warning of warnings) console.warn(`Warning: ${warning}`);
 
 function validateReviewRuntime() {
-  const reviewPath = path.join(root, 'review.html');
-  if (!fs.existsSync(reviewPath)) return;
-  const review = fs.readFileSync(reviewPath, 'utf8');
+  const review = readText('review.html');
+  if (!review) return;
   if (!review.includes('js/detector.js')) errors.push('review.html must load js/detector.js');
+  if (!review.includes('js/feedback-library.js')) errors.push('review.html must load js/feedback-library.js');
   if (!review.includes('js/feedback-package-v5.js')) errors.push('review.html must load current feedback package runtime');
   if (/scene-detection-v0\d+/i.test(review)) errors.push('review.html still loads legacy versioned detector scripts');
   const diagIndex = review.indexOf('js/diagnostics.js');
+  const libraryIndex = review.indexOf('js/feedback-library.js');
   const appIndex = review.indexOf('js/app.js');
   if (diagIndex < 0 || appIndex < 0 || diagIndex > appIndex) errors.push('review.html must load diagnostics before app.js');
+  if (libraryIndex < 0 || libraryIndex > appIndex) errors.push('review.html must load feedback-library before app.js');
 }
 
 function validateVisualWorkbench() {
@@ -217,64 +236,68 @@ function validateVisualWorkbench() {
   const components = readText('css/components.css');
   if (!review || !index || !layout || !components) return;
 
-  const requiredReviewMarkers = [
-    'review-workspace',
-    'video-column',
-    'player-shell',
-    'timeline-zone',
-    'scene-column',
-    'inspector-section',
-    'sceneList',
-    'feedbackPackageBtn'
-  ];
+  const requiredReviewMarkers = ['review-workspace', 'video-column', 'player-shell', 'timeline-zone', 'scene-column', 'inspector-section', 'sceneList', 'feedbackPackageBtn'];
   for (const marker of requiredReviewMarkers) {
     if (!review.includes(marker)) errors.push(`review workbench missing marker: ${marker}`);
   }
-
   if (review.includes('aiPackageDisabledReason')) errors.push('review.html must not restore the large disabled AI package card');
   if (!index.includes('metric-strip')) errors.push('index.html must use compact metric-strip for detector summary');
   if (!index.includes('dashboard-grid')) errors.push('index.html must use review-oriented dashboard-grid');
-
   if (!layout.includes('body.review-page.review-loaded .scene-column')) errors.push('layout.css missing loaded scene-column rule');
   if (!layout.includes('overflow-y: auto')) errors.push('layout.css missing scrollable inspector behavior');
   if (!layout.includes('.player-shell')) errors.push('layout.css missing player-shell sizing rule');
   if (!layout.includes('@media (max-width: 980px)')) errors.push('layout.css missing narrow viewport fallback');
-
-  if (!components.includes('.scene-column > .panel') || !components.includes('.inspector-section')) {
-    errors.push('components.css missing continuous inspector section styling');
-  }
+  if (!components.includes('.scene-column > .panel') || !components.includes('.inspector-section')) errors.push('components.css missing continuous inspector section styling');
   if (!components.includes('.scene-card.selected::before')) errors.push('components.css missing selected scene visual marker');
   if (!components.includes('.timeline-playhead')) errors.push('components.css missing timeline playhead styling');
+  if (projectMeta?.visual?.direction === 'review-workbench' && !readText('tests/BROWSER_CHECKLIST.md').includes('Visual Review')) errors.push('Browser checklist must include Visual Review for review-workbench direction');
+}
 
-  if (projectMeta?.visual?.direction === 'review-workbench' && !readText('tests/BROWSER_CHECKLIST.md').includes('Visual Review')) {
-    errors.push('Browser checklist must include Visual Review for review-workbench direction');
+function validateFeedbackQueue() {
+  const review = readText('review.html');
+  const app = readText('js/app.js');
+  const library = readText('js/feedback-library.js');
+  const feedback = readText('js/feedback-package-v5.js');
+  const detectorTest = readText('js/detector-test.js');
+  if (!review || !app || !library || !feedback || !detectorTest) return;
+
+  for (const marker of ['savedFeedbackCount', 'feedbackQueueList', 'exportFeedbackBatchBtn', 'clearFeedbackQueueBtn']) {
+    if (!review.includes(marker)) errors.push(`review feedback queue missing marker: ${marker}`);
   }
+  if (!review.includes('css/feedback-queue.css')) errors.push('review.html must load feedback queue styles');
+  if (!library.includes("const DB_NAME = 'vreview-feedback-library'")) errors.push('feedback library DB name changed unexpectedly');
+  if (!library.includes('indexedDB.open')) errors.push('feedback library must use IndexedDB');
+  if (!library.includes('const MAX_ITEMS = 20')) errors.push('feedback library max item guard is missing');
+  if (!library.includes('const MAX_TOTAL_BYTES = 350 * 1024 * 1024')) errors.push('feedback library total size guard is missing');
+  if (/localStorage\.setItem/.test(library)) errors.push('feedback library must not store package blobs in localStorage');
+  if (!feedback.includes('async function prepare')) errors.push('feedback package must separate prepare from ZIP build');
+  if (!feedback.includes('async function buildBatch')) errors.push('feedback package batch builder is missing');
+  if (!feedback.includes("schema: 'vreview-detector-feedback-batch'")) errors.push('feedback batch manifest schema is missing');
+  if (!app.includes('VReviewFeedbackLibrary.save')) errors.push('app does not save prepared feedback to IndexedDB');
+  if (!app.includes('VReviewFeedbackPackage.buildBatch')) errors.push('app does not export saved feedback as batch ZIP');
+  if (!detectorTest.includes('batch-manifest.json')) errors.push('Detector Test does not support batch ZIP');
 }
 
 function validateHtml(htmlFile) {
   const html = fs.readFileSync(path.join(root, htmlFile), 'utf8');
   const refs = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)].map(match => match[1]);
-
   for (const ref of refs) {
     if (/^(?:https?:|mailto:|#|javascript:)/i.test(ref)) continue;
     const clean = ref.split(/[?#]/)[0];
     if (!clean) continue;
     const target = path.resolve(root, path.dirname(htmlFile), clean);
     if (!fs.existsSync(target)) errors.push(`${htmlFile}: missing ${ref}`);
-
     const queryMatch = ref.match(/\?v=([^&#]+)/);
     if (queryMatch && /\.(?:css|js)(?:\?|$)/i.test(ref) && version?.build && queryMatch[1] !== String(version.build)) {
       errors.push(`${htmlFile}: cache version ${queryMatch[1]} does not match build ${version.build} for ${ref}`);
     }
   }
-
   const ids = [...html.matchAll(/\bid=["']([^"']+)["']/g)].map(match => match[1]);
   const seen = new Set();
   for (const id of ids) {
     if (seen.has(id)) errors.push(`${htmlFile}: duplicate id="${id}"`);
     seen.add(id);
   }
-
   if (!html.includes('js/version.js')) errors.push(`${htmlFile}: js/version.js is not loaded`);
   if (/\blocalhost(?::\d+)?\b/i.test(html)) errors.push(`${htmlFile}: localhost dependency found`);
   if (/(?:[A-Za-z]:\\|file:\/\/\/)/.test(html)) errors.push(`${htmlFile}: PC-specific absolute path found`);
@@ -283,15 +306,8 @@ function validateHtml(htmlFile) {
 function validatePublicRuntime(relative, content) {
   if (/\blocalhost(?::\d+)?\b/i.test(content)) errors.push(`${relative}: localhost dependency found`);
   if (/(?:[A-Za-z]:\\|file:\/\/\/)/.test(content)) errors.push(`${relative}: PC-specific absolute path found`);
-
-  const secretPatterns = [
-    /sk-proj-[A-Za-z0-9_-]{16,}/,
-    /\bghp_[A-Za-z0-9]{20,}/,
-    /\bgithub_pat_[A-Za-z0-9_]{20,}/,
-    /\bxox[baprs]-[A-Za-z0-9-]{16,}/
-  ];
+  const secretPatterns = [/sk-proj-[A-Za-z0-9_-]{16,}/, /\bghp_[A-Za-z0-9]{20,}/, /\bgithub_pat_[A-Za-z0-9_]{20,}/, /\bxox[baprs]-[A-Za-z0-9-]{16,}/];
   if (secretPatterns.some(pattern => pattern.test(content))) errors.push(`${relative}: possible secret token found`);
-
   if (relative.endsWith('.json')) {
     const dataUrlMatches = content.match(/data:[^;]+;base64,/g) || [];
     if (dataUrlMatches.length) errors.push(`${relative}: public JSON contains Data URL/base64 payload`);
@@ -311,7 +327,9 @@ function validateDocumentationSnapshots() {
   if (!readme.includes('PROJECT_LEARNINGS.md')) errors.push('README must link to PROJECT_LEARNINGS.md');
   if (!readme.includes('AGENTS.md')) errors.push('README must link to AGENTS.md');
   if (!readme.includes('https://elitemay.github.io/valorant-review/')) errors.push('README public URL is stale');
+  if (!readme.includes('IndexedDB')) errors.push('README must document IndexedDB feedback queue');
   if (!spec.includes('repository subpath `/valorant-review/`')) errors.push('SPEC GitHub Pages base path is stale');
+  if (!spec.includes('vreview-detector-feedback-batch')) errors.push('SPEC must document feedback batch schema');
 }
 
 function readVersionFile(file) {
@@ -330,6 +348,7 @@ function readVersionFile(file) {
     guide: readString('guide'),
     storageSchema: readNumber('storageSchema'),
     feedbackSchema: readNumber('feedbackSchema'),
+    feedbackBatchSchema: readNumber('feedbackBatchSchema'),
     diagnosticsSchema: readNumber('diagnosticsSchema')
   };
 }
@@ -362,7 +381,6 @@ function collectFiles(dirs, predicate) {
     walk(base);
   }
   return output;
-
   function walk(current) {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       const absolute = path.join(current, entry.name);

@@ -13,7 +13,16 @@
   "storage": {
     "schemaVersion": 1,
     "primary": "localStorage",
-    "storesMedia": false
+    "storesMedia": false,
+    "feedbackQueue": {
+      "backend": "IndexedDB",
+      "database": "vreview-feedback-library",
+      "schemaVersion": 1,
+      "maxItems": 20,
+      "maxBytes": 367001600,
+      "storesSourceVideo": false,
+      "storesGeneratedImages": true
+    }
   },
   "diagnostics": {
     "schemaVersion": 1,
@@ -28,7 +37,9 @@
   "aiHandoff": {
     "feedbackSchema": "vreview-detector-feedback",
     "feedbackSchemaVersion": 1,
-    "packageVersion": 5
+    "packageVersion": 5,
+    "batchSchema": "vreview-detector-feedback-batch",
+    "batchSchemaVersion": 1
   },
   "visual": {
     "direction": "review-workbench",

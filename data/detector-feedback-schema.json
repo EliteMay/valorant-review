@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "packageSchema": "vreview-detector-feedback",
   "supportedPackageVersions": [4, 5],
+  "batchSchema": "vreview-detector-feedback-batch",
+  "supportedBatchVersions": [1],
   "requiredFiles": [
     "manifest.json",
     "corrected-scenes.json"
@@ -33,6 +35,8 @@
   },
   "limits": {
     "maxZipBytes": 262144000,
+    "maxBatchZipBytes": 419430400,
+    "maxBatchClips": 20,
     "maxEntries": 5000,
     "maxJsonBytes": 8388608,
     "maxScenesPerClip": 2000

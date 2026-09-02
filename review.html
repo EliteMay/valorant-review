@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07090c">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260902-1">
-  <link rel="stylesheet" href="css/layout.css?v=20260902-1">
-  <link rel="stylesheet" href="css/components.css?v=20260902-1">
+  <link rel="stylesheet" href="css/base.css?v=20260903-1">
+  <link rel="stylesheet" href="css/layout.css?v=20260903-1">
+  <link rel="stylesheet" href="css/components.css?v=20260903-1">
+  <link rel="stylesheet" href="css/feedback-queue.css?v=20260903-1">
 </head>
 <body class="review-page">
   <div class="app-shell">
@@ -129,19 +130,37 @@
             <div class="section-heading">
               <div>
                 <p class="eyebrow">Detector Feedback</p>
-                <h2>改善データを書き出す</h2>
+                <h2>改善データを保存</h2>
               </div>
               <span class="badge">PKG <span data-feedback-version>--</span></span>
             </div>
-            <p class="helper">修正済みScene・診断値・確認画像をまとめます。元動画そのものはZIPへ入れません。</p>
+            <p class="helper">各クリップではZIPをダウンロードせず、修正済みScene・診断値・確認画像をこのブラウザへ保存します。元動画そのものは保存しません。</p>
             <label class="notes-field">
               <span>メモ（任意）</span>
               <textarea id="feedbackNotes" rows="3" placeholder="例: Scene 2は不要 / 3キル目の前を0.5秒長く"></textarea>
             </label>
-            <button class="btn btn-secondary full" id="feedbackPackageBtn" type="button" disabled>検出改善用ZIPを作成</button>
+            <button class="btn btn-secondary full" id="feedbackPackageBtn" type="button" disabled>このクリップの改善データを保存</button>
             <div class="detection-status hidden" id="feedbackStatus" aria-live="polite">
               <div class="detection-status-head"><span id="feedbackMessage">準備中…</span><span class="progress-number" id="feedbackProgressText"></span></div>
-              <progress id="feedbackProgress" max="100" value="0" aria-label="Feedback ZIP生成進捗"></progress>
+              <progress id="feedbackProgress" max="100" value="0" aria-label="Feedback保存・ZIP生成進捗"></progress>
+            </div>
+
+            <div class="feedback-queue" aria-label="保存済みFeedback">
+              <div class="feedback-queue-head">
+                <div>
+                  <span class="feedback-queue-label">Saved feedback</span>
+                  <strong><span id="savedFeedbackCount">0</span> clips</strong>
+                </div>
+                <span id="savedFeedbackSize">0 MB</span>
+              </div>
+              <div class="feedback-queue-list" id="feedbackQueueList">
+                <p class="helper">保存済みデータはまだありません。</p>
+              </div>
+              <div class="feedback-queue-actions">
+                <button class="btn btn-primary full" id="exportFeedbackBatchBtn" type="button" disabled>保存済みをまとめてZIP作成</button>
+                <button class="btn btn-ghost full" id="clearFeedbackQueueBtn" type="button" disabled>保存済みをすべて削除</button>
+              </div>
+              <p class="feedback-queue-note">保存先はIndexedDBです。ZIP作成後も自動削除しないので、不要になったら削除してください。</p>
             </div>
           </section>
 
@@ -154,13 +173,14 @@
     </main>
   </div>
 
-  <script src="js/version.js?v=20260902-1"></script>
-  <script src="js/diagnostics.js?v=20260902-1"></script>
-  <script src="js/storage.js?v=20260902-1"></script>
-  <script src="js/video.js?v=20260902-1"></script>
-  <script src="js/detector.js?v=20260902-1"></script>
-  <script src="js/feedback-package-v5.js?v=20260902-1"></script>
-  <script src="js/ui.js?v=20260902-1"></script>
-  <script src="js/app.js?v=20260902-1"></script>
+  <script src="js/version.js?v=20260903-1"></script>
+  <script src="js/diagnostics.js?v=20260903-1"></script>
+  <script src="js/storage.js?v=20260903-1"></script>
+  <script src="js/video.js?v=20260903-1"></script>
+  <script src="js/detector.js?v=20260903-1"></script>
+  <script src="js/feedback-library.js?v=20260903-1"></script>
+  <script src="js/feedback-package-v5.js?v=20260903-1"></script>
+  <script src="js/ui.js?v=20260903-1"></script>
+  <script src="js/app.js?v=20260903-1"></script>
 </body>
 </html>

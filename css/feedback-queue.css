@@ -1,0 +1,120 @@
+.feedback-queue {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--border);
+}
+
+.feedback-queue-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.feedback-queue-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.feedback-queue-label {
+  color: var(--muted-2);
+  font-family: var(--font-mono);
+  font-size: .59rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.feedback-queue-head strong {
+  color: var(--text);
+  font-size: .84rem;
+  font-weight: 720;
+}
+
+.feedback-queue-head > span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: .66rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.feedback-queue-list {
+  display: grid;
+  max-height: 190px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.feedback-queue-list > .helper {
+  margin: 0;
+  padding: 12px 2px;
+}
+
+.feedback-queue-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 2px;
+}
+
+.feedback-queue-row + .feedback-queue-row {
+  border-top: 1px solid var(--border);
+}
+
+.feedback-queue-info {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.feedback-queue-info strong {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: .73rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedback-queue-info span {
+  color: var(--muted-2);
+  font-family: var(--font-mono);
+  font-size: .61rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.feedback-queue-remove {
+  min-height: 30px;
+  padding: 4px 7px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: .67rem;
+  cursor: pointer;
+}
+
+.feedback-queue-remove:hover,
+.feedback-queue-remove:focus-visible {
+  color: var(--danger);
+}
+
+.feedback-queue-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.feedback-queue-note {
+  margin: 8px 0 0;
+  color: var(--muted-2);
+  font-size: .64rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .feedback-queue-list { max-height: 240px; }
+}
