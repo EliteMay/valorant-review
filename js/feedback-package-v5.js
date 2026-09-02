@@ -1,5 +1,7 @@
 window.VReviewFeedbackPackage = (() => {
   const VERSION = 5;
+  const BATCH_VERSION = 1;
+  const MAX_BATCH_BYTES = 350 * 1024 * 1024;
   const ROI = {
     killfeed: [0.66, 0.995, 0.035, 0.31],
     ammo: [0.80, 0.985, 0.77, 0.985],
@@ -7,9 +9,9 @@ window.VReviewFeedbackPackage = (() => {
     topCenter: [0.31, 0.69, 0.00, 0.18]
   };
 
-  async function build(options = {}) {
+  async function prepare(options = {}) {
     const { file, videoData, detectionRun, correctedScenes = [], notes = '', onProgress = () => {} } = options;
-    if (!file || !videoData) throw new Error('元動画を読み込んでから提出用パッケージを作成してください。');
+    if (!file || !videoData) throw new Error('元動画を読み込んでから提出用データを保存してください。');
     if (!detectionRun) throw new Error('先に自動検出を実行してください。');
 
     const originalScenes = Array.isArray(detectionRun.scenes) ? detectionRun.scenes : [];
@@ -67,7 +69,7 @@ window.VReviewFeedbackPackage = (() => {
         for (let i = 0; i < unique.items.length; i++) {
           const item = unique.items[i];
           const progressBase = i / Math.max(1, unique.items.length);
-          onProgress(0.06 + progressBase * 0.78, `Scene画像 ${i + 1}/${unique.items.length} を作成しています…`);
+          onProgress(0.04 + progressBase * 0.90, `Scene画像 ${i + 1}/${unique.items.length} を作成しています…`);
 
           const sceneEvents = events.filter(event => Number(event.time) >= item.scene.start - 0.65 && Number(event.time) <= item.scene.end + 0.65);
           const times = buildEventAwareTimes(item.scene, sceneEvents, videoData.duration, 16);
@@ -82,16 +84,107 @@ window.VReviewFeedbackPackage = (() => {
         source.cleanup();
       }
     } catch (error) {
-      imageWarning = `確認画像の生成に失敗したため、JSON中心のZIPを作成しました: ${error.message || error}`;
+      imageWarning = `確認画像の生成に失敗したため、JSON中心のデータを保存しました: ${error.message || error}`;
       addText(files, 'image-generation-warning.txt', imageWarning);
     }
 
-    onProgress(0.86, 'ZIPを作成しています…');
-    const blob = buildStoreZip(files, value => onProgress(0.86 + value * 0.14, 'ZIPを作成しています…'));
-    const base = sanitizeBaseName(file.name.replace(/\.[^.]+$/, '')) || 'clip';
-    onProgress(1, imageWarning || '検出改善用ZIPを作成しました。');
+    const baseName = sanitizeBaseName(file.name.replace(/\.[^.]+$/, '')) || 'clip';
+    const byteSize = files.reduce((sum, item) => sum + dataSize(item.data), 0);
+    onProgress(1, imageWarning || '提出用データを準備しました。');
+    return {
+      files,
+      manifest,
+      warning: imageWarning,
+      baseName,
+      byteSize,
+      filename: `vreview_feedback_${baseName}.zip`
+    };
+  }
 
-    return { blob, filename: `vreview_feedback_${base}.zip`, manifest, warning: imageWarning };
+  async function build(options = {}) {
+    const onProgress = options.onProgress || (() => {});
+    const prepared = await prepare({
+      ...options,
+      onProgress: (progress, message) => onProgress(progress * 0.86, message)
+    });
+    onProgress(0.86, 'ZIPを作成しています…');
+    const normalizedFiles = await normalizeFilesForZip(prepared.files, (progress) => {
+      onProgress(0.86 + progress * 0.04, 'ZIP用データを準備しています…');
+    });
+    const blob = buildStoreZip(normalizedFiles, value => onProgress(0.90 + value * 0.10, 'ZIPを作成しています…'));
+    onProgress(1, prepared.warning || '検出改善用ZIPを作成しました。');
+    return { ...prepared, blob };
+  }
+
+  async function buildBatch(packages, options = {}) {
+    const onProgress = options.onProgress || (() => {});
+    const items = Array.isArray(packages) ? packages.filter(Boolean) : [];
+    if (!items.length) throw new Error('保存済みFeedbackがありません。先にクリップごとの提出データを保存してください。');
+
+    const rawBytes = items.reduce((sum, item) => sum + Number(item.byteSize || 0), 0);
+    if (rawBytes > MAX_BATCH_BYTES) throw new Error('保存済みFeedbackが350MBを超えています。不要な項目を削除してからZIPを作成してください。');
+
+    const createdAt = new Date().toISOString();
+    const flatFiles = [];
+    const clipEntries = [];
+    const usedFolders = new Set();
+    let processedFiles = 0;
+    const totalFiles = items.reduce((sum, item) => sum + (Array.isArray(item.files) ? item.files.length : 0), 0) || 1;
+
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index];
+      if (!Array.isArray(item.files) || !item.manifest) throw new Error('保存済みFeedbackの一部が壊れています。該当項目を削除して保存し直してください。');
+      const base = uniqueFolderName(`${String(index + 1).padStart(2, '0')}_${sanitizeBaseName(item.baseName || item.displayName || 'clip') || 'clip'}`, usedFolders);
+      const folder = `clips/${base}`;
+      usedFolders.add(base);
+
+      clipEntries.push({
+        index: index + 1,
+        folder,
+        source_id: item.id || null,
+        package_version: Number(item.packageVersion || item.manifest.version || VERSION),
+        created_at: item.manifest.created_at || item.createdAt || null,
+        video: {
+          name: item.manifest?.video?.name || item.displayName || null,
+          duration: item.manifest?.video?.duration ?? null,
+          width: item.manifest?.video?.width ?? null,
+          height: item.manifest?.video?.height ?? null
+        },
+        counts: item.manifest?.counts || {},
+        byte_size: Number(item.byteSize || 0)
+      });
+
+      for (const file of item.files) {
+        const cleanName = normalizeRelativePath(file?.name);
+        if (!cleanName) throw new Error('保存済みFeedbackに不正なファイル名があります。');
+        const data = await toUint8Array(file.blob ?? file.data);
+        flatFiles.push({ name: `${folder}/${cleanName}`, data });
+        processedFiles += 1;
+        onProgress(0.04 + (processedFiles / totalFiles) * 0.30, `保存データをまとめています… ${processedFiles}/${totalFiles}`);
+      }
+    }
+
+    const batchManifest = {
+      schema: 'vreview-detector-feedback-batch',
+      version: BATCH_VERSION,
+      created_at: createdAt,
+      app_version: window.VReviewVersion?.app || null,
+      feedback_package_version: VERSION,
+      clip_count: items.length,
+      total_uncompressed_bytes: rawBytes,
+      clips: clipEntries
+    };
+
+    flatFiles.unshift(
+      { name: 'README.txt', data: new TextEncoder().encode(buildBatchReadme(items.length)) },
+      { name: 'batch-manifest.json', data: new TextEncoder().encode(JSON.stringify(batchManifest, null, 2)) }
+    );
+
+    onProgress(0.36, 'まとめZIPを作成しています…');
+    const blob = buildStoreZip(flatFiles, value => onProgress(0.36 + value * 0.64, 'まとめZIPを作成しています…'));
+    const filename = `vreview_feedback_batch_${formatFilenameDate(new Date())}.zip`;
+    onProgress(1, `${items.length}クリップを1つのZIPにまとめました。`);
+    return { blob, filename, manifest: batchManifest };
   }
 
   function buildReadme() {
@@ -120,10 +213,27 @@ window.VReviewFeedbackPackage = (() => {
     ].join('\n');
   }
 
+  function buildBatchReadme(count) {
+    return [
+      'VReview Detector Feedback Batch v1',
+      '',
+      `${count}個のFeedback Package v5を1つのZIPへまとめています。`,
+      '各clips/*フォルダは、従来の1クリップ分Feedback ZIPと同じ内容です。',
+      '',
+      '主要ファイル:',
+      '- batch-manifest.json: Batch全体と各クリップFolderの対応',
+      '- clips/NN_name/manifest.json: 各クリップのPackage manifest',
+      '- clips/NN_name/corrected-scenes.json: ユーザー修正後Scene',
+      '- clips/NN_name/detector-diagnostics.json: Detector診断',
+      '- clips/NN_name/scene-images/: 確認画像',
+      '',
+      '元動画そのものは含めていません。'
+    ].join('\n');
+  }
+
   function buildUniqueSceneIndex(autoScenes, correctedScenes) {
     const byKey = new Map();
     const map = { auto: [], corrected: [] };
-
     const add = (scene, type, index) => {
       const key = sceneKey(scene);
       let item = byKey.get(key);
@@ -134,7 +244,6 @@ window.VReviewFeedbackPackage = (() => {
       item.refs.push({ type, index: index + 1 });
       map[type].push({ index: index + 1, image_id: item.id, start: round(scene.start, 3), end: round(scene.end, 3) });
     };
-
     autoScenes.forEach((scene, index) => add(scene, 'auto', index));
     correctedScenes.forEach((scene, index) => add(scene, 'corrected', index));
     return { items: [...byKey.values()], map };
@@ -148,18 +257,15 @@ window.VReviewFeedbackPackage = (() => {
     const start = clamp(Number(scene.start || 0), 0, duration);
     const end = clamp(Number(scene.end || 0), 0, duration);
     const candidates = [];
-
     const add = (time, priority, label) => {
       const t = clamp(Number(time || 0), 0, Math.max(0, duration - 0.02));
       if (candidates.some(item => Math.abs(item.time - t) < 0.045)) return;
       candidates.push({ time: t, priority, label });
     };
-
     add(start - 0.50, 6, 'PRE');
     add(start, 8, 'START');
     add(end, 8, 'END');
     add(end + 0.50, 6, 'POST');
-
     for (const event of events) {
       const priority = event.kind === 'kill-confirm' ? 10
         : event.kind === 'shot-hud' ? 9
@@ -168,7 +274,6 @@ window.VReviewFeedbackPackage = (() => {
               : 3;
       add(event.time, priority + Math.min(Number(event.score || 0), 2), event.kind || 'event');
     }
-
     const selected = candidates.sort((a, b) => b.priority - a.priority || a.time - b.time).slice(0, count);
     if (selected.length < count) {
       const fillers = evenlySpaced(clamp(start - 0.55, 0, duration), clamp(end + 0.55, 0, duration), count * 2);
@@ -178,7 +283,6 @@ window.VReviewFeedbackPackage = (() => {
         selected.push({ time, priority: 1, label: 'FILL' });
       }
     }
-
     return selected.sort((a, b) => a.time - b.time).slice(0, count);
   }
 
@@ -204,7 +308,6 @@ window.VReviewFeedbackPackage = (() => {
     if (!ctx) throw new Error('コンタクトシートを作成できませんでした。');
     ctx.fillStyle = '#07090c';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     for (let i = 0; i < timeItems.length; i++) {
       const item = timeItems[i];
       await seekVideo(video, item.time);
@@ -231,14 +334,12 @@ window.VReviewFeedbackPackage = (() => {
     if (!ctx) throw new Error('ROI画像を作成できませんでした。');
     ctx.fillStyle = '#07090c';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
     const entries = [
       ['KILLFEED', ROI.killfeed],
       ['AMMO', ROI.ammo],
       ['KILL CONFIRM', ROI.killConfirm],
       ['ROUND UI', ROI.topCenter]
     ];
-
     entries.forEach(([name, roi], index) => {
       const x = (index % 2) * cellW;
       const y = Math.floor(index / 2) * cellH;
@@ -249,7 +350,6 @@ window.VReviewFeedbackPackage = (() => {
       ctx.font = 'bold 14px system-ui, sans-serif';
       ctx.fillText(`${label} ${name} ${formatTime(time)}`, x + 8, y + 19);
     });
-
     return canvasToBlob(canvas, 'image/jpeg', 0.88);
   }
 
@@ -366,23 +466,45 @@ window.VReviewFeedbackPackage = (() => {
     files.push({ name, data: new TextEncoder().encode(text) });
   }
 
+  async function normalizeFilesForZip(files, onProgress = () => {}) {
+    const result = [];
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index];
+      result.push({ name: file.name, data: await toUint8Array(file.data ?? file.blob) });
+      onProgress((index + 1) / Math.max(1, files.length));
+    }
+    return result;
+  }
+
+  async function toUint8Array(data) {
+    if (data instanceof Uint8Array) return data;
+    if (data instanceof ArrayBuffer) return new Uint8Array(data);
+    if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength));
+    if (data instanceof Blob) return new Uint8Array(await data.arrayBuffer());
+    throw new Error('ZIPへ変換できない保存データがあります。');
+  }
+
+  function dataSize(data) {
+    if (data instanceof Blob) return data.size;
+    if (data instanceof ArrayBuffer) return data.byteLength;
+    if (ArrayBuffer.isView(data)) return data.byteLength;
+    return 0;
+  }
+
   function buildStoreZip(files, onProgress = () => {}) {
     const encoder = new TextEncoder();
     const localParts = [], centralParts = [];
     let offset = 0;
     const dos = dosDateTime(new Date());
-
     files.forEach((file, index) => {
       const nameBytes = encoder.encode(file.name);
       const data = file.data instanceof Uint8Array ? file.data : new Uint8Array(file.data);
       const crc = crc32(data);
-
       const local = new Uint8Array(30 + nameBytes.length);
       const lv = new DataView(local.buffer);
       lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true); lv.setUint16(8, 0, true);
       lv.setUint16(10, dos.time, true); lv.setUint16(12, dos.date, true); lv.setUint32(14, crc, true); lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true); lv.setUint16(26, nameBytes.length, true); lv.setUint16(28, 0, true); local.set(nameBytes, 30);
       localParts.push(local, data);
-
       const central = new Uint8Array(46 + nameBytes.length);
       const cv = new DataView(central.buffer);
       cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true); cv.setUint16(10, 0, true); cv.setUint16(12, dos.time, true); cv.setUint16(14, dos.date, true); cv.setUint32(16, crc, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true); cv.setUint16(28, nameBytes.length, true); cv.setUint16(30, 0, true); cv.setUint16(32, 0, true); cv.setUint16(34, 0, true); cv.setUint16(36, 0, true); cv.setUint32(38, 0, true); cv.setUint32(42, offset, true); central.set(nameBytes, 46);
@@ -390,7 +512,6 @@ window.VReviewFeedbackPackage = (() => {
       offset += local.length + data.length;
       onProgress((index + 1) / Math.max(1, files.length));
     });
-
     const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
     const end = new Uint8Array(22);
     const ev = new DataView(end.buffer);
@@ -425,8 +546,30 @@ window.VReviewFeedbackPackage = (() => {
   function download(blob, filename) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
+  }
+
+  function formatFilenameDate(date) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
+  }
+
+  function uniqueFolderName(base, used) {
+    let candidate = base || 'clip';
+    let suffix = 2;
+    while (used.has(candidate)) candidate = `${base}_${suffix++}`;
+    return candidate;
+  }
+
+  function normalizeRelativePath(value) {
+    const path = String(value || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!path || path.includes('../') || path.startsWith('..')) return '';
+    return path;
   }
 
   function formatTime(seconds) {
@@ -447,5 +590,5 @@ window.VReviewFeedbackPackage = (() => {
     return Math.min(max, Math.max(min, value));
   }
 
-  return { build, download };
+  return { prepare, build, buildBatch, download };
 })();
