@@ -1,11 +1,12 @@
 window.VReviewVersion = Object.freeze({
-  app: '0.7.0',
+  app: '0.8.0',
   detector: '0.5.0',
   feedback: '5',
   storageSchema: 1,
   feedbackSchema: 1,
+  feedbackBatchSchema: 1,
   diagnosticsSchema: 1,
-  build: '20260902-1',
+  build: '20260903-1',
   guide: '1.13.0'
 });
 
