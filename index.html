@@ -3,93 +3,128 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0d10">
+  <meta name="theme-color" content="#07090c">
   <title>VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260831-1">
-  <link rel="stylesheet" href="css/layout.css?v=20260831-1">
-  <link rel="stylesheet" href="css/components.css?v=20260831-1">
+  <link rel="stylesheet" href="css/base.css?v=20260902-1">
+  <link rel="stylesheet" href="css/layout.css?v=20260902-1">
+  <link rel="stylesheet" href="css/components.css?v=20260902-1">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="index.html">VReview</a>
-      <p class="brand-sub">VALORANT Clip Analysis</p>
+      <p class="brand-sub">Clip analysis workbench</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item active" href="index.html" aria-current="page">Dashboard</a>
         <a class="nav-item" href="review.html">New Review</a>
         <a class="nav-item" href="detector-test.html">Detector Test</a>
         <a class="nav-item" href="diagnostics.html">Diagnostics</a>
       </nav>
-      <div class="nav-coming-soon" aria-label="開発中の機能">
-        <span>Import / Result — 開発中</span>
-        <span>History — 開発中</span>
-        <span>Training — 開発中</span>
-        <span>Settings — 開発中</span>
-      </div>
     </aside>
 
     <main class="main-content">
       <header class="page-header">
         <div>
-          <p class="eyebrow">DASHBOARD · <span data-app-version>--</span></p>
-          <h1>まずScene検出を、ちゃんと使える品質へ。</h1>
-          <p class="lead">Detectorの汎化検証を続けながら、失敗時に状況を再説明しなくても診断データから調査を始められる基盤を整えています。</p>
+          <p class="eyebrow">VALORANT Clip Review · <span data-app-version>--</span></p>
+          <h1>VReview</h1>
+          <p class="lead">動画を見ながらキルSceneを検出・修正し、Detectorの精度を実クリップで育てるためのレビュー作業台。</p>
         </div>
-        <a class="btn btn-primary" href="review.html">New Review</a>
+        <a class="btn btn-primary" href="review.html">クリップをレビュー</a>
       </header>
 
-      <section class="stats-grid" aria-label="Detector概要">
-        <article class="stat-card">
-          <span class="stat-label">DETECTOR</span>
-          <strong class="stat-value" id="detectorVersionCard">--</strong>
-          <span class="stat-note">単一Pipeline版</span>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">LAST PRIMARY</span>
-          <strong class="stat-value" id="lastPrimaryCount">--</strong>
-          <span class="stat-note">直近クリップの本命Scene</span>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">LAST WEAK</span>
-          <strong class="stat-value" id="lastWeakCount">--</strong>
-          <span class="stat-note">直近の要確認候補</span>
-        </article>
-        <article class="stat-card">
-          <span class="stat-label">DIAGNOSTICS</span>
-          <strong class="priority-value">Local only</strong>
-          <span class="stat-note"><a href="diagnostics.html">問題時に診断JSONを出力</a></span>
-        </article>
-      </section>
-
-      <section class="panel">
-        <div class="section-heading"><div><p class="eyebrow">WORKFLOW</p><h2>現在の実用フロー</h2></div></div>
-        <div class="workflow-grid">
-          <div class="workflow-step"><span>01</span><strong>動画を選択</strong><p>同じ動画ならDraft / Backupから復元できます。</p></div>
-          <div class="workflow-step"><span>02</span><strong>自動検出</strong><p>本命Sceneと要確認候補へ分類。途中キャンセル可能。</p></div>
-          <div class="workflow-step"><span>03</span><strong>Scene確認</strong><p>動画固定表示のまま右ペインで修正・ラベル付け。</p></div>
-          <div class="workflow-step"><span>04</span><strong>検証</strong><p>Feedback ZIPをDetector Testで集計。問題時はDiagnosticsを出力。</p></div>
+      <section class="metric-strip" aria-label="直近のDetector状態">
+        <div class="metric-item">
+          <span class="metric-label">Detector</span>
+          <strong class="metric-value" id="detectorVersionCard">--</strong>
+          <span class="metric-note">current pipeline</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Last primary</span>
+          <strong class="metric-value" id="lastPrimaryCount">--</strong>
+          <span class="metric-note">本命Scene</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Last check</span>
+          <strong class="metric-value" id="lastWeakCount">--</strong>
+          <span class="metric-note">要確認候補</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Last clip</span>
+          <strong class="metric-value" id="lastClipName">No clip yet</strong>
+          <span class="metric-note">この端末の直近解析</span>
         </div>
       </section>
 
-      <section class="panel">
-        <div class="section-heading"><div><p class="eyebrow">STATUS</p><h2>現在の基盤状態</h2></div></div>
-        <div class="status-list">
-          <div class="status-row"><span>Web Project Guide</span><strong class="status-ready"><span data-guide-version>--</span></strong></div>
-          <div class="status-row"><span>Project Profiles</span><strong class="status-ready">STATIC / MEDIA / AI-HANDOFF / TOOL</strong></div>
-          <div class="status-row"><span>Project Memory</span><strong class="status-ready">PROJECT_LEARNINGS.md</strong></div>
-          <div class="status-row"><span>Development Diagnostics</span><strong class="status-ready">Local / Exportable</strong></div>
-          <div class="status-row"><span>Detector Runtime</span><strong class="status-ready">Single Pipeline</strong></div>
-          <div class="status-row"><span>Scene Draft</span><strong class="status-ready">Schema v1 + Backup</strong></div>
-          <div class="status-row"><span>Feedback Package</span><strong class="status-ready"><span data-feedback-version>--</span></strong></div>
-          <div class="status-row"><span>ChatGPT採点パッケージ</span><strong class="status-pending">After detector validation</strong></div>
+      <div class="dashboard-grid">
+        <section class="dashboard-section" aria-labelledby="workflowTitle">
+          <div class="dashboard-section-head">
+            <div>
+              <p class="eyebrow">Review Flow</p>
+              <h2 class="dashboard-section-title" id="workflowTitle">1本のクリップを4段階で確認</h2>
+            </div>
+            <a class="btn btn-secondary btn-small" href="review.html">Start</a>
+          </div>
+          <div class="workflow-list">
+            <div class="workflow-row">
+              <span class="workflow-index">01</span>
+              <div><strong>動画を開く</strong><p>MP4 / WebMをブラウザ内で読み込み。以前のDraftがあれば復元できます。</p></div>
+              <span class="workflow-arrow">→</span>
+            </div>
+            <div class="workflow-row">
+              <span class="workflow-index">02</span>
+              <div><strong>Detectorを走らせる</strong><p>本命Sceneと要確認候補を分けて抽出。解析は途中で中止できます。</p></div>
+              <span class="workflow-arrow">→</span>
+            </div>
+            <div class="workflow-row">
+              <span class="workflow-index">03</span>
+              <div><strong>映像を見ながら修正</strong><p>動画とTimelineを固定したまま、右Inspectorで時間・正解Labelを調整します。</p></div>
+              <span class="workflow-arrow">→</span>
+            </div>
+            <div class="workflow-row">
+              <span class="workflow-index">04</span>
+              <div><strong>改善データを残す</strong><p>修正結果をFeedback ZIPへまとめ、Detector Testで複数クリップを比較します。</p></div>
+              <span class="workflow-arrow">✓</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="dashboard-stack">
+          <section class="dashboard-section" aria-labelledby="runtimeTitle">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="eyebrow">Runtime</p>
+                <h2 class="dashboard-section-title" id="runtimeTitle">現在の基盤</h2>
+              </div>
+            </div>
+            <div class="runtime-list">
+              <div class="runtime-row"><span>Web Project Guide</span><strong class="status-ready"><span data-guide-version>--</span></strong></div>
+              <div class="runtime-row"><span>Scene Draft</span><strong class="status-ready">Schema v1 + Backup</strong></div>
+              <div class="runtime-row"><span>Feedback Package</span><strong class="status-ready"><span data-feedback-version>--</span></strong></div>
+              <div class="runtime-row"><span>Diagnostics</span><strong class="status-ready">Local only</strong></div>
+              <div class="runtime-row"><span>AI Review</span><strong class="status-pending">After validation</strong></div>
+            </div>
+          </section>
+
+          <section class="dashboard-section" aria-labelledby="supportTitle">
+            <div class="dashboard-section-head">
+              <div>
+                <p class="eyebrow">Troubleshooting</p>
+                <h2 class="dashboard-section-title" id="supportTitle">問題が起きたら</h2>
+              </div>
+            </div>
+            <div class="runtime-list">
+              <a class="runtime-row" href="diagnostics.html"><span>Error ID / 直前操作</span><strong>Diagnostics →</strong></a>
+              <a class="runtime-row" href="detector-test.html"><span>複数ZIPの精度比較</span><strong>Detector Test →</strong></a>
+            </div>
+          </section>
         </div>
-      </section>
+      </div>
     </main>
   </div>
 
-  <script src="js/version.js?v=20260831-1"></script>
-  <script src="js/diagnostics.js?v=20260831-1"></script>
-  <script src="js/storage.js?v=20260831-1"></script>
-  <script src="js/app.js?v=20260831-1"></script>
+  <script src="js/version.js?v=20260902-1"></script>
+  <script src="js/diagnostics.js?v=20260902-1"></script>
+  <script src="js/storage.js?v=20260902-1"></script>
+  <script src="js/app.js?v=20260902-1"></script>
 </body>
 </html>
