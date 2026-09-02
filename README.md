@@ -12,16 +12,17 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 
 ## 現在の状態
 
-- VReview: **v0.7.0**
+- VReview: **v0.8.0**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
+- Feedback Batch Schema: **v1**
 - Storage Schema: **v1**
 - Diagnostics Schema: **v1**
 - Adopted Web Project Guide: **v1.13.0**
 - Profiles: **STATIC + MEDIA + AI-HANDOFF + TOOL**
 - Visual Direction: **Review Workbench**
 
-v0.7.0は見た目・Information Hierarchy・Workspace構造の改修です。Detectorの判定条件はv0.5.0から変更していません。
+v0.8.0はDetector条件を変えず、Feedback提出を「1クリップごとにZIPをダウンロード」から「複数クリップを端末へ保存し、最後に1回だけZIP化」へ変更します。Detectorは引き続きv0.5.0です。
 
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
@@ -31,27 +32,26 @@ Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 - Coding agent router: [`AGENTS.md`](AGENTS.md)
 - Work history / verification: [`作業報告書.md`](作業報告書.md)
 
-## Visual Direction
-
-v0.7.0では `web-project-guide` v1.13.0 のVisual Quality Baseline / Domain-first Visual Researchに従い、ゲーム動画レビュー・動画フィードバック・スポーツ映像解析Toolを調査してからUIを再設計しました。
-
-採用した方向:
+## 基本フロー
 
 ```text
-左: compact navigation
-中央: gameplay video + event timeline + clip controls
-右: continuous scene inspector
+Clip Aを検出・修正
+→ このクリップの改善データを保存
+
+Clip Bを検出・修正
+→ このクリップの改善データを保存
+
+Clip Cを検出・修正
+→ このクリップの改善データを保存
+
+最後
+→ 保存済みをまとめてZIP作成
+→ 1つのBatch ZIPをChatGPTへ渡す
 ```
 
-重要な原則:
+同じ動画を保存し直した場合は、その動画Fingerprintの保存データを更新するため重複しません。別動画を保存すると件数が増えます。
 
-- 動画を画面の主役にする。
-- Timelineを動画へ密着させる。
-- 右側はCardの縦積みではなくInspector / Listとして高密度にする。
-- Accent ColorよりTimestamp / Selected / Event / Stateを優先して見せる。
-- PC版は中央動画を固定し、右Scene Inspectorだけ縦Scrollする。
-- 980 CSS px以下では固定Workspaceを解除し通常縦Scrollへ戻す。
-- 未実装機能は通常のReview作業面から外す。
+Batch ZIPは`Detector Test`へそのまま1個ドロップでき、中の複数クリップを個別Feedbackとして集計します。従来のv4 / v5単体Feedback ZIPも引き続きImportできます。
 
 ## 現在使える機能
 
@@ -68,13 +68,49 @@ v0.7.0では `web-project-guide` v1.13.0 のVisual Quality Baseline / Domain-fir
 - Draft Backup / Restore
 - Scene削除Undo
 - Storage失敗・別タブ競合警告
-- Detector改善用Feedback ZIP生成
-- Error ID
-- Local Development Diagnostics
+- Feedback Package v5相当の内容をIndexedDBへ保存
+- 保存済みFeedbackの件数・容量表示
+- 保存済みFeedbackの個別削除 / 全削除
+- 複数Feedbackを1つのBatch ZIPへExport
+- Error ID / Local Development Diagnostics
+
+### Feedback Queue
+
+Feedback Queueは [`js/feedback-library.js`](js/feedback-library.js) が管理します。
+
+保存先:
+
+- **IndexedDB**: `vreview-feedback-library`
+- 最大20クリップ
+- 合計最大350MB
+- 同じ動画Fingerprintは上書き更新
+
+保存するもの:
+
+- `manifest.json`
+- `auto-scenes.json`
+- `corrected-scenes.json`
+- `detector-diagnostics.json`
+- `scene-image-map.json`
+- `notes.txt`
+- 全画面確認シート
+- ROI確認シート
+
+保存しないもの:
+
+- 元動画本体
+- API Key / Password / Token
+
+ZIPを作成してもQueueは自動削除しません。ダウンロードを確認してから個別削除または「保存済みをすべて削除」を使います。
 
 ### Detector Test
 
-複数のFeedback ZIPをまとめて読み込み、以下を集計します。
+以下を読み込めます。
+
+- 従来のFeedback Package v4 / v5 ZIP
+- `vreview-detector-feedback-batch` v1 のBatch ZIP
+
+集計:
 
 - Precision
 - Recall
@@ -83,40 +119,11 @@ v0.7.0では `web-project-guide` v1.13.0 のVisual Quality Baseline / Domain-fir
 - weakへ落ちた有効Scene
 - Detector Version別集計
 
-Import前に [`data/detector-feedback-schema.json`](data/detector-feedback-schema.json) でPackage / Scene / Label / Tier等をValidationします。
+Import前に [`data/detector-feedback-schema.json`](data/detector-feedback-schema.json) でPackage / Batch / Scene / Label / TierをValidationします。
 
 ### Diagnostics
 
-[`diagnostics.html`](diagnostics.html) で、このTabの診断情報を確認・Exportできます。
-
-記録対象:
-
-- App / Build / Schema / Detector / Feedback / Guide Version
-- Route / Viewport / Browserの最小Summary
-- 重要操作Breadcrumb
-- JavaScript Error / Promise Rejection
-- Storage / Import / Network FailureのSanitized Summary
-
-記録しないもの:
-
-- 元動画・画像・音声本体
-- Scene内容本体
-- Feedbackメモ本文
-- File名 / Path
-- localStorage / sessionStorage値本体
-- Password / API Key / Token / Cookie / Authorization
-
-Diagnosticsは`sessionStorage`の上限付きRing Bufferで、自動外部送信しません。
-
-## 基本フロー
-
-1. `New Review`でVALORANTクリップを開く
-2. `自動検出`を実行
-3. 動画・Timelineを見ながら右InspectorでSceneを確認
-4. 誤検出は`不要・誤検出`、見逃しは手動追加、範囲ズレはStart / Endを修正
-5. `検出改善用ZIPを作成`
-6. 複数ZIPを`Detector Test`で比較
-7. 不具合時は`Diagnostics`から診断JSONを出力
+[`diagnostics.html`](diagnostics.html) で、このTabの診断情報を確認・Exportできます。動画本体・Scene本文・Feedbackメモ本文・Storage値そのものはDiagnosticsへ保存せず、自動外部送信もしません。
 
 ## 保存
 
@@ -131,30 +138,29 @@ Diagnosticsは`sessionStorage`の上限付きRing Bufferで、自動外部送信
 
 Storage Schemaはv1です。v0.5.0以前のplain Array / Object形式も読める後方互換を維持しています。
 
+### IndexedDB
+
+Feedback QueueのJSON・生成画像・診断Package内容を保存します。大きいBlobをlocalStorageへ入れません。
+
 ### sessionStorage
 
 Development Diagnosticsの直近Sessionのみ保存します。
 
-### 保存しないもの
+## Visual Direction
 
-- 元動画
-- API Key / Password / Token
-- Media body
-- 巨大Detector diagnostics
-
-## 外部サービス
-
-現在の主要機能はBackend / DB / CDN / OpenAI APIを必要としません。
-
-将来のAIレビューも基本は次の手動フローを予定しています。
+PC版New Reviewは以下を維持します。
 
 ```text
-VReview
-↓
-ChatGPT Plusへ手動提出
-↓
-固定JSONをVReviewへImport
+左: compact navigation
+中央: gameplay video + event timeline + clip controls
+右: continuous scene inspector
 ```
+
+- 動画を最大Visualにする。
+- Timelineを動画直下に置く。
+- 右Inspectorだけ縦Scrollする。
+- 980 CSS px以下では通常縦Scrollへ戻す。
+- 右Inspectorを巨大Cardの縦積みへ戻さない。
 
 ## 崩してはいけない仕様
 
@@ -162,16 +168,17 @@ ChatGPT Plusへ手動提出
 
 - GitHub Pages対応を維持する。
 - 有料APIを必須にしない。
-- 元動画を勝手に外部送信しない。
+- 元動画を勝手に外部送信・IndexedDB保存・Feedback ZIP格納しない。
 - Detector結果は必ず手動修正可能にする。
 - `primary / weak`を分離する。
-- PC版New Reviewの**中央動画固定 + 右InspectorのみScroll**を維持する。
-- 動画・TimelineをReview画面のVisual Priority 1とする。
-- 右Inspectorを巨大Cardの縦積みへ戻さない。
+- PC版New Reviewの中央動画固定 + 右InspectorのみScrollを維持する。
+- Feedback画像 / Package BlobをlocalStorageへ保存しない。
+- 同じ動画のQueue保存を重複追加せず更新する。
+- Batch ZIP生成失敗で保存済みQueueを消さない。
+- v4 / v5単体FeedbackのDetector Test互換を維持する。
 - Versioned Patch JSを再び積み上げない。
 - 保存データをMigration / Backupなしに破棄しない。
 - Detector条件を単一Clipだけへ過学習させない。
-- 未実装機能を完成済みのように見せない。
 - Static Validation成功をBrowser / Visual / User Validation済みとして扱わない。
 
 ## Validation
@@ -179,25 +186,18 @@ ChatGPT Plusへ手動提出
 GitHub Actionsでpush / pull request時に以下を確認します。
 
 - JavaScript / MJS構文
-- 必須ファイル / JSON
-- HTML local references / duplicate ID
+- 必須ファイル / JSON / HTML参照
 - Cache Build整合
 - Project Guide / Profile metadata
-- Storage / Feedback / Diagnostics Schema整合
-- Diagnostics wiring / privacy policy
-- Review Workbenchの必須構造
+- Storage / Feedback / Batch / Diagnostics Schema整合
+- IndexedDB Feedback Queue契約
+- Batch ZIP / Detector Test配線
+- Review Workbench必須構造
 - 旧Versioned Detector再混入
 - localhost / PC固有Path /代表的Secret Token
 - Storage後方互換Regression Test
 
-ローカルでNode.jsがある場合:
-
-```bash
-node scripts/validate.mjs
-node tests/storage.test.mjs
-```
-
-Visual変更はStatic Validationだけでは完成扱いにしません。Firefox / Chromium / Zoom / low-height / right-only scroll等の手動項目は [`tests/BROWSER_CHECKLIST.md`](tests/BROWSER_CHECKLIST.md) に分離しています。
+Browser / IndexedDB / Media / ZIPの実動作はStatic CIと分離し、[`tests/BROWSER_CHECKLIST.md`](tests/BROWSER_CHECKLIST.md)で確認します。
 
 ## 未実装 / 既知の課題
 
@@ -211,4 +211,4 @@ Visual変更はStatic Validationだけでは完成扱いにしません。Firefo
 - Timeline Start / Endドラッグハンドル
 - ChatGPT採点用30 / 60fps Package
 - AI result JSON Import / History / Training
-- v0.7.0 Review Workbenchの実ブラウザVisual Validation
+- v0.8.0 IndexedDB Queue / Batch ZIPの実ブラウザ検証
