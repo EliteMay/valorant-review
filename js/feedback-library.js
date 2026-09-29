@@ -36,7 +36,10 @@ window.VReviewFeedbackLibrary = (() => {
         dbPromise = null;
         reject(request.error || new Error('Feedback保存領域を開けませんでした。'));
       };
-      request.onblocked = () => reject(new Error('別タブが古い保存領域を使用中です。VReviewの他タブを閉じて再試行してください。'));
+      request.onblocked = () => {
+        dbPromise = null;
+        reject(new Error('別タブが古い保存領域を使用中です。VReviewの他タブを閉じて再試行してください。'));
+      };
     });
 
     return dbPromise;

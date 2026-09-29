@@ -4,7 +4,7 @@ import path from 'node:path';
 const root = process.cwd();
 const errors = [];
 const warnings = [];
-const EXPECTED_GUIDE = '1.13.0';
+const EXPECTED_GUIDE = '1.22.0';
 const EXPECTED_BASE_PATH = '/valorant-review/';
 
 const requiredFiles = [
@@ -31,7 +31,23 @@ const requiredFiles = [
   'css/diagnostics.css',
   'data/detector-feedback-schema.json',
   'data/diagnostics-schema.json',
-  'tests/BROWSER_CHECKLIST.md'
+  'tests/BROWSER_CHECKLIST.md',
+  'package.json',
+  'electron/main.cjs',
+  'electron/preload.cjs',
+  'electron/foundation/settings-store.cjs',
+  'electron/foundation/logger.cjs',
+  'electron/foundation/window-state.cjs',
+  'electron/foundation/task-registry.cjs',
+  'electron/foundation/diagnostics.cjs',
+  'electron/updater.cjs',
+  'js/detector-metrics.js',
+  'tests/detector-metrics.test.mjs',
+  'data/session-schema.json',
+  'data/duel-schema.json',
+  'data/analysis-run-schema.json',
+  'docs/V1_ELECTRON_ARCHITECTURE.md',
+  '.github/workflows/electron.yml'
 ];
 
 for (const file of requiredFiles) {
@@ -42,8 +58,10 @@ const version = readVersionFile(path.join(root, 'js/version.js'));
 const projectMeta = readJsonFile('project-meta.json');
 const feedbackSchema = readJsonFile('data/detector-feedback-schema.json');
 const diagnosticsSchema = readJsonFile('data/diagnostics-schema.json');
+const packageJson = readJsonFile('package.json');
 
 if (version) {
+  if (packageJson?.version && packageJson.version !== version.app) errors.push('package.json version does not match js/version.js app');
   if (version.guide !== EXPECTED_GUIDE) errors.push(`js/version.js guide must be ${EXPECTED_GUIDE}, got ${version.guide ?? 'missing'}`);
   if (!version.app) errors.push('js/version.js app is missing');
   if (!version.detector) errors.push('js/version.js detector is missing');
@@ -171,6 +189,7 @@ if (fs.existsSync(jsDir)) {
 validateReviewRuntime();
 validateVisualWorkbench();
 validateFeedbackQueue();
+validateElectronFoundation();
 
 const detectorPath = path.join(root, 'js/detector.js');
 if (fs.existsSync(detectorPath) && version?.detector) {
@@ -214,6 +233,30 @@ if (errors.length) {
 
 console.log(`VReview validation passed (${htmlFiles.length} HTML, ${runtimeFiles.length} runtime/data files checked, guide ${version?.guide || '?'}).`);
 for (const warning of warnings) console.warn(`Warning: ${warning}`);
+
+
+function validateElectronFoundation() {
+  const pkg = readText('package.json');
+  const main = readText('electron/main.cjs');
+  const preload = readText('electron/preload.cjs');
+  const settings = readText('settings.html');
+  const workflow = readText('.github/workflows/electron.yml');
+  const metrics = readText('js/detector-metrics.js');
+  const detectorTest = readText('js/detector-test.js');
+  if (!pkg || !main || !preload) return;
+
+  if (!pkg.includes('"main": "electron/main.cjs"')) errors.push('package.json Electron main entry is invalid');
+  if (!pkg.includes('"appId": "io.github.elitemay.vreview"')) errors.push('package.json appId is invalid');
+  if (!main.includes('contextIsolation: true')) errors.push('Electron contextIsolation must be true');
+  if (!main.includes('sandbox: true')) errors.push('Electron sandbox must be true');
+  if (!main.includes('nodeIntegration: false')) errors.push('Electron nodeIntegration must be false');
+  if (!main.includes('requestSingleInstanceLock')) errors.push('Electron single-instance guard is missing');
+  if (!preload.includes('contextBridge.exposeInMainWorld')) errors.push('Electron preload bridge is missing');
+  if (!settings.includes('js/desktop-settings.js')) errors.push('Desktop settings screen is not wired');
+  if (!workflow.includes('windows-latest')) errors.push('Electron Windows CI is missing');
+  if (!metrics.includes("mode: 'temporal-ground-truth-v1'")) errors.push('Temporal detector metrics are missing');
+  if (!detectorTest.includes('auto-scenes.json')) errors.push('Detector Test must evaluate auto-scenes.json when available');
+}
 
 function validateReviewRuntime() {
   const review = readText('review.html');

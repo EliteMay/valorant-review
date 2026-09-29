@@ -106,6 +106,47 @@
 - Guide candidate: no
 - Guide note: Domain-first Visual Research / Visual Foundation ResetはGuide v1.13.0へ既に存在するため、VReview固有Evidenceとして残す。
 
+### PL-F-006 Detector評価が修正後Sceneだけを見て自己採点化した
+
+- Date: 2026-09-29
+- Status: resolved in v0.9 foundation
+- Severity: critical
+- Cost: high
+- Symptom: 広すぎるAuto Sceneを人間が正しい範囲へ修正するとTPとして扱われ、削除した誤検出はFPから消え得た。
+- Expected: Detectorが最初に何を出したかと、人間が確定したGround Truthを独立比較する。
+- Actual: corrected-scenes中心の集計だったためDetectorの境界誤差・削除誤検出がPrecision / Recallへ十分反映されなかった。
+- Root Cause: Human correction datasetとDetector prediction datasetを同じScene listのsource/labelで近似していた。
+- Final Fix: `auto-scenes.json`をPrediction、修正後の有効SceneをGround TruthとしてTemporal matchingする`js/detector-metrics.js`を追加。Strict IoU、Loose Recall、Boundary Error、Duplicate / Merge / Splitを分離。
+- Regression Guard: `tests/detector-metrics.test.mjs`で広すぎるScene、重複Scene、削除誤検出、Manual FNを固定テスト。
+- Prevention: Detector評価ではPredictionとGround Truthを別Source of Truthとして保持し、人間の修正結果をPredictionそのものとして再利用しない。
+
+### PL-F-007 測りたいAim movementがShot Detector条件へ混入した
+
+- Date: 2026-09-29
+- Status: architecture fix planned
+- Severity: critical
+- Cost: high
+- Symptom: `shot-hud`判定がAmmo/Audioだけでなくcenter motionも要求し、Aimをよく動かすSessionほどShot evidenceが強くなる可能性がある。
+- Expected: Shot timing、Mouse movement、Movement inputを独立Sensorとして測定する。
+- Actual: 戦闘推定用の複合ScoreへAim movementが混ざり、Strong / Weak比較で測定Biasになり得る。
+- Root Cause: Scene discovery用heuristicをAim consistency計測へ転用しようとした。
+- Final Fix: Detector v0.5をLegacy baselineへ凍結。v1 ArchitectureではPassive Input Telemetry + Frame-accurate local decodeを別Evidenceとして統合する。
+- Regression Guard: `docs/V1_ELECTRON_ARCHITECTURE.md`でMeasurement-first boundaryを固定。
+- Prevention: 測定対象の変数を、そのイベントを検出する前提条件へ混ぜない。
+
+### PL-F-008 Browser large-blob workflowをDesktop analysis基盤へ延長しすぎた
+
+- Date: 2026-09-29
+- Status: migration started
+- Severity: high
+- Cost: high
+- Symptom: IndexedDB recordに画像Blobを含めたまま`getAll()`し、Batch ZIPではBlob→ArrayBuffer→Uint8Array→ZIP Blobと大容量Copyが重なる。
+- Expected: Metadata一覧とLarge derived blob/cacheを分離し、Desktopではstreaming / file-backed processingを使う。
+- Actual: Browser Feedback Queueには実用的でも、長尺・高fps・Telemetryを扱う次段階にはMemory modelが不向き。
+- Root Cause: Web feedback export用Storageを将来のanalysis storageと同一視した。
+- Final Fix: Electron移行を開始し、Session / Duel / AnalysisRunをCanonical conceptとして分離。Large frame cacheはDerived / rebuildableとして扱う。
+- Prevention: Metadata / canonical data / large derived cache / export artifactを別Lifecycleにする。
+
 ---
 
 ## Success

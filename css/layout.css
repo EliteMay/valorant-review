@@ -236,7 +236,7 @@
   }
   .brand-sub { margin-bottom: 12px; }
   .sidebar::after { margin-top: 12px; padding-left: 13px; }
-  .nav-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .nav-list { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .nav-item { justify-content: center; padding-left: 10px; }
   .nav-item.active::before { display: none; }
   .main-content { height: auto; overflow: visible; padding: 24px; }

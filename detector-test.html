@@ -5,20 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07090c">
   <title>Detector Test | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260903-1">
-  <link rel="stylesheet" href="css/layout.css?v=20260903-1">
-  <link rel="stylesheet" href="css/components.css?v=20260903-1">
+  <link rel="stylesheet" href="css/base.css?v=20260929-1">
+  <link rel="stylesheet" href="css/layout.css?v=20260929-1">
+  <link rel="stylesheet" href="css/components.css?v=20260929-1">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="index.html">VReview</a>
-      <p class="brand-sub">Clip analysis workbench</p>
+      <p class="brand-sub">Aim analysis workbench</p>
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item" href="index.html">Dashboard</a>
         <a class="nav-item" href="review.html">New Review</a>
         <a class="nav-item active" href="detector-test.html" aria-current="page">Detector Test</a>
         <a class="nav-item" href="diagnostics.html">Diagnostics</a>
+        <a class="nav-item" href="settings.html">設定</a>
       </nav>
     </aside>
 
@@ -27,7 +28,7 @@
         <div>
           <p class="eyebrow">Detector Validation · <span data-app-version>--</span></p>
           <h1>Feedback ZIPを比較</h1>
-          <p class="lead">複数クリップのPrecision / Recall / primary精度をまとめて確認し、1本だけにDetectorを合わせすぎないための検証画面です。</p>
+          <p class="lead">複数クリップのauto-scenes.json と修正後Ground Truthを時刻で照合し、Strict Precision / Recall・境界誤差・重複を複数クリップで確認します。</p>
         </div>
       </header>
 
@@ -37,7 +38,7 @@
           <strong>Feedback ZIPを開く</strong>
           <span id="testZipHelp">v0.8.0のまとめZIPは1個だけでOK。従来の単体ZIPも複数選択できます。元動画は不要です。</span>
         </label>
-        <p class="helper" style="margin:12px 0 0">Recallは手動追加された有効Sceneを見逃しとして計算します。未確認Labelが残る場合は暫定値です。</p>
+        <p class="helper" style="margin:12px 0 0">v5以降は自動検出直後のSceneと修正後Sceneを時刻で照合します。広すぎるSceneや削除された誤検出も精度へ反映します。v4等でauto-scenes.jsonが無い場合だけ旧方式へFallbackします。</p>
       </section>
 
       <section id="testSummary" aria-live="polite">
@@ -47,8 +48,9 @@
     </main>
   </div>
 
-  <script src="js/version.js?v=20260903-1"></script>
-  <script src="js/diagnostics.js?v=20260903-1"></script>
-  <script src="js/detector-test.js?v=20260903-1"></script>
+  <script src="js/version.js?v=20260929-1"></script>
+  <script src="js/diagnostics.js?v=20260929-1"></script>
+  <script src="js/detector-metrics.js?v=20260929-1"></script>
+  <script src="js/detector-test.js?v=20260929-1"></script>
 </body>
 </html>

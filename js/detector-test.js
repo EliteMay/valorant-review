@@ -107,8 +107,9 @@ async function analyzeFeedbackZip(file, schema) {
   }
   const manifest = readJson(entries, 'manifest.json', schema);
   const corrected = readJson(entries, 'corrected-scenes.json', schema);
-  validateFeedbackData(manifest, corrected, schema);
-  return [summarizeFeedback(manifest, corrected, file.name)];
+  const autoScenes = readOptionalJson(entries, 'auto-scenes.json', schema);
+  validateFeedbackData(manifest, corrected, autoScenes, schema);
+  return [summarizeFeedback(manifest, corrected, autoScenes, file.name)];
 }
 
 function analyzeBatchEntries(file, entries, schema) {
@@ -135,12 +136,48 @@ function analyzeBatchEntries(file, entries, schema) {
     const correctedName = `${folder}/corrected-scenes.json`;
     const manifest = readJson(entries, manifestName, schema);
     const corrected = readJson(entries, correctedName, schema);
-    validateFeedbackData(manifest, corrected, schema);
-    return summarizeFeedback(manifest, corrected, `${file.name} / ${folder}`);
+    const autoScenes = readOptionalJson(entries, `${folder}/auto-scenes.json`, schema);
+    validateFeedbackData(manifest, corrected, autoScenes, schema);
+    return summarizeFeedback(manifest, corrected, autoScenes, `${file.name} / ${folder}`);
   });
 }
 
-function summarizeFeedback(manifest, corrected, sourceName) {
+function summarizeFeedback(manifest, corrected, autoScenes, sourceName) {
+  const metrics = Array.isArray(autoScenes) && window.VReviewDetectorMetrics
+    ? window.VReviewDetectorMetrics.evaluate(autoScenes, corrected)
+    : null;
+
+  if (!metrics) return summarizeLegacyFeedback(manifest, corrected, sourceName);
+
+  return {
+    file: sourceName,
+    detector: manifest?.detection?.detector_version || 'unknown',
+    packageVersion: manifest?.version || '?',
+    clip: manifest?.video?.name || sourceName,
+    evaluationMode: metrics.mode,
+    tp: metrics.tp,
+    fp: metrics.fp,
+    fn: metrics.fn,
+    looseTp: metrics.looseTp,
+    primaryUseful: metrics.primaryMatches,
+    primaryFalse: Math.max(0, metrics.primaryPredictions - metrics.primaryMatches),
+    weakUseful: metrics.weakUseful,
+    weakFalse: Math.max(0, metrics.weakPredictions - metrics.weakUseful),
+    unreviewed: metrics.unreviewed,
+    precision: metrics.precision,
+    recall: metrics.recall,
+    looseRecall: metrics.looseRecall,
+    primaryPrecision: metrics.primaryPrecision,
+    meanBoundaryErrorMs: metrics.meanBoundaryErrorMs,
+    boundaryMatchCount: metrics.boundaryMatchCount,
+    medianIou: metrics.medianIou,
+    duplicatePredictions: metrics.duplicatePredictions,
+    mergedPredictions: metrics.mergedPredictions,
+    splitTruths: metrics.splitTruths
+  };
+}
+
+function summarizeLegacyFeedback(manifest, corrected, sourceName) {
   let tp = 0;
   let fp = 0;
   let fn = 0;
@@ -179,9 +216,11 @@ function summarizeFeedback(manifest, corrected, sourceName) {
     detector: manifest?.detection?.detector_version || 'unknown',
     packageVersion: manifest?.version || '?',
     clip: manifest?.video?.name || sourceName,
+    evaluationMode: 'legacy-corrected-scenes',
     tp,
     fp,
     fn,
+    looseTp: tp,
     primaryUseful,
     primaryFalse,
     weakUseful,
@@ -189,27 +228,42 @@ function summarizeFeedback(manifest, corrected, sourceName) {
     unreviewed,
     precision: ratio(tp, tp + fp),
     recall: ratio(tp, tp + fn),
-    primaryPrecision: ratio(primaryUseful, primaryUseful + primaryFalse)
+    looseRecall: ratio(tp, tp + fn),
+    primaryPrecision: ratio(primaryUseful, primaryUseful + primaryFalse),
+    meanBoundaryErrorMs: null,
+    boundaryMatchCount: 0,
+    medianIou: null,
+    duplicatePredictions: 0,
+    mergedPredictions: 0,
+    splitTruths: 0
   };
 }
 
-function validateFeedbackData(manifest, corrected, schema) {
+function validateFeedbackData(manifest, corrected, autoScenes, schema) {
   if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) throw new Error('manifest.jsonがありません。');
   if (manifest.schema !== schema.packageSchema) throw new Error(`VReview Feedback形式ではありません（schema: ${String(manifest.schema || 'missing')}）。`);
 
   const supported = Array.isArray(schema.supportedPackageVersions) ? schema.supportedPackageVersions.map(Number) : [];
   if (!supported.includes(Number(manifest.version))) throw new Error(`Feedback Package v${String(manifest.version || '?')}は未対応です。`);
   if (!Array.isArray(corrected)) throw new Error('corrected-scenes.jsonがありません。');
+  if (autoScenes != null && !Array.isArray(autoScenes)) throw new Error('auto-scenes.jsonが不正です。');
 
   const maxScenes = Number(schema?.limits?.maxScenesPerClip || 2000);
   if (corrected.length > maxScenes) throw new Error(`Scene数が多すぎます（上限 ${maxScenes}）。`);
+  if (Array.isArray(autoScenes) && autoScenes.length > maxScenes) throw new Error(`auto-scenes.jsonのScene数が多すぎます（上限 ${maxScenes}）。`);
 
   const labels = new Set(schema.feedbackLabels || []);
   const tiers = new Set(schema.reviewTiers || []);
   const sources = new Set(schema.sceneSources || []);
   const videoDuration = Number(manifest?.video?.duration);
 
-  corrected.forEach((scene, index) => {
+  validateSceneArray(corrected, { labels, tiers, sources, videoDuration, requireLabel: true, name: 'corrected' });
+  if (Array.isArray(autoScenes)) validateSceneArray(autoScenes, { labels, tiers, sources, videoDuration, requireLabel: false, name: 'auto' });
+}
+
+function validateSceneArray(items, options) {
+  const { labels, tiers, sources, videoDuration, requireLabel, name } = options;
+  items.forEach((scene, index) => {
     if (!scene || typeof scene !== 'object' || Array.isArray(scene)) throw new Error(`Scene ${index + 1} がObjectではありません。`);
     const start = Number(scene.start);
     const end = Number(scene.end);
@@ -217,15 +271,15 @@ function validateFeedbackData(manifest, corrected, schema) {
     if (Number.isFinite(videoDuration) && end > videoDuration + 1.5) throw new Error(`Scene ${index + 1} が動画時間を大きく超えています。`);
 
     const label = scene.feedback_label || scene.feedbackLabel || 'unreviewed';
-    if (!labels.has(label)) throw new Error(`Scene ${index + 1} のfeedback labelが不正です。`);
+    if (requireLabel && !labels.has(label)) throw new Error(`${name} Scene ${index + 1} のfeedback labelが不正です。`);
     const source = scene.source || null;
-    if (source && !sources.has(source)) throw new Error(`Scene ${index + 1} のsourceが不正です。`);
+    if (source && !sources.has(source)) throw new Error(`${name} Scene ${index + 1} のsourceが不正です。`);
     const tier = scene.review_tier || scene.reviewTier || (source === 'manual' ? 'manual' : 'primary');
-    if (!tiers.has(tier)) throw new Error(`Scene ${index + 1} のreview tierが不正です。`);
+    if (!tiers.has(tier)) throw new Error(`${name} Scene ${index + 1} のreview tierが不正です。`);
 
     if (scene.confidence != null) {
       const confidence = Number(scene.confidence);
-      if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) throw new Error(`Scene ${index + 1} のconfidenceが不正です。`);
+      if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) throw new Error(`${name} Scene ${index + 1} のconfidenceが不正です。`);
     }
   });
 }
@@ -238,25 +292,32 @@ function renderResults(records, errors, results, summary) {
   }
 
   const totals = records.reduce((acc, item) => {
-    for (const key of ['tp', 'fp', 'fn', 'primaryUseful', 'primaryFalse', 'weakUseful', 'weakFalse', 'unreviewed']) acc[key] += item[key];
+    for (const key of ['tp', 'fp', 'fn', 'looseTp', 'primaryUseful', 'primaryFalse', 'weakUseful', 'weakFalse', 'unreviewed', 'duplicatePredictions', 'mergedPredictions', 'splitTruths']) acc[key] += Number(item[key] || 0);
+    if (Number.isFinite(Number(item.meanBoundaryErrorMs)) && Number(item.boundaryMatchCount || 0) > 0) {
+      acc.boundaryErrorWeighted += Number(item.meanBoundaryErrorMs) * Number(item.boundaryMatchCount);
+      acc.boundaryMatchCount += Number(item.boundaryMatchCount);
+    }
     return acc;
-  }, { tp: 0, fp: 0, fn: 0, primaryUseful: 0, primaryFalse: 0, weakUseful: 0, weakFalse: 0, unreviewed: 0 });
+  }, { tp: 0, fp: 0, fn: 0, looseTp: 0, primaryUseful: 0, primaryFalse: 0, weakUseful: 0, weakFalse: 0, unreviewed: 0, duplicatePredictions: 0, mergedPredictions: 0, splitTruths: 0, boundaryErrorWeighted: 0, boundaryMatchCount: 0 });
 
   const precision = ratio(totals.tp, totals.tp + totals.fp);
   const recall = ratio(totals.tp, totals.tp + totals.fn);
+  const looseRecall = ratio(totals.looseTp, totals.tp + totals.fn);
   const primaryPrecision = ratio(totals.primaryUseful, totals.primaryUseful + totals.primaryFalse);
+  const meanBoundaryErrorMs = totals.boundaryMatchCount ? totals.boundaryErrorWeighted / totals.boundaryMatchCount : null;
 
   summary.replaceChildren();
   const stats = document.createElement('div');
   stats.className = 'stats-grid';
   stats.append(
-    makeMetricCard('PRECISION', pct(precision), 'TP / (TP + FP)', scoreClass(precision)),
-    makeMetricCard('RECALL', pct(recall), 'TP / (TP + FN)', scoreClass(recall)),
-    makeMetricCard('PRIMARY PRECISION', pct(primaryPrecision), '本命Sceneだけ', scoreClass(primaryPrecision)),
-    makeMetricCard('WEAK TRUE', String(totals.weakUseful), 'weakへ落ちた有効Scene', '')
+    makeMetricCard('STRICT PRECISION', pct(precision), 'IoU 0.30以上でTP', scoreClass(precision)),
+    makeMetricCard('STRICT RECALL', pct(recall), '境界精度込み', scoreClass(recall)),
+    makeMetricCard('LOOSE RECALL', pct(looseRecall), 'イベントを概ね発見', scoreClass(looseRecall)),
+    makeMetricCard('BOUNDARY ERROR', formatMs(meanBoundaryErrorMs), 'Loose matchの平均境界誤差', '')
   );
   summary.appendChild(stats);
 
+  appendMessage(summary, `重複予測 ${totals.duplicatePredictions} / Merge ${totals.mergedPredictions} / Split ${totals.splitTruths}。v5以降はauto-scenes.jsonと修正後Ground Truthを時刻で照合します。`, 'success');
   if (totals.unreviewed) appendMessage(summary, `未確認ラベルが ${totals.unreviewed}件あります。Precision / Recallは確定値ではありません。`, 'pending');
   if (errors.length) appendMessage(summary, `読込エラー: ${errors.join(' / ')}`, 'pending');
 
@@ -266,7 +327,7 @@ function renderResults(records, errors, results, summary) {
   table.className = 'test-table';
   const thead = document.createElement('thead');
   const headRow = document.createElement('tr');
-  for (const title of ['Clip', 'Detector', 'Precision', 'Recall', 'Primary', 'TP', 'FP', 'FN', 'Weak True', 'Unreviewed']) {
+  for (const title of ['Clip', 'Detector', 'Mode', 'Strict P', 'Strict R', 'Loose R', 'Boundary', 'TP', 'FP', 'FN', 'Dup', 'Unreviewed']) {
     const th = document.createElement('th');
     th.textContent = title;
     headRow.appendChild(th);
@@ -277,7 +338,7 @@ function renderResults(records, errors, results, summary) {
   const tbody = document.createElement('tbody');
   records.forEach(item => {
     const row = document.createElement('tr');
-    const values = [item.clip, `v${item.detector}`, pct(item.precision), pct(item.recall), pct(item.primaryPrecision), item.tp, item.fp, item.fn, item.weakUseful, item.unreviewed];
+    const values = [item.clip, `v${item.detector}`, item.evaluationMode === 'temporal-ground-truth-v1' ? 'temporal' : 'legacy', pct(item.precision), pct(item.recall), pct(item.looseRecall), formatMs(item.meanBoundaryErrorMs), item.tp, item.fp, item.fn, item.duplicatePredictions, item.unreviewed];
     values.forEach(value => {
       const td = document.createElement('td');
       td.textContent = String(value);
@@ -406,6 +467,11 @@ function parseStoredZipJson(buffer, schema) {
   return entries;
 }
 
+function readOptionalJson(entries, name, schema) {
+  if (!entries.has(name)) return null;
+  return readJson(entries, name, schema);
+}
+
 function readJson(entries, name, schema) {
   const data = entries.get(name);
   if (!data) throw new Error(`${name}がありません。`);
@@ -430,6 +496,10 @@ function ratio(a, b) {
 
 function pct(value) {
   return value == null ? '--' : `${(value * 100).toFixed(1)}%`;
+}
+
+function formatMs(value) {
+  return Number.isFinite(Number(value)) ? `${Math.round(Number(value))} ms` : '--';
 }
 
 function scoreClass(value) {

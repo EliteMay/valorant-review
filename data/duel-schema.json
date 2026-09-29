@@ -1,0 +1,35 @@
+{
+  "schema": "vreview-duel",
+  "schemaVersion": 1,
+  "required": ["id", "sessionId", "startMs", "endMs", "evidence", "classification"],
+  "fields": {
+    "id": "stable UUID",
+    "sessionId": "vreview-session id",
+    "startMs": "number",
+    "endMs": "number",
+    "classification": {
+      "outcome": "kill|death|survived|unknown",
+      "aimContext": "hold|flick-required|tracking|unknown",
+      "targetCount": "number|null",
+      "reviewState": "auto|confirmed|excluded"
+    },
+    "evidence": {
+      "enemyVisibleMs": "number|null",
+      "firstMouseMotionMs": "number|null",
+      "firstShotMs": "number|null",
+      "shots": "array",
+      "mouseCorrections": "array",
+      "movementInputs": "array",
+      "killDeathMs": "number|null"
+    },
+    "metrics": {
+      "initialAimError": "number|null",
+      "timeToFirstShotMs": "number|null",
+      "preShotCorrectionCount": "number|null",
+      "postShotCorrectionLatencyMs": "number|null",
+      "mouseFreezeMs": "number|null",
+      "overshoot": "number|null",
+      "undershoot": "number|null"
+    }
+  }
+}
