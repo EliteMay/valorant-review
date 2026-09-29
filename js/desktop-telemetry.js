@@ -308,12 +308,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     render();
   });
 
-  window.addEventListener('beforeunload', event => {
-    if (mediaRecorder?.state === 'recording' || recordingState?.active) {
-      event.preventDefault();
-      event.returnValue = '';
-    }
-  });
+  document.addEventListener('click', event => {
+    const link = event.target.closest?.('a[href]');
+    if (!link) return;
+    if (mediaRecorder?.state !== 'recording' && !recordingState?.active) return;
+    event.preventDefault();
+    detail.textContent = '録画中はページ移動できません。「録画＋入力 停止」を押してから移動してください。';
+  }, true);
 
   await refresh();
 });
