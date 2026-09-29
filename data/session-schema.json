@@ -1,0 +1,26 @@
+{
+  "schema": "vreview-session",
+  "schemaVersion": 1,
+  "required": ["id", "createdAt", "sourceVideo", "telemetry", "analysisState"],
+  "fields": {
+    "id": "stable UUID",
+    "createdAt": "ISO-8601",
+    "sourceVideo": {
+      "pathStored": false,
+      "contentHash": "optional SHA-256",
+      "durationMs": "number",
+      "width": "number",
+      "height": "number",
+      "fps": "number|null",
+      "variableFrameRate": "boolean|null"
+    },
+    "telemetry": {
+      "available": "boolean",
+      "complete": "boolean",
+      "clockSync": "pending|synced|failed|not-applicable",
+      "clockOffsetMs": "number|null",
+      "clockDriftPpm": "number|null"
+    },
+    "analysisState": "new|queued|running|interrupted|completed|failed"
+  }
+}
