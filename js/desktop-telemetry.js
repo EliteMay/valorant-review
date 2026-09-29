@@ -147,16 +147,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!recorder) return;
 
     if (recorder.state !== 'inactive') {
-      await new Promise(resolve => {
-        const done = () => resolve();
-        recorder.addEventListener('stop', done, { once: true });
-        try {
-          recorder.stop();
-        } catch {
-          resolve();
-        }
-        setTimeout(resolve, 2500);
-      });
+      const result = await Promise.race([
+        new Promise(resolve => {
+          recorder.addEventListener('stop', () => resolve('stopped'), { once: true });
+          try {
+            recorder.stop();
+          } catch {
+            resolve('stopped');
+          }
+        }),
+        new Promise(resolve => setTimeout(() => resolve('timeout'), 5000))
+      ]);
+      if (result === 'timeout' && recorder.state !== 'inactive') {
+        throw new Error('MediaRecorderの停止がタイムアウトしました。');
+      }
     }
 
     mediaRecorder = null;
@@ -254,6 +258,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         chunkQueue = chunkQueue
           .then(() => event.data.arrayBuffer())
           .then(buffer => api.appendRecordingChunk(new Uint8Array(buffer)))
+          .then(saved => {
+            if (saved === false) throw new Error('録画Chunkを保存できませんでした。');
+          })
           .catch(error => {
             detail.textContent = `録画Chunk保存エラー: ${error.message || String(error)}`;
           });
