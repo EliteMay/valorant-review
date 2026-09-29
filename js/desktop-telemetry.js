@@ -9,98 +9,309 @@ document.addEventListener('DOMContentLoaded', async () => {
   const mouse = document.getElementById('telemetryMouseCount');
   const buttons = document.getElementById('telemetryButtonCount');
   const keys = document.getElementById('telemetryKeyCount');
+  const bytes = document.getElementById('recordingBytes');
+  const videoState = document.getElementById('recordingVideoState');
   const start = document.getElementById('telemetryStartBtn');
   const stop = document.getElementById('telemetryStopBtn');
   const open = document.getElementById('telemetryOpenFolderBtn');
 
+  let mediaRecorder = null;
+  let mediaStream = null;
+  let chunkQueue = Promise.resolve();
+  let telemetryState = null;
+  let recordingState = null;
+  let stopInFlight = null;
+
   if (!api?.isDesktop) {
     status.textContent = 'Electron版のみ';
-    detail.textContent = 'Web版ではInput Telemetryを記録しません。';
+    detail.textContent = 'Web版では画面録画 / Input Telemetryを利用できません。';
     [start, stop, open].forEach(button => { if (button) button.disabled = true; });
     return;
   }
 
   root.classList.remove('hidden');
 
-  function render(state) {
-    if (!state) return;
-    count.textContent = String(state.inputEvents || 0);
-    mouse.textContent = String(state.mouseSamples || 0);
-    buttons.textContent = String(state.buttonEvents || 0);
-    keys.textContent = String(state.keyEvents || 0);
+  function chooseMimeType() {
+    const candidates = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    return candidates.find(type => window.MediaRecorder?.isTypeSupported?.(type)) || '';
+  }
 
-    start.disabled = Boolean(state.active) || !state.supported || !state.helperAvailable;
-    stop.disabled = !state.active;
-    open.disabled = !state.sessionId;
+  function getVideoMeta() {
+    const track = mediaStream?.getVideoTracks?.()[0];
+    const settings = track?.getSettings?.() || {};
+    return {
+      width: Number(settings.width) || null,
+      height: Number(settings.height) || null,
+      frameRate: Number(settings.frameRate) || null,
+      requestedFrameRate: 60
+    };
+  }
 
-    if (!state.helperAvailable) {
+  function getAudioMeta() {
+    return {
+      enabled: Boolean(mediaStream?.getAudioTracks?.().length),
+      systemLoopback: true
+    };
+  }
+
+  function formatBytes(value) {
+    const number = Number(value || 0);
+    if (number < 1024 * 1024) return `${Math.round(number / 1024)} KB`;
+    return `${(number / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  function render() {
+    const telemetry = telemetryState || {};
+    const recording = recordingState || {};
+
+    count.textContent = String(telemetry.inputEvents || 0);
+    mouse.textContent = String(telemetry.mouseSamples || 0);
+    buttons.textContent = String(telemetry.buttonEvents || 0);
+    keys.textContent = String(telemetry.keyEvents || 0);
+    if (bytes) bytes.textContent = formatBytes(recording.bytesWritten || 0);
+
+    if (videoState) {
+      if (recording.active) {
+        const video = recording.video || {};
+        const size = video.width && video.height ? `${video.width}×${video.height}` : '画面取得中';
+        videoState.textContent = `${size} · WebM`;
+      } else if (recording.fileName) {
+        videoState.textContent = recording.phase === 'completed' ? '保存済み' : recording.phase || '停止中';
+      } else {
+        videoState.textContent = '未開始';
+      }
+    }
+
+    const captureActive = Boolean(recording.active || mediaRecorder?.state === 'recording');
+    start.disabled = captureActive || Boolean(stopInFlight) || telemetry.helperAvailable === false;
+    stop.disabled = !captureActive || Boolean(stopInFlight);
+    open.disabled = !(recording.sessionId || telemetry.sessionId);
+
+    if (telemetry.helperAvailable === false) {
       status.textContent = 'Helperなし';
       detail.textContent = '最新版VReviewへ更新してください。';
       return;
     }
 
-    if (state.phase === 'failed') {
+    if (recording.phase === 'failed' || telemetry.phase === 'failed') {
       status.textContent = 'エラー';
-      detail.textContent = state.lastError || 'Telemetry Helperが停止しました。';
+      detail.textContent = recording.lastError || telemetry.lastError || '記録処理が停止しました。';
       return;
     }
 
-    if (state.active && state.valorantForeground) {
-      status.textContent = '記録中 · VALORANT';
-      detail.textContent = 'Mouse dx/dy・LMB・WASDだけを記録しています。';
+    if (stopInFlight) {
+      status.textContent = '保存中';
+      detail.textContent = '最後の録画Chunkと入力ログを書き込んでいます…';
       return;
     }
 
-    if (state.active) {
-      status.textContent = state.phase === 'starting' ? '起動中' : '記録中 · VALORANT待機';
-      detail.textContent = 'VALORANTを前面にすると記録します。他アプリの入力は保存しません。';
+    if (captureActive && telemetry.valorantForeground) {
+      status.textContent = '録画中 · VALORANT';
+      detail.textContent = 'Primary画面 + System Audio + Mouse/LMB/WASDを同じSessionへ保存しています。';
+      return;
+    }
+
+    if (captureActive) {
+      status.textContent = '録画中 · VALORANT待機';
+      detail.textContent = '画面録画は継続中です。VALORANTが前面の時だけInput Telemetryを保存します。';
       return;
     }
 
     status.textContent = '停止中';
-    detail.textContent = state.sessionId
+    detail.textContent = recording.sessionId || telemetry.sessionId
       ? '前回Sessionは保存済みです。'
-      : '開始後にVALORANTへ戻ってプレイしてください。';
+      : '「録画＋入力 開始」を押してからVALORANTへ戻ってください。';
   }
 
   async function refresh() {
     try {
-      render(await api.getTelemetryStatus());
+      const [telemetry, recording] = await Promise.all([
+        api.getTelemetryStatus(),
+        api.getRecordingStatus()
+      ]);
+      telemetryState = telemetry;
+      recordingState = recording;
+      render();
     } catch (error) {
       status.textContent = '取得失敗';
       detail.textContent = error.message || String(error);
     }
   }
 
-  start?.addEventListener('click', async () => {
+  async function stopMediaRecorder() {
+    const recorder = mediaRecorder;
+    if (!recorder) return;
+
+    if (recorder.state !== 'inactive') {
+      await new Promise(resolve => {
+        const done = () => resolve();
+        recorder.addEventListener('stop', done, { once: true });
+        try {
+          recorder.stop();
+        } catch {
+          resolve();
+        }
+        setTimeout(resolve, 2500);
+      });
+    }
+
+    mediaRecorder = null;
+  }
+
+  function stopTracks() {
+    for (const track of mediaStream?.getTracks?.() || []) {
+      try { track.stop(); } catch {}
+    }
+    mediaStream = null;
+  }
+
+  async function stopCapture(reason = 'user') {
+    if (stopInFlight) return stopInFlight;
+
+    stopInFlight = (async () => {
+      render();
+      try {
+        await stopMediaRecorder();
+        await chunkQueue;
+        stopTracks();
+
+        const result = await api.finishRecording({
+          reason,
+          video: getVideoMeta(),
+          audio: getAudioMeta()
+        });
+        recordingState = result?.recording || recordingState;
+        telemetryState = result?.telemetry || telemetryState;
+      } catch (error) {
+        try {
+          const result = await api.abortRecording(error.message || reason);
+          recordingState = result?.recording || recordingState;
+          telemetryState = result?.telemetry || telemetryState;
+        } catch {}
+        detail.textContent = `保存に失敗しました: ${error.message || String(error)}`;
+      } finally {
+        stopTracks();
+        stopInFlight = null;
+        await refresh();
+      }
+    })();
+
+    return stopInFlight;
+  }
+
+  async function startCapture() {
+    if (mediaRecorder?.state === 'recording') return;
+
     start.disabled = true;
-    detail.textContent = 'Telemetry Helperを起動しています…';
+    status.textContent = '準備中';
+    detail.textContent = 'Primary画面とSystem Audioを準備しています…';
+
+    let stream = null;
     try {
-      render(await api.startTelemetry());
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 60, max: 60 }
+        },
+        audio: true
+      });
+
+      mediaStream = stream;
+      const mimeType = chooseMimeType();
+      const video = getVideoMeta();
+      const audio = getAudioMeta();
+
+      recordingState = await api.prepareRecording({
+        mimeType: mimeType || 'video/webm',
+        video,
+        audio
+      });
+      telemetryState = await api.getTelemetryStatus();
+
+      const options = {
+        videoBitsPerSecond: 12000000,
+        audioBitsPerSecond: 160000
+      };
+      if (mimeType) options.mimeType = mimeType;
+
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, options);
+      } catch {
+        recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      }
+
+      chunkQueue = Promise.resolve();
+      recorder.addEventListener('dataavailable', event => {
+        if (!event.data || event.data.size === 0) return;
+        chunkQueue = chunkQueue
+          .then(() => event.data.arrayBuffer())
+          .then(buffer => api.appendRecordingChunk(new Uint8Array(buffer)))
+          .catch(error => {
+            detail.textContent = `録画Chunk保存エラー: ${error.message || String(error)}`;
+          });
+      });
+
+      recorder.addEventListener('error', event => {
+        const error = event.error || new Error('MediaRecorder error');
+        detail.textContent = `画面録画エラー: ${error.message || String(error)}`;
+        stopCapture('media-recorder-error').catch(() => {});
+      });
+
+      const videoTrack = stream.getVideoTracks()[0];
+      videoTrack?.addEventListener('ended', () => {
+        if (mediaRecorder?.state === 'recording') stopCapture('display-track-ended').catch(() => {});
+      });
+
+      mediaRecorder = recorder;
+      recorder.start(1000);
+      render();
     } catch (error) {
+      for (const track of stream?.getTracks?.() || []) {
+        try { track.stop(); } catch {}
+      }
+      mediaStream = null;
+      mediaRecorder = null;
+
+      try {
+        const result = await api.abortRecording(error.message || 'capture-start-failed');
+        recordingState = result?.recording || recordingState;
+        telemetryState = result?.telemetry || telemetryState;
+      } catch {}
+
       status.textContent = '開始失敗';
       detail.textContent = error.message || String(error);
       await refresh();
     }
-  });
+  }
 
-  stop?.addEventListener('click', async () => {
-    stop.disabled = true;
-    detail.textContent = '記録を保存しています…';
-    try {
-      render(await api.stopTelemetry());
-    } catch (error) {
-      status.textContent = '停止失敗';
-      detail.textContent = error.message || String(error);
-      await refresh();
-    }
-  });
-
+  start?.addEventListener('click', () => startCapture());
+  stop?.addEventListener('click', () => stopCapture('user'));
   open?.addEventListener('click', async () => {
-    const result = await api.openTelemetryFolder();
+    const result = await api.openRecordingFolder();
     if (!result?.ok && result?.error) detail.textContent = result.error;
   });
 
-  api.onTelemetryStatus(state => render(state));
+  api.onTelemetryStatus(state => {
+    telemetryState = state;
+    render();
+  });
+  api.onRecordingStatus(state => {
+    recordingState = state;
+    render();
+  });
+
+  window.addEventListener('beforeunload', event => {
+    if (mediaRecorder?.state === 'recording' || recordingState?.active) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+
   await refresh();
 });
