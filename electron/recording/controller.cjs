@@ -37,6 +37,7 @@ class RecordingController extends EventEmitter {
       sessionId,
       startedAt: new Date().toISOString(),
       endedAt: null,
+      durationMs: null,
       fileName,
       mimeType: normalizedMime,
       bytesWritten: 0,
@@ -88,6 +89,7 @@ class RecordingController extends EventEmitter {
     this.state.active = false;
     this.state.phase = this.state.lastError ? 'failed' : 'completed';
     this.state.endedAt = new Date().toISOString();
+    this.state.durationMs = durationBetween(this.state.startedAt, this.state.endedAt);
     this.#writeManifest(this.state.phase);
     this.logger?.info('recording.finish', {
       sessionId: this.state.sessionId || '',
@@ -108,6 +110,7 @@ class RecordingController extends EventEmitter {
 
     this.state.active = false;
     this.state.endedAt = new Date().toISOString();
+    this.state.durationMs = durationBetween(this.state.startedAt, this.state.endedAt);
     this.#writeManifest('interrupted');
     this.logger?.warn('recording.abort', {
       sessionId: this.state.sessionId || '',
@@ -152,6 +155,7 @@ class RecordingController extends EventEmitter {
       sessionId: this.state.sessionId,
       startedAt: this.state.startedAt,
       endedAt: this.state.endedAt,
+      durationMs: this.state.durationMs,
       outcome,
       file: this.state.fileName,
       mimeType: this.state.mimeType,
@@ -185,6 +189,7 @@ class RecordingController extends EventEmitter {
       sessionId: null,
       startedAt: null,
       endedAt: null,
+      durationMs: null,
       fileName: null,
       mimeType: null,
       bytesWritten: 0,
@@ -194,6 +199,13 @@ class RecordingController extends EventEmitter {
       lastError: null
     };
   }
+}
+
+function durationBetween(startedAt, endedAt) {
+  const start = Date.parse(startedAt || '');
+  const end = Date.parse(endedAt || '');
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  return Math.max(0, end - start);
 }
 
 function normalizeMimeType(value) {
