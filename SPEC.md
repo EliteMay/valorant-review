@@ -4,13 +4,13 @@
 
 - Project: VReview
 - Repository: `EliteMay/valorant-review`
-- App Version: 0.8.0
+- App Version: 0.9.0
 - Detector Version: 0.5.0
 - Feedback Package: 5
 - Feedback Batch Schema: 1
 - Storage Schema: 1
 - Diagnostics Schema: 1
-- Guide Version: 1.13.0
+- Guide Version: 1.22.0
 - Profiles: STATIC + MEDIA + AI-HANDOFF + TOOL
 - Runtime Version Source: `js/version.js`
 - Project Metadata: `project-meta.json`
@@ -20,9 +20,9 @@
 
 ## 2. 目的
 
-VALORANTクリップから戦闘Scene候補をブラウザ内で抽出し、ユーザーが映像を見ながら修正した正解データを使ってDetectorを改善する。
+VALORANTのStrong / Weak Session差を、Duel・入力・照準・発砲TimingのEvidenceから客観的に分析する。現行Web Detector ReviewはLegacy dataset / human correction surfaceとして維持する。
 
-Detector安定後は、確定Sceneを高fpsフレームへ変換してChatGPT Plusへ手動提出し、AIM / Movementレビューへつなげる。
+Electron版ではPassive Input TelemetryとFrame-accurate Video Analysisを同期し、AIには長尺動画探索ではなく確定Evidenceと短いFrame sequenceを渡す。
 
 v0.8.0ではDetector判定条件を変更せず、Detector改善用Feedbackの受け渡しを次へ変更する。
 
@@ -35,6 +35,46 @@ ClipごとにFeedback内容だけIndexedDBへ保存
 → 複数Clipを貯める
 → 最後に1回だけBatch ZIPを作成
 ```
+
+## 2.1 v0.9.0 Electron移行方針
+
+正本: `docs/V1_ELECTRON_ARCHITECTURE.md`
+
+Process境界:
+
+```text
+Renderer (UI only)
+↓ minimal IPC
+Preload
+↓
+Main (settings / logs / update / tasks / window)
+↓
+Analysis utility process [next phase]
+↓
+Passive input helper [next phase]
+```
+
+禁止:
+
+- VALORANT ProcessへのInjection
+- Game memory read
+- Gameplay input automation
+- Live tactical instructionをPrimary機能にすること
+- 元動画の自動Upload
+
+Desktop Canonical Concept:
+
+- Session — 1 gameplay session
+- Duel — 1 combat interaction
+- AnalysisRun — 再現可能な解析実行
+
+Schema:
+
+- `data/session-schema.json`
+- `data/duel-schema.json`
+- `data/analysis-run-schema.json`
+
+Detector v0.5.0はLegacy baselineとし、Shot時刻・Enemy visible・Micro correction・Duel boundaryの正本にはしない。
 
 ## 3. Primary Task / Visual Priority
 
@@ -98,7 +138,7 @@ AI採点用Packageは現在未実装。
 | `result.html` | 将来のAI結果Import | 未実装 | Development |
 | `history.html` | 将来の履歴 | 未実装 | Development |
 | `training.html` | 将来の練習集計 | 未実装 | Development |
-| `settings.html` | 将来の設定 | 未実装 | Development |
+| `settings.html` | Electron共通設定 | Update / Worker / Logs / Reset | Desktop / Web fallback |
 
 ## 6. Review Workbench Layout
 
