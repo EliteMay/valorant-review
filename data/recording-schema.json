@@ -14,5 +14,14 @@
     "processInjection": false,
     "inputAutomation": false,
     "overlay": false
+  },
+  "metadata": {
+    "startedAt": "ISO-8601",
+    "endedAt": "ISO-8601|null",
+    "durationMs": "number|null",
+    "bytesWritten": "number",
+    "chunksWritten": "number",
+    "video": "width / height / frameRate",
+    "audio": "enabled / systemLoopback"
   }
 }
