@@ -2,11 +2,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 class DesktopDiagnostics {
-  constructor({ app, logger, settingsStore, taskRegistry }) {
+  constructor({ app, logger, settingsStore, taskRegistry, telemetryController = null }) {
     this.app = app;
     this.logger = logger;
     this.settingsStore = settingsStore;
     this.taskRegistry = taskRegistry;
+    this.telemetryController = telemetryController;
     this.startedAt = new Date().toISOString();
     this.lastRendererFailure = null;
   }
@@ -49,6 +50,7 @@ class DesktopDiagnostics {
         channel: this.settingsStore.get().update.channel
       },
       tasks: this.taskRegistry.list(),
+      telemetry: sanitizeTelemetry(this.telemetryController?.getStatus?.()),
       lastRendererFailure: this.lastRendererFailure,
       privacy: {
         includesVideoBody: false,
@@ -57,6 +59,22 @@ class DesktopDiagnostics {
       }
     };
   }
+}
+
+function sanitizeTelemetry(status) {
+  if (!status) return null;
+  return {
+    supported: Boolean(status.supported),
+    helperAvailable: Boolean(status.helperAvailable),
+    active: Boolean(status.active),
+    phase: String(status.phase || 'unknown'),
+    inputEvents: Number(status.inputEvents || 0),
+    mouseSamples: Number(status.mouseSamples || 0),
+    buttonEvents: Number(status.buttonEvents || 0),
+    keyEvents: Number(status.keyEvents || 0),
+    invalidEvents: Number(status.invalidEvents || 0),
+    valorantForeground: Boolean(status.valorantForeground)
+  };
 }
 
 module.exports = { DesktopDiagnostics };
