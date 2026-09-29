@@ -11,6 +11,14 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
   getDiagnostics: () => invoke('diagnostics:get'),
   openLogFolder: () => invoke('diagnostics:open-log-folder'),
   checkForUpdates: () => invoke('updates:check'),
+  getUpdateStatus: () => invoke('updates:get-status'),
+  updateNow: () => invoke('updates:update-now'),
+  onUpdateStatus: callback => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('updates:status', listener);
+    return () => ipcRenderer.removeListener('updates:status', listener);
+  },
   listTasks: () => invoke('tasks:list'),
   getTelemetryStatus: () => invoke('telemetry:get-status'),
   startTelemetry: () => invoke('telemetry:start'),

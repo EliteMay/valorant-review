@@ -4,7 +4,7 @@
 
 - Project: VReview
 - Repository: `EliteMay/valorant-review`
-- App Version: 0.10.0
+- App Version: 0.10.1
 - Detector Version: 0.5.0
 - Feedback Package: 5
 - Feedback Batch Schema: 1
@@ -111,6 +111,21 @@ Electron controller:
 - Event allowlistは`electron/telemetry/event-normalizer.cjs`
 - Session outputは`telemetry-session.json` + `telemetry.ndjson`
 - Schemaは`data/input-telemetry-schema.json`
+
+## 2.3 Desktop Update
+
+Electron packaged buildではGitHub Releasesを更新元とする。
+
+- 起動時: Updateの有無だけ確認可能
+- 設定画面の「Update確認・適用」:
+  1. Release確認
+  2. 新版があればダウンロード
+  3. Telemetry記録中なら安全に停止
+  4. NSIS Updateを適用
+  5. VReviewを再起動
+- Download progressをRendererへ通知する。
+- Development buildでは自動Updateを実行しない。
+- v0.10.0以前の「確認だけして適用しない」挙動へ戻さない。
 
 ## 3. Primary Task / Visual Priority
 
