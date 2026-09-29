@@ -387,7 +387,7 @@ window.VReviewDiagnostics = (() => {
   });
 
   window.addEventListener('vreview:storage-error', event => {
-    const code = captureError(event.detail?.message || 'Storage failure', 'STORAGE-001', { operation: event.detail?.operation || 'unknown' });
+    const code = captureError(event.detail?.message || 'Storage failure', 'STORAGE-001', { operation: event.detail?.operation || event.detail?.type || 'unknown' });
     if (event.detail && typeof event.detail === 'object') event.detail.errorCode = code;
   });
 
