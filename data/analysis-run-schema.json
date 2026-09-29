@@ -1,0 +1,20 @@
+{
+  "schema": "vreview-analysis-run",
+  "schemaVersion": 1,
+  "required": ["id", "sessionId", "engine", "startedAt", "state"],
+  "fields": {
+    "id": "stable UUID",
+    "sessionId": "vreview-session id",
+    "engine": {
+      "version": "string",
+      "configHash": "string",
+      "modelHash": "string|null",
+      "ffmpegVersion": "string|null"
+    },
+    "startedAt": "ISO-8601",
+    "completedAt": "ISO-8601|null",
+    "state": "queued|running|interrupted|completed|failed",
+    "error": "sanitized object|null",
+    "metricsVersion": "string"
+  }
+}
