@@ -169,7 +169,7 @@
 - [ ] Input countも同時に増える
 - [ ] VALORANTからAlt+TabするとInput Telemetryだけ停止し、画面録画は継続する
 - [ ] 「録画＋入力 停止」で正常終了する
-- [ ] 保存先に`gameplay.webm` / `recording.json` / `telemetry.ndjson` / `telemetry-session.json`がある
+- [ ] 保存先に`gameplay.webm` / `recording.json` / `telemetry.ndjson` / `telemetry-session.json` / `session.json`がある
 - [ ] `gameplay.webm`をVLC / Browser等で再生できる
 - [ ] `recording.json`にResolution / FPS / Audio / bytes / chunksが記録される
 - [ ] 録画中にSidebar linkを押してもページ移動しない
