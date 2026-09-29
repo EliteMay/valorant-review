@@ -93,6 +93,8 @@ Rules:
 - Recording is local-only and never auto-uploaded.
 - The source file is streamed to disk as `gameplay.webm`, not accumulated as one giant renderer Blob.
 - Recording and telemetry share the same Session ID/folder.
+- The user can choose the base recording directory once in Settings; the default is Windows Videos/VReview.
+- Recording start performs a local free-space guard before creating the Session folder.
 - Navigation away from Review is blocked while MediaRecorder is active.
 - App shutdown may mark the recording interrupted; normal user stop is the expected clean-finalization path.
 
