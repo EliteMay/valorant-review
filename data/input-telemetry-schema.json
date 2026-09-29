@@ -1,15 +1,24 @@
 {
   "schema": "vreview-input-telemetry-session",
   "schemaVersion": 1,
-  "helperVersion": "0.1.0",
+  "helperVersion": "0.1.1",
   "capturePolicy": {
     "explicitStartStop": true,
     "valorantForegroundOnly": true,
     "processInjection": false,
     "processMemoryRead": false,
     "inputAutomation": false,
-    "allowedMouse": ["dx", "dy", "LMB"],
-    "allowedKeys": ["W", "A", "S", "D"],
+    "allowedMouse": [
+      "dx",
+      "dy",
+      "LMB"
+    ],
+    "allowedKeys": [
+      "W",
+      "A",
+      "S",
+      "D"
+    ],
     "clipboard": false,
     "textInput": false
   },
