@@ -1,3 +1,5 @@
+const { randomUUID } = require('node:crypto');
+
 class TaskRegistry {
   constructor(logger) {
     this.logger = logger;
@@ -5,7 +7,7 @@ class TaskRegistry {
   }
 
   create(input = {}) {
-    const id = String(input.id || crypto.randomUUID());
+    const id = String(input.id || randomUUID());
     const task = {
       id,
       type: String(input.type || 'generic'),
