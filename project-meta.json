@@ -1,7 +1,12 @@
 {
   "project": "VReview",
-  "guideVersion": "1.13.0",
-  "profiles": ["STATIC", "MEDIA", "AI-HANDOFF", "TOOL"],
+  "guideVersion": "1.22.0",
+  "profiles": [
+    "STATIC",
+    "MEDIA",
+    "AI-HANDOFF",
+    "TOOL"
+  ],
   "sourceOfTruth": {
     "runtimeVersion": "js/version.js",
     "projectSpecification": "SPEC.md",
@@ -51,5 +56,27 @@
   "deployment": {
     "type": "github-pages",
     "basePath": "/valorant-review/"
+  },
+  "desktop": {
+    "status": "foundation",
+    "runtime": "Electron",
+    "appId": "io.github.elitemay.vreview",
+    "entry": "electron/main.cjs",
+    "preload": "electron/preload.cjs",
+    "architecture": "docs/V1_ELECTRON_ARCHITECTURE.md",
+    "packaging": "electron-builder/nsis",
+    "sourceVideoAutoUpload": false,
+    "gameplayAutomation": false
+  },
+  "analysisModel": {
+    "canonicalConcepts": [
+      "Session",
+      "Duel",
+      "AnalysisRun"
+    ],
+    "sessionSchema": "data/session-schema.json",
+    "duelSchema": "data/duel-schema.json",
+    "analysisRunSchema": "data/analysis-run-schema.json",
+    "legacyDetector": "0.5.0"
   }
 }
