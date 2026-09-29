@@ -12,7 +12,7 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 
 ## 現在の状態
 
-- VReview: **v0.10.0**
+- VReview: **v0.10.1**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
 - Feedback Batch Schema: **v1**
@@ -23,6 +23,8 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 - Visual Direction: **Review Workbench**
 
 v0.10.0ではDetector v0.5.0をLegacy baselineのまま維持し、Windows Raw InputでMouse dx/dy・LMB・W/A/S/Dを記録するPassive Input Telemetryを追加します。
+
+v0.10.1ではアプリ内Updateを修正し、`Update確認・適用`から新しいReleaseをダウンロード → 適用 → 再起動できるようにしました。
 
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
