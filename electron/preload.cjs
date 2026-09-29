@@ -32,7 +32,7 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
   },
   getRecordingStatus: () => invoke('recording:get-status'),
   prepareRecording: payload => invoke('recording:prepare', payload),
-  appendRecordingChunk: chunk => ipcRenderer.send('recording:chunk', chunk),
+  appendRecordingChunk: chunk => invoke('recording:append-chunk', chunk),
   finishRecording: payload => invoke('recording:finish', payload),
   abortRecording: reason => invoke('recording:abort', reason),
   openRecordingFolder: () => invoke('recording:open-folder'),
