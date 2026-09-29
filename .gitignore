@@ -4,3 +4,5 @@ out/
 *.log
 *.tmp
 .vreview-local/
+native/bin/
+*.obj
