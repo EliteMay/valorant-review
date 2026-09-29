@@ -34,3 +34,9 @@ jobs:
 
       - name: Run detector metrics regression tests
         run: node tests/detector-metrics.test.mjs
+
+      - name: Run desktop pure-node regression tests
+        run: |
+          node tests/telemetry-event.test.mjs
+          node tests/updater-version.test.mjs
+          node tests/recording-controller.test.mjs
