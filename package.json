@@ -1,6 +1,6 @@
 {
   "name": "vreview",
-  "version": "0.10.2",
+  "version": "0.11.0",
   "private": true,
   "description": "VALORANT review and aim consistency analyzer",
   "main": "electron/main.cjs",
@@ -8,7 +8,7 @@
     "start": "electron .",
     "dev": "electron .",
     "validate": "node scripts/validate.mjs",
-    "test": "node tests/storage.test.mjs && node tests/detector-metrics.test.mjs && node tests/telemetry-event.test.mjs && node tests/updater-version.test.mjs && npm run validate",
+    "test": "node tests/storage.test.mjs && node tests/detector-metrics.test.mjs && node tests/telemetry-event.test.mjs && node tests/updater-version.test.mjs && node tests/recording-controller.test.mjs && npm run validate",
     "build:win": "npm run build:input-helper && electron-builder --win nsis",
     "dist:win": "npm run build:input-helper && electron-builder --win nsis --publish never",
     "build:input-helper": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-input-helper.ps1"
