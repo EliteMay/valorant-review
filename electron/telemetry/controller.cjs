@@ -44,7 +44,7 @@ class TelemetryController extends EventEmitter {
     }
 
     const sessionId = randomUUID();
-    const folderName = `telemetry-${timestampForPath()}-${sessionId.slice(0, 8)}`;
+    const folderName = `session-${timestampForPath()}-${sessionId.slice(0, 8)}`;
     const sessionDir = path.join(this.app.getPath('userData'), 'sessions', folderName);
     fs.mkdirSync(sessionDir, { recursive: false });
 
@@ -65,8 +65,7 @@ class TelemetryController extends EventEmitter {
       helperVersion: null,
       qpcFrequency: null,
       valorantForeground: false,
-      foregroundProcess: '',
-      inputEvents: 0,
+            inputEvents: 0,
       mouseSamples: 0,
       buttonEvents: 0,
       keyEvents: 0,
@@ -189,7 +188,6 @@ class TelemetryController extends EventEmitter {
 
       if (event.type === 'focus') {
         this.state.valorantForeground = event.valorant;
-        this.state.foregroundProcess = event.process || '';
         this.#emitStatus(true);
         continue;
       }
@@ -333,8 +331,7 @@ class TelemetryController extends EventEmitter {
       helperVersion: null,
       qpcFrequency: null,
       valorantForeground: false,
-      foregroundProcess: '',
-      inputEvents: 0,
+            inputEvents: 0,
       mouseSamples: 0,
       buttonEvents: 0,
       keyEvents: 0,
