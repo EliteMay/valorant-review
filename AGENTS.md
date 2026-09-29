@@ -93,7 +93,7 @@ Browser / Media / Layout / Visual / IndexedDB / ZIPは `tests/BROWSER_CHECKLIST.
 
 - localStorage / Migration: Draft / Backup / legacy v0.5.0以前形式。
 - IndexedDB: Feedback Queue transaction / quota / duplicate fingerprint / destructive clear。
-- Media: Blob URL cleanup、Codec、Canvas frame extraction、Gameplay MediaRecorder、System Audio、長尺動画Performance。
+- Media: Blob URL cleanup、Codec、Canvas frame extraction、Gameplay MediaRecorder、System Audio、録画保存先 / 空き容量、長尺動画Performance。
 - Detector: Recall / Precision trade-off、固定ROI、未知Clip汎化、評価指標自体のBias。
 - Electron: IPC capability、settings/log path、update、window state、Windows packaged behavior。
 - Telemetry: Raw Input Helper、clock sync、dropped event、privacy、VALORANT foreground filter、非侵入境界。
