@@ -36,8 +36,7 @@ assert.deepEqual(
   {
     type: 'focus',
     t_us: 55,
-    valorant: true,
-    process: 'VALORANT-Win64-Shipping.exe'
+    valorant: true
   }
 );
 
