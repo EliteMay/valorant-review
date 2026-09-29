@@ -197,9 +197,10 @@ app.whenReady().then(() => {
 
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
     try {
-      const frameUrl = String(request.frame?.url || '');
-      if (!request.videoRequested || !frameUrl.startsWith('file://') || !frameUrl.endsWith('/review.html')) {
-        callback({});
+      const currentUrl = String(mainWindow?.webContents?.getURL?.() || '');
+      const isLocalReview = currentUrl.startsWith('file://') && currentUrl.endsWith('/review.html');
+      if (!request.videoRequested || !isLocalReview) {
+        callback(null);
         return;
       }
 
@@ -214,7 +215,7 @@ app.whenReady().then(() => {
       const source = primaryScreen || sources[0];
 
       if (!source) {
-        callback({});
+        callback(null);
         return;
       }
 
@@ -223,7 +224,7 @@ app.whenReady().then(() => {
       callback(grant);
     } catch (error) {
       logger?.warn('recording.display-grant.failed', { message: error.message });
-      callback({});
+      callback(null);
     }
   });
 
