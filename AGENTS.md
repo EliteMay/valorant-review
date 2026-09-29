@@ -12,14 +12,15 @@
 4. `作業報告書.md`
 5. `project-meta.json`
 6. `EliteMay/web-project-guide` の最新 `README.md` / `START_HERE.md` と関連章
-7. 変更対象Code / Data / Tests
+7. `docs/V1_ELECTRON_ARCHITECTURE.md`（Desktop / Analysis変更時）
+8. 変更対象Code / Data / Tests
 
 見た目を意味のある範囲で変更する場合は、最新GuideのVisual Quality Baseline / Domain-first Visual Researchを先に確認してください。
 
 ## Project
 
 - Repository: `EliteMay/valorant-review`
-- Purpose: VALORANT Clipから戦闘Scene候補を検出・修正し、Detector改善と将来のChatGPT AIM / Movement Reviewへつなげる。
+- Purpose: VALORANTのStrong / Weak Session差をDuel / Input / Aim Evidenceから測定し、将来のAI AIM / Movement Reviewへつなげる。Detector v0.5.0はLegacy baseline。
 - Main entry point: `review.html`
 - Deployment: GitHub Pages `https://elitemay.github.io/valorant-review/`
 - Project Profiles: `STATIC + MEDIA + AI-HANDOFF + TOOL`
@@ -29,8 +30,11 @@
 ## Commands
 
 ```bash
+npm test
 node scripts/validate.mjs
 node tests/storage.test.mjs
+node tests/detector-metrics.test.mjs
+npm run dist:win   # Windows / Electron変更時
 ```
 
 Browser / Media / Layout / Visual / IndexedDB / ZIPは `tests/BROWSER_CHECKLIST.md` を使い、実行できなかった確認を成功扱いにしません。
@@ -39,7 +43,10 @@ Browser / Media / Layout / Visual / IndexedDB / ZIPは `tests/BROWSER_CHECKLIST.
 
 詳細は `SPEC.md` を正本とします。
 
-- GitHub Pages対応を維持する。
+- GitHub Pages互換を移行期間中は維持する。
+- Electron RendererへNode権限を直接渡さない（contextIsolation ON / sandbox ON / nodeIntegration OFF）。
+- VALORANTへのInjection / Memory Read / Gameplay input automationを実装しない。
+- Long videoをAIだけで探索してDuel正解としない。Measurement / Evidenceを先に確定する。
 - OpenAI API等の有料APIを必須にしない。
 - 元動画をユーザー操作なしに外部送信しない。
 - 元動画をFeedback Queue / ZIPへ保存しない。
@@ -60,8 +67,10 @@ Browser / Media / Layout / Visual / IndexedDB / ZIPは `tests/BROWSER_CHECKLIST.
 
 | Area | Canonical file / directory | Notes |
 |---|---|---|
-| Runtime Version | `js/version.js` | App / Detector / Feedback / Batch / Schema / Guide / Build |
-| Detector | `js/detector.js` | 単一Pipeline。Versioned Patchを増やさない |
+| Runtime Version | `js/version.js`, `package.json` | Web表示VersionとElectron package Versionを同期 |
+| Desktop architecture | `docs/V1_ELECTRON_ARCHITECTURE.md`, `electron/` | Main / Preload / foundation / updater |
+| Detector | `js/detector.js` | Legacy v0.5 baseline。Versioned Patchを増やさない |
+| Detector evaluation | `js/detector-metrics.js`, `js/detector-test.js` | auto-scenes vs corrected Ground Truth / temporal metrics |
 | Draft Storage | `js/storage.js` | localStorage Schema v1 + legacy read compatibility |
 | Feedback Queue | `js/feedback-library.js` | IndexedDB / max 20 clips / 350MB / source video禁止 |
 | Scene UI | `js/ui.js` | Scene state / render / manual editing |
@@ -81,7 +90,9 @@ Browser / Media / Layout / Visual / IndexedDB / ZIPは `tests/BROWSER_CHECKLIST.
 - localStorage / Migration: Draft / Backup / legacy v0.5.0以前形式。
 - IndexedDB: Feedback Queue transaction / quota / duplicate fingerprint / destructive clear。
 - Media: Blob URL cleanup、Codec、Canvas frame extraction、長尺動画Performance。
-- Detector: Recall / Precision trade-off、固定ROI、未知Clip汎化。
+- Detector: Recall / Precision trade-off、固定ROI、未知Clip汎化、評価指標自体のBias。
+- Electron: IPC capability、settings/log path、update、window state、Windows packaged behavior。
+- Telemetry（次Phase）: clock sync、dropped event、privacy、VALORANT非侵入境界。
 - AI-HANDOFF: Package / Batch Schema、Import Validation、元動画Privacy。
 - ZIP: Batch構造、Path Validation、Memory負荷、Export失敗時のQueue保持。
 - Layout: fixed gameplay + right-only scroll、低い縦解像度、Zoom。
