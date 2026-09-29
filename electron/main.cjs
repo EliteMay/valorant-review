@@ -139,9 +139,9 @@ function registerIpc() {
     });
   });
 
-  ipcMain.on('recording:chunk', (event, chunk) => {
-    if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return;
-    recordingController.appendChunk(chunk);
+  ipcMain.handle('recording:append-chunk', (event, chunk) => {
+    if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return false;
+    return recordingController.appendChunk(chunk);
   });
 
   ipcMain.handle('recording:finish', async (_event, payload) => {
