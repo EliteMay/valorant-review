@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const channel = document.getElementById('settingUpdateChannel');
   const concurrency = document.getElementById('settingWorkerConcurrency');
   const info = document.getElementById('desktopRuntimeInfo');
+  const recordingDirectory = document.getElementById('recordingSaveDirectory');
   const status = document.getElementById('desktopSettingsStatus');
   const updateButton = document.getElementById('checkDesktopUpdates');
 
@@ -22,6 +23,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     autoCheck.checked = settings.update.autoCheck;
     channel.value = settings.update.channel;
     concurrency.value = String(settings.analysis.workerConcurrency);
+    recordingDirectory.textContent = settings.recording?.saveDirectory || '既定: Windows Videos / VReview';
+    recordingDirectory.title = settings.recording?.saveDirectory || '';
     info.textContent = `VReview ${runtime.appVersion} · Electron ${runtime.electronVersion} · ${runtime.platform}/${runtime.arch}`;
     if (mode) mode.textContent = 'Electron Desktop mode';
   }
@@ -100,6 +103,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     await api.resetSettings();
     setStatus('既定値へ戻しました。');
     await refresh();
+  });
+  document.getElementById('chooseRecordingFolder')?.addEventListener('click', async () => {
+    try {
+      await api.chooseRecordingFolder();
+      setStatus('録画保存先を更新しました。');
+      await refresh();
+    } catch (error) {
+      setStatus(`録画保存先の変更に失敗しました: ${error.message || String(error)}`);
+    }
   });
   document.getElementById('openDesktopLogs')?.addEventListener('click', () => api.openLogFolder());
   document.getElementById('checkDesktopUpdates')?.addEventListener('click', async () => {
