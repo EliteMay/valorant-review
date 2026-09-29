@@ -58,7 +58,7 @@
     "basePath": "/valorant-review/"
   },
   "desktop": {
-    "status": "foundation",
+    "status": "telemetry-foundation",
     "runtime": "Electron",
     "appId": "io.github.elitemay.vreview",
     "entry": "electron/main.cjs",
@@ -66,7 +66,29 @@
     "architecture": "docs/V1_ELECTRON_ARCHITECTURE.md",
     "packaging": "electron-builder/nsis",
     "sourceVideoAutoUpload": false,
-    "gameplayAutomation": false
+    "gameplayAutomation": false,
+    "inputTelemetry": {
+      "schema": "data/input-telemetry-schema.json",
+      "helper": "native/input-telemetry/main.cpp",
+      "controller": "electron/telemetry/controller.cjs",
+      "foregroundProcess": "VALORANT-Win64-Shipping.exe",
+      "allowedMouse": [
+        "dx",
+        "dy",
+        "LMB"
+      ],
+      "allowedKeys": [
+        "W",
+        "A",
+        "S",
+        "D"
+      ],
+      "textInput": false,
+      "clipboard": false,
+      "processInjection": false,
+      "processMemoryRead": false,
+      "inputAutomation": false
+    }
   },
   "analysisModel": {
     "canonicalConcepts": [
