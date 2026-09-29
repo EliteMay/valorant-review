@@ -40,3 +40,4 @@ jobs:
           node tests/telemetry-event.test.mjs
           node tests/updater-version.test.mjs
           node tests/recording-controller.test.mjs
+          node tests/settings-store.test.mjs
