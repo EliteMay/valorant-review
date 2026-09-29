@@ -162,6 +162,9 @@
 ## Gameplay Recording — Windows Real PC
 
 - [ ] v0.11.0 Setup.exeでNew Reviewに「録画＋入力 開始」が表示される
+- [ ] 設定から録画保存先を別Drive / Folderへ変更でき、再起動後も残る
+- [ ] 保存先を未指定ならWindows Videos/VReviewへSessionが作られる
+- [ ] 空き容量2GB未満の保存先では録画開始を拒否し、既存Sessionを壊さない
 - [ ] 開始を押すとOSのScreen pickerを出さずPrimary画面録画が始まる
 - [ ] VReviewを最小化してVALORANTへ戻っても録画が継続する
 - [ ] 60fps設定のVALORANTで録画が極端にカクつかない
