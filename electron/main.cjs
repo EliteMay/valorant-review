@@ -90,6 +90,17 @@ function registerIpc() {
     return { ok: !error, error: error || null };
   });
   ipcMain.handle('updates:check', () => updater.check());
+  ipcMain.handle('updates:get-status', () => updater.getStatus());
+  ipcMain.handle('updates:update-now', async () => {
+    const result = await updater.downloadLatest();
+    if (result.status !== 'downloaded') return result;
+
+    if (telemetryController?.getStatus().active) {
+      await telemetryController.shutdown();
+    }
+
+    return updater.installDownloaded();
+  });
   ipcMain.handle('tasks:list', () => taskRegistry.list());
   ipcMain.handle('telemetry:get-status', () => telemetryController.getStatus());
   ipcMain.handle('telemetry:start', () => telemetryController.start());
@@ -117,6 +128,11 @@ app.whenReady().then(() => {
   telemetryController = new TelemetryController({ app, logger, taskRegistry });
   diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry, telemetryController });
   updater = new UpdaterController({ app, logger, settingsStore });
+  updater.on('status', status => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('updates:status', status);
+    }
+  });
   telemetryController.on('status', status => {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) win.webContents.send('telemetry:status', status);
