@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const concurrency = document.getElementById('settingWorkerConcurrency');
   const info = document.getElementById('desktopRuntimeInfo');
   const status = document.getElementById('desktopSettingsStatus');
+  const updateButton = document.getElementById('checkDesktopUpdates');
 
   async function refresh() {
     const [settings, runtime] = await Promise.all([api.getSettings(), api.getInfo()]);
@@ -40,6 +41,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     status.classList.remove('hidden');
   }
 
+  function renderUpdateState(state) {
+    if (!state) return;
+    const percent = Number.isFinite(Number(state.percent)) ? Math.round(Number(state.percent)) : null;
+
+    if (state.status === 'checking') {
+      setStatus('Updateを確認しています…');
+      if (updateButton) updateButton.disabled = true;
+      return;
+    }
+    if (state.status === 'available') {
+      setStatus(`v${state.version} が利用できます。`);
+      if (updateButton) {
+        updateButton.disabled = false;
+        updateButton.textContent = `v${state.version}へ更新`;
+      }
+      return;
+    }
+    if (state.status === 'downloading') {
+      setStatus(percent == null ? 'Updateをダウンロードしています…' : `Updateをダウンロード中… ${percent}%`);
+      if (updateButton) updateButton.disabled = true;
+      return;
+    }
+    if (state.status === 'downloaded') {
+      setStatus('Updateのダウンロード完了。再起動準備中です…');
+      if (updateButton) updateButton.disabled = true;
+      return;
+    }
+    if (state.status === 'installing') {
+      setStatus('Updateを適用して再起動します…');
+      if (updateButton) updateButton.disabled = true;
+      return;
+    }
+    if (state.status === 'up-to-date') {
+      setStatus(`最新版です（v${state.currentVersion || state.version}）。`);
+      if (updateButton) {
+        updateButton.disabled = false;
+        updateButton.textContent = 'Update確認・適用';
+      }
+      return;
+    }
+    if (state.status === 'failed') {
+      setStatus(`Update失敗: ${state.message || '不明なエラー'}`);
+      if (updateButton) {
+        updateButton.disabled = false;
+        updateButton.textContent = 'Update再試行';
+      }
+      return;
+    }
+    if (state.status === 'development') {
+      setStatus('Development buildでは自動Updateしません。');
+      if (updateButton) updateButton.disabled = false;
+    }
+  }
+
   document.getElementById('saveDesktopSettings')?.addEventListener('click', () => save().catch(error => setStatus(`保存に失敗しました: ${error.message}`)));
   document.getElementById('resetDesktopSettings')?.addEventListener('click', async () => {
     await api.resetSettings();
@@ -48,9 +103,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('openDesktopLogs')?.addEventListener('click', () => api.openLogFolder());
   document.getElementById('checkDesktopUpdates')?.addEventListener('click', async () => {
-    const result = await api.checkForUpdates();
-    setStatus(result.status === 'checked' && result.version ? `確認完了: ${result.version}` : `Update確認: ${result.status}`);
+    if (updateButton) updateButton.disabled = true;
+    setStatus('Updateを確認しています…');
+    try {
+      const result = await api.updateNow();
+      renderUpdateState(result);
+    } catch (error) {
+      renderUpdateState({ status: 'failed', message: error.message || String(error) });
+    }
   });
 
+  api.onUpdateStatus?.(state => renderUpdateState(state));
+
   await refresh();
+  try {
+    renderUpdateState(await api.getUpdateStatus());
+  } catch {
+    // Settings remain usable even if updater status cannot be read.
+  }
 });
