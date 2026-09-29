@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 
+  root.classList.remove('hidden');
+
   function render(state) {
     if (!state) return;
     count.textContent = String(state.inputEvents || 0);
