@@ -1,3 +1,4 @@
+const fs = require('node:fs');
 const path = require('node:path');
 const { app, BrowserWindow, desktopCapturer, ipcMain, session, shell, screen } = require('electron');
 const { SettingsStore } = require('./foundation/settings-store.cjs');
@@ -146,13 +147,17 @@ function registerIpc() {
   ipcMain.handle('recording:finish', async (_event, payload) => {
     const recording = await recordingController.finish(payload || {});
     if (telemetryController.getStatus().active) await telemetryController.stop();
-    return { recording, telemetry: telemetryController.getStatus() };
+    const telemetry = telemetryController.getStatus();
+    writeCaptureSessionManifest(recording, telemetry);
+    return { recording, telemetry };
   });
 
   ipcMain.handle('recording:abort', async (_event, reason) => {
     const recording = await recordingController.abort(reason || 'renderer-abort');
     if (telemetryController.getStatus().active) await telemetryController.stop();
-    return { recording, telemetry: telemetryController.getStatus() };
+    const telemetry = telemetryController.getStatus();
+    writeCaptureSessionManifest(recording, telemetry);
+    return { recording, telemetry };
   });
 
   ipcMain.handle('recording:open-folder', async () => {
@@ -161,6 +166,66 @@ function registerIpc() {
     const error = await shell.openPath(folder);
     return { ok: !error, error: error || null };
   });
+}
+
+function writeCaptureSessionManifest(recording, telemetry) {
+  const folder = recordingController?.getSessionDirectory() || telemetryController?.getSessionDirectory();
+  if (!folder) return false;
+
+  const recordingComplete = recording?.phase === 'completed';
+  const telemetryComplete = telemetry?.phase === 'stopped';
+  const manifest = {
+    schema: 'vreview-session',
+    schemaVersion: 1,
+    id: recording?.sessionId || telemetry?.sessionId || null,
+    createdAt: telemetry?.startedAt || recording?.startedAt || new Date().toISOString(),
+    completedAt: recording?.endedAt || telemetry?.endedAt || null,
+    sourceVideo: {
+      file: recording?.fileName || 'gameplay.webm',
+      pathStored: false,
+      contentHash: null,
+      durationMs: null,
+      width: recording?.video?.width ?? null,
+      height: recording?.video?.height ?? null,
+      fps: recording?.video?.frameRate ?? null,
+      variableFrameRate: null
+    },
+    recording: {
+      available: Boolean(recording?.fileName),
+      complete: recordingComplete,
+      manifest: 'recording.json',
+      mimeType: recording?.mimeType || null,
+      bytesWritten: Number(recording?.bytesWritten || 0),
+      systemAudio: Boolean(recording?.audio?.enabled)
+    },
+    telemetry: {
+      available: Boolean(telemetry?.sessionId),
+      complete: telemetryComplete,
+      manifest: 'telemetry-session.json',
+      events: 'telemetry.ndjson',
+      clockSync: 'pending',
+      clockOffsetMs: null,
+      clockDriftPpm: null
+    },
+    files: {
+      video: recording?.fileName || 'gameplay.webm',
+      recordingManifest: 'recording.json',
+      telemetryManifest: 'telemetry-session.json',
+      telemetryEvents: 'telemetry.ndjson'
+    },
+    analysisState: recordingComplete && telemetryComplete ? 'new' : 'interrupted'
+  };
+
+  const file = path.join(folder, 'session.json');
+  const temp = `${file}.tmp`;
+  try {
+    fs.writeFileSync(temp, JSON.stringify(manifest, null, 2), 'utf8');
+    fs.renameSync(temp, file);
+    return true;
+  } catch (error) {
+    logger?.warn('capture.session-manifest.failed', { message: error.message });
+    return false;
+  }
 }
 
 app.on('second-instance', () => {
@@ -247,9 +312,13 @@ app.on('before-quit', event => {
   if (!quitAfterCaptureStop && captureActive) {
     event.preventDefault();
     quitAfterCaptureStop = true;
+    let finalRecording = recordingController?.getStatus();
     Promise.resolve()
-      .then(() => recordingController?.getStatus().active ? recordingController.abort('app-quit') : null)
+      .then(async () => {
+        if (recordingController?.getStatus().active) finalRecording = await recordingController.abort('app-quit');
+      })
       .then(() => telemetryController?.getStatus().active ? telemetryController.shutdown() : null)
+      .then(() => writeCaptureSessionManifest(finalRecording, telemetryController?.getStatus()))
       .catch(error => logger?.warn('capture.quit-stop.failed', { message: error.message }))
       .finally(() => app.quit());
     return;
