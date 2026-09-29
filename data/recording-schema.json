@@ -1,0 +1,18 @@
+{
+  "schema": "vreview-gameplay-recording",
+  "schemaVersion": 1,
+  "format": "WebM",
+  "files": {
+    "video": "gameplay.webm",
+    "manifest": "recording.json"
+  },
+  "capturePolicy": {
+    "desktopCapture": true,
+    "systemAudioLoopback": true,
+    "gameProcessHandle": false,
+    "processMemoryRead": false,
+    "processInjection": false,
+    "inputAutomation": false,
+    "overlay": false
+  }
+}
