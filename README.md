@@ -1,6 +1,6 @@
 # VReview
 
-VALORANTの強い時・弱い時の差を客観的に測ることを目標にした個人用レビュー / AIM分析ツールです。現行Web Reviewを維持しつつ、v0.9.0からElectron Desktop基盤へ移行し、v0.10.0でPassive Input Telemetryを追加しました。
+VALORANTの強い時・弱い時の差を客観的に測ることを目標にした個人用レビュー / AIM分析ツールです。現行Web Reviewを維持しつつ、v0.9.0からElectron Desktop基盤へ移行し、v0.10.0でPassive Input Telemetryを追加し、v0.11.0でGameplay録画とTelemetryを1ボタンで同時記録できるようにしました。
 
 最終的には、動画・受動Input Telemetry・Duel単位の指標を同期し、Strong / Weak Sessionを統計比較したEvidenceをAIへ渡してAIM / Movementレビューへつなげます。
 
@@ -12,7 +12,7 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 
 ## 現在の状態
 
-- VReview: **v0.10.2**
+- VReview: **v0.11.0**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
 - Feedback Batch Schema: **v1**
@@ -27,6 +27,8 @@ v0.10.0ではDetector v0.5.0をLegacy baselineのまま維持し、Windows Raw I
 v0.10.1ではアプリ内Updateを修正し、`Update確認・適用`から新しいReleaseをダウンロード → 適用 → 再起動できるようにしました。
 
 v0.10.2ではTelemetryのVALORANT判定から`OpenProcess`を削除し、公開Windows APIのForeground Window titleだけで記録可否を判定するSafe Telemetryへ変更しました。ゲームProcess Handleを開きません。
+
+v0.11.0ではGameplay録画を追加し、`New Review`の「録画＋入力 開始」からPrimary画面のWebM録画・Windows System Audio・Input Telemetryを同じSessionへ保存します。
 
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
@@ -54,10 +56,34 @@ v0.10.0では最終Electron化に向け、以下を実装しています。
 - Passive Input Telemetry: Mouse dx/dy / LMB / W/A/S/D
 - VALORANT foreground限定記録
 - Telemetry session JSON / NDJSON保存
+- Gameplay録画: Primary画面 / WebM / 60fps目標 / Windows System Audio
+- 録画とTelemetryを同じSession folderへ保存
 
 詳細: [`docs/V1_ELECTRON_ARCHITECTURE.md`](docs/V1_ELECTRON_ARCHITECTURE.md)
 
 Electron版の最終Analysis Engineでは、ゲームへのInjection・Memory Read・入力自動化を行わず、Passive recording → Offline analysisを前提にします。
+
+## Gameplay Session Recording
+
+Electron版の`New Review`で **「録画＋入力 開始」** を押すと、Gameplay録画とInput Telemetryをまとめて開始します。
+
+同じSession folderへ保存:
+
+- `gameplay.webm` — Primary画面の録画
+- `recording.json` — 録画Format / Resolution / FPS / Audio等
+- `telemetry.ndjson` — Mouse / LMB / WASD timestamp
+- `telemetry-session.json` — Telemetry manifest
+
+録画方針:
+
+- Target: 1920×1080 / 60fps
+- Format: WebM
+- Windows System Audio loopbackを含める
+- VReviewを最小化しても録画継続できるよう`backgroundThrottling=false`
+- Game process memory / Injection / Input Automationは使わない
+- 録画中はReview pageから別ページへ移動しないようUIでGuardする
+
+現段階では録画とTelemetryを同じSessionへ保存しますが、Frame-accurateなClock sync / FFmpeg解析は次Phaseです。
 
 ## Input Telemetry
 
@@ -106,6 +132,7 @@ Batch ZIPは`Detector Test`へそのまま1個ドロップでき、中の複数�
 
 ### New Review
 
+- Gameplay録画 + Input Telemetry同時記録（Electron）
 - MP4 / WebM読み込み
 - キルScene候補の自動検出
 - `primary` / `weak`候補の分離
