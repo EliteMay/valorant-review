@@ -1,6 +1,6 @@
 {
   "name": "vreview",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "private": true,
   "description": "VALORANT review and aim consistency analyzer",
   "main": "electron/main.cjs",
