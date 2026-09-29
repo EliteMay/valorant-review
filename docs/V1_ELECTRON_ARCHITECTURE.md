@@ -68,7 +68,7 @@ It records only:
 - LMB down/up
 - W/A/S/D down/up
 - monotonic timestamps
-- foreground process transitions needed to enforce VALORANT-only capture
+- foreground VALORANT boolean needed to enforce capture; raw window title is not persisted
 
 It intentionally does not use:
 
@@ -77,6 +77,7 @@ It intentionally does not use:
 - DLL injection
 - synthetic input
 - clipboard/text capture
+- opening the VALORANT process for metadata; `OpenProcess` is intentionally forbidden in the telemetry helper
 
 Renderer receives only aggregate counts/status. Raw events are written by the Electron main-process controller to the local telemetry session folder.
 
