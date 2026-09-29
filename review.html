@@ -42,6 +42,35 @@
         <div class="status-callout pending hidden" id="uploadStatus" aria-live="polite"></div>
       </section>
 
+      <section class="panel hidden" id="telemetryPanel" aria-label="Input Telemetry">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Input Telemetry</p>
+            <h2>プレイ中の入力を記録</h2>
+          </div>
+          <span class="badge" id="telemetryStatus">停止中</span>
+        </div>
+        <p class="helper" id="telemetryDetail">開始後にVALORANTへ戻ってプレイしてください。</p>
+
+        <div class="status-list">
+          <div class="status-row"><span>入力イベント</span><strong id="telemetryEventCount">0</strong></div>
+          <div class="status-row"><span>Mouse dx/dy</span><strong id="telemetryMouseCount">0</strong></div>
+          <div class="status-row"><span>LMB</span><strong id="telemetryButtonCount">0</strong></div>
+          <div class="status-row"><span>W / A / S / D</span><strong id="telemetryKeyCount">0</strong></div>
+        </div>
+
+        <div class="button-row">
+          <button class="btn btn-primary" id="telemetryStartBtn" type="button">記録開始</button>
+          <button class="btn btn-danger" id="telemetryStopBtn" type="button" disabled>記録停止</button>
+          <button class="btn btn-secondary" id="telemetryOpenFolderBtn" type="button" disabled>保存先を開く</button>
+        </div>
+
+        <p class="helper">
+          VALORANTが最前面の時だけ、Mouseの相対移動量・左クリック・W/A/S/Dを保存します。
+          文字入力、Clipboard、他アプリのKey入力、ゲームMemoryは取得しません。
+        </p>
+      </section>
+
       <section class="review-workspace hidden" id="workspace" aria-label="クリップレビュー作業画面">
         <div class="video-column">
           <section class="video-panel">
@@ -183,5 +212,6 @@
   <script src="js/feedback-package-v5.js?v=20260929-1"></script>
   <script src="js/ui.js?v=20260929-1"></script>
   <script src="js/app.js?v=20260929-1"></script>
+  <script src="js/desktop-telemetry.js?v=20260929-1"></script>
 </body>
 </html>
