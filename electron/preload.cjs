@@ -29,5 +29,17 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
     const listener = (_event, status) => callback(status);
     ipcRenderer.on('telemetry:status', listener);
     return () => ipcRenderer.removeListener('telemetry:status', listener);
+  },
+  getRecordingStatus: () => invoke('recording:get-status'),
+  prepareRecording: payload => invoke('recording:prepare', payload),
+  appendRecordingChunk: chunk => ipcRenderer.send('recording:chunk', chunk),
+  finishRecording: payload => invoke('recording:finish', payload),
+  abortRecording: reason => invoke('recording:abort', reason),
+  openRecordingFolder: () => invoke('recording:open-folder'),
+  onRecordingStatus: callback => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('recording:status', listener);
+    return () => ipcRenderer.removeListener('recording:status', listener);
   }
 }));
