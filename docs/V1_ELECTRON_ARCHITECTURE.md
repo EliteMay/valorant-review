@@ -33,8 +33,9 @@ Main
 Analysis utility process (next phase)
   FFmpeg / frame decode / computer vision / metrics
   ↓
-Optional native input helper (next phase)
-  mouse dx/dy + LMB + A/D timestamps only
+Native input helper
+  mouse dx/dy + LMB + W/A/S/D timestamps only
+  VALORANT foreground only
 ```
 
 ## Current foundation
@@ -52,6 +53,32 @@ The `electron-v1-foundation` branch introduces:
 - Windows NSIS packaging configuration
 - Settings screen that degrades safely on Web
 - duel/session/analysis-run schema contracts
+- passive Windows Raw Input telemetry
+- explicit Start / Stop UI
+- VALORANT foreground filter
+- telemetry NDJSON session persistence
+
+## Input telemetry boundary
+
+v0.10.0 implements a dedicated native helper instead of browser-level mouse events.
+
+It records only:
+
+- relative mouse dx/dy
+- LMB down/up
+- W/A/S/D down/up
+- monotonic timestamps
+- foreground process transitions needed to enforce VALORANT-only capture
+
+It intentionally does not use:
+
+- SetWindowsHookEx
+- ReadProcessMemory / WriteProcessMemory
+- DLL injection
+- synthetic input
+- clipboard/text capture
+
+Renderer receives only aggregate counts/status. Raw events are written by the Electron main-process controller to the local telemetry session folder.
 
 ## Detector v0.5 status
 
@@ -126,7 +153,7 @@ Required later:
 4. renderer crash recovery behavior
 5. update check behavior
 6. real video import
-7. input telemetry synchronization
+7. input telemetry real-PC validation and video synchronization
 8. analysis-worker cancel/interruption recovery
 9. strong/weak comparison on multiple sessions
 10. diagnostic export privacy check
