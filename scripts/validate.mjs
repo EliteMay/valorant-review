@@ -40,6 +40,7 @@ const requiredFiles = [
   'electron/foundation/window-state.cjs',
   'electron/foundation/task-registry.cjs',
   'electron/foundation/diagnostics.cjs',
+  'electron/foundation/version-compare.cjs',
   'electron/updater.cjs',
   'js/detector-metrics.js',
   'tests/detector-metrics.test.mjs',
