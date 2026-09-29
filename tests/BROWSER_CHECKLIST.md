@@ -159,6 +159,23 @@
 - [ ] 更新後もuserData設定が消えない
 - [ ] source videoがDesktop Diagnosticsへ含まれない
 
+## Input Telemetry — Windows Real PC
+
+- [ ] v0.10.0 Setup.exeをInstall後、New ReviewにInput Telemetry Panelが表示される
+- [ ] 「記録開始」で状態が「VALORANT待機」になる
+- [ ] VReviewやChromeを前面にしてKey入力してもEvent数が増えない
+- [ ] VALORANTを前面にすると「記録中 · VALORANT」へ変わる
+- [ ] Mouse移動でMouse dx/dy countが増える
+- [ ] 左クリックでLMB countが増える
+- [ ] W/A/S/DだけKey countが増える
+- [ ] Q/E/文字入力等はTelemetry fileへ保存されない
+- [ ] Alt+TabでVALORANTを外すとInput event保存が停止する
+- [ ] 「記録停止」でSessionが保存される
+- [ ] 保存先を開き`telemetry-session.json`と`telemetry.ndjson`がある
+- [ ] ManifestにProcess injection / memory read / automation = falseが記録される
+- [ ] Appを記録中に閉じてもTelemetry helperが残留Processにならない
+- [ ] DiagnosticsにRaw Input本文やFile pathが含まれない
+
 ## GitHub Pages
 
 - [ ] Dashboard → New Review → Detector Test → Diagnosticsのリンクが正常
@@ -171,4 +188,4 @@
 
 完了時は作業報告へ対象Browser・Viewport / Zoom・日時・未確認項目を記載してください。
 
-v0.9.0 Electron Foundation / Temporal Detector Metricsは、Static CI成功だけではDesktop / Browser Validated扱いにしません。実動画を使ったIndexedDB保存・再読込・Batch ZIP生成・Detector Test Importまで確認して初めてBrowser Validatedとします。
+v0.10.0 Electron Foundation / Input Telemetry / Temporal Detector Metricsは、Static CI成功だけではDesktop / Browser Validated扱いにしません。実動画を使ったIndexedDB保存・再読込・Batch ZIP生成・Detector Test Importまで確認して初めてBrowser Validatedとします。
