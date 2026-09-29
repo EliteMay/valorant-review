@@ -4,7 +4,7 @@
 
 - Project: VReview
 - Repository: `EliteMay/valorant-review`
-- App Version: 0.9.0
+- App Version: 0.10.0
 - Detector Version: 0.5.0
 - Feedback Package: 5
 - Feedback Batch Schema: 1
@@ -36,7 +36,7 @@ ClipごとにFeedback内容だけIndexedDBへ保存
 → 最後に1回だけBatch ZIPを作成
 ```
 
-## 2.1 v0.9.0 Electron移行方針
+## 2.1 v0.10.0 Electron移行方針
 
 正本: `docs/V1_ELECTRON_ARCHITECTURE.md`
 
@@ -51,7 +51,7 @@ Main (settings / logs / update / tasks / window)
 ↓
 Analysis utility process [next phase]
 ↓
-Passive input helper [next phase]
+Passive input helper [implemented v0.10.0]
 ```
 
 禁止:
@@ -75,6 +75,42 @@ Schema:
 - `data/analysis-run-schema.json`
 
 Detector v0.5.0はLegacy baselineとし、Shot時刻・Enemy visible・Micro correction・Duel boundaryの正本にはしない。
+
+## 2.2 Passive Input Telemetry
+
+Windows Raw Inputを使い、ユーザーが明示的に記録開始した期間だけ入力を収集する。
+
+記録条件:
+
+- Electron版のみ
+- VALORANTがforegroundの時のみ
+- 対象Process: `VALORANT-Win64-Shipping.exe` / `VALORANT.exe`
+- Mouse: `dx / dy`, LMB down/up
+- Keyboard: W / A / S / D down/up
+- timestamp: QueryPerformanceCounter由来
+
+保存禁止:
+
+- 任意文字Key
+- Clipboard
+- Text input
+- 他Applicationの入力Event
+- Game memory
+- Process injection
+- Gameplay automation
+
+Native helper:
+
+- `native/input-telemetry/main.cpp`
+- `RIDEV_INPUTSINK`によるRaw Input
+- Global Hookは使用しない
+
+Electron controller:
+
+- `electron/telemetry/controller.cjs`
+- Event allowlistは`electron/telemetry/event-normalizer.cjs`
+- Session outputは`telemetry-session.json` + `telemetry.ndjson`
+- Schemaは`data/input-telemetry-schema.json`
 
 ## 3. Primary Task / Visual Priority
 
@@ -170,6 +206,7 @@ PC版New Review:
 | Feedback Batch | `js/feedback-package-v5.js` | Clip folder mapping | `vreview-detector-feedback-batch` v1 | Download ZIP |
 | Detector diagnostics | `js/detector.js` | event timestamp | Package v5 | Queue / ZIP内JSON |
 | Development Diagnostics | `js/diagnostics.js` | Session UUID | Diagnostics v1 | sessionStorage / JSON Export |
+| Input Telemetry | `electron/telemetry/controller.cjs` | Telemetry Session UUID | `vreview-input-telemetry-session` v1 | Electron userData / sessions |
 
 ## 8. Scene Data
 

@@ -34,6 +34,7 @@ npm test
 node scripts/validate.mjs
 node tests/storage.test.mjs
 node tests/detector-metrics.test.mjs
+node tests/telemetry-event.test.mjs
 npm run dist:win   # Windows / Electron変更時
 ```
 
@@ -71,6 +72,7 @@ Browser / Media / Layout / Visual / IndexedDB / ZIPは `tests/BROWSER_CHECKLIST.
 | Desktop architecture | `docs/V1_ELECTRON_ARCHITECTURE.md`, `electron/` | Main / Preload / foundation / updater |
 | Detector | `js/detector.js` | Legacy v0.5 baseline。Versioned Patchを増やさない |
 | Detector evaluation | `js/detector-metrics.js`, `js/detector-test.js` | auto-scenes vs corrected Ground Truth / temporal metrics |
+| Input Telemetry | `native/input-telemetry/`, `electron/telemetry/`, `js/desktop-telemetry.js` | Raw Input / allowlist / session persistence / UI |
 | Draft Storage | `js/storage.js` | localStorage Schema v1 + legacy read compatibility |
 | Feedback Queue | `js/feedback-library.js` | IndexedDB / max 20 clips / 350MB / source video禁止 |
 | Scene UI | `js/ui.js` | Scene state / render / manual editing |
@@ -92,7 +94,7 @@ Browser / Media / Layout / Visual / IndexedDB / ZIPは `tests/BROWSER_CHECKLIST.
 - Media: Blob URL cleanup、Codec、Canvas frame extraction、長尺動画Performance。
 - Detector: Recall / Precision trade-off、固定ROI、未知Clip汎化、評価指標自体のBias。
 - Electron: IPC capability、settings/log path、update、window state、Windows packaged behavior。
-- Telemetry（次Phase）: clock sync、dropped event、privacy、VALORANT非侵入境界。
+- Telemetry: Raw Input Helper、clock sync、dropped event、privacy、VALORANT foreground filter、非侵入境界。
 - AI-HANDOFF: Package / Batch Schema、Import Validation、元動画Privacy。
 - ZIP: Batch構造、Path Validation、Memory負荷、Export失敗時のQueue保持。
 - Layout: fixed gameplay + right-only scroll、低い縦解像度、Zoom。

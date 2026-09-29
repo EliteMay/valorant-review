@@ -1,6 +1,6 @@
 # VReview
 
-VALORANTの強い時・弱い時の差を客観的に測ることを目標にした個人用レビュー / AIM分析ツールです。現行Web Reviewを維持しつつ、v0.9.0からElectron Desktop基盤への移行を開始しています。
+VALORANTの強い時・弱い時の差を客観的に測ることを目標にした個人用レビュー / AIM分析ツールです。現行Web Reviewを維持しつつ、v0.9.0からElectron Desktop基盤へ移行し、v0.10.0でPassive Input Telemetryを追加しました。
 
 最終的には、動画・受動Input Telemetry・Duel単位の指標を同期し、Strong / Weak Sessionを統計比較したEvidenceをAIへ渡してAIM / Movementレビューへつなげます。
 
@@ -12,7 +12,7 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 
 ## 現在の状態
 
-- VReview: **v0.9.0**
+- VReview: **v0.10.0**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
 - Feedback Batch Schema: **v1**
@@ -22,7 +22,7 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 - Profiles: **STATIC + MEDIA + AI-HANDOFF + TOOL**
 - Visual Direction: **Review Workbench**
 
-v0.9.0はDetector v0.5.0をLegacy baselineとして凍結し、Electron Desktop FoundationとDetector評価方式の修正を始めます。既存GitHub Pages版は互換用に維持します。
+v0.10.0ではDetector v0.5.0をLegacy baselineのまま維持し、Windows Raw InputでMouse dx/dy・LMB・W/A/S/Dを記録するPassive Input Telemetryを追加します。
 
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
@@ -34,7 +34,7 @@ Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
 ## Electron Desktop Foundation
 
-v0.9.0では最終Electron化に向け、以下を実装開始しました。
+v0.10.0では最終Electron化に向け、以下を実装しています。
 
 - Secure BrowserWindow: `contextIsolation=true / sandbox=true / nodeIntegration=false`
 - Single Instance
@@ -47,10 +47,35 @@ v0.9.0では最終Electron化に向け、以下を実装開始しました。
 - Windows NSIS build workflow
 - Electron専用の設定画面
 - `Session / Duel / AnalysisRun` Schema
+- Passive Input Telemetry: Mouse dx/dy / LMB / W/A/S/D
+- VALORANT foreground限定記録
+- Telemetry session JSON / NDJSON保存
 
 詳細: [`docs/V1_ELECTRON_ARCHITECTURE.md`](docs/V1_ELECTRON_ARCHITECTURE.md)
 
 Electron版の最終Analysis Engineでは、ゲームへのInjection・Memory Read・入力自動化を行わず、Passive recording → Offline analysisを前提にします。
+
+## Input Telemetry
+
+Electron版の`New Review`から「記録開始」を押し、その後VALORANTへ戻ると入力を記録します。
+
+保存対象:
+
+- Mouse相対移動量 `dx / dy`
+- 左クリック `LMB down / up`
+- `W / A / S / D down / up`
+- 高精度timestamp
+- VALORANT foreground状態
+
+保存しないもの:
+
+- 文字入力
+- Clipboard
+- 他アプリのKey入力
+- VALORANT Process Memory
+- 自動操作 / Injection
+
+SessionごとにElectronのuserData配下へ`telemetry-session.json`と`telemetry.ndjson`を保存します。次Phaseで録画動画と時刻同期します。
 
 ## 基本フロー
 
@@ -218,6 +243,8 @@ GitHub Actionsでpush / pull request時に以下を確認します。
 - Storage後方互換Regression Test
 - Temporal Detector Metrics Regression Test
 - Electron security / settings / Windows build contract
+- Telemetry allowlist / privacy Regression Test
+- Native Raw Input HelperのWindows build
 
 Browser / IndexedDB / Media / ZIPの実動作はStatic CIと分離し、[`tests/BROWSER_CHECKLIST.md`](tests/BROWSER_CHECKLIST.md)で確認します。
 

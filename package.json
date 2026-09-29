@@ -1,6 +1,6 @@
 {
   "name": "vreview",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "description": "VALORANT review and aim consistency analyzer",
   "main": "electron/main.cjs",
@@ -8,9 +8,10 @@
     "start": "electron .",
     "dev": "electron .",
     "validate": "node scripts/validate.mjs",
-    "test": "node tests/storage.test.mjs && node tests/detector-metrics.test.mjs && npm run validate",
-    "build:win": "electron-builder --win nsis",
-    "dist:win": "electron-builder --win nsis --publish never"
+    "test": "node tests/storage.test.mjs && node tests/detector-metrics.test.mjs && node tests/telemetry-event.test.mjs && npm run validate",
+    "build:win": "npm run build:input-helper && electron-builder --win nsis",
+    "dist:win": "npm run build:input-helper && electron-builder --win nsis --publish never",
+    "build:input-helper": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-input-helper.ps1"
   },
   "devDependencies": {
     "electron": "44.4.5",
@@ -35,7 +36,9 @@
       "output": "dist"
     },
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "artifactName": "VReview-Setup-${version}.${ext}"
     },
     "nsis": {
@@ -50,6 +53,12 @@
         "provider": "github",
         "owner": "EliteMay",
         "repo": "valorant-review"
+      }
+    ],
+    "extraResources": [
+      {
+        "from": "native/bin/vreview-input-telemetry.exe",
+        "to": "input-helper/vreview-input-telemetry.exe"
       }
     ]
   }

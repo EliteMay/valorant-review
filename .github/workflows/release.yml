@@ -9,6 +9,8 @@ on:
       - "js/**"
       - "css/**"
       - "data/**"
+      - "native/**"
+      - "scripts/build-input-helper.ps1"
       - "*.html"
       - ".github/workflows/release.yml"
   workflow_dispatch:
@@ -54,6 +56,10 @@ jobs:
         if: steps.release_check.outputs.exists != 'true'
         run: npm install
 
+      - name: Setup MSVC
+        if: steps.release_check.outputs.exists != 'true'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Run tests
         if: steps.release_check.outputs.exists != 'true'
         run: npm test
@@ -85,9 +91,10 @@ jobs:
 
           - Setup.exe形式
           - Electron Desktop Foundation
-          - Detector Temporal Metrics修正
+          - Passive Input Telemetry（Mouse dx/dy・LMB・W/A/S/D）
+          - VALORANTが最前面の時だけ記録
           - 設定 / Logs / Diagnostics / Update基盤
-          - まだInput Telemetry / FFmpeg精密解析 / Strong-vs-Weak自動比較は未実装
+          - まだVideo↔Telemetry同期 / FFmpeg精密解析 / Strong-vs-Weak自動比較は未実装
 
           未署名ビルドのため、Windows SmartScreenが警告を表示する場合があります。
           "@

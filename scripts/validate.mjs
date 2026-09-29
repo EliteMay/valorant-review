@@ -47,7 +47,15 @@ const requiredFiles = [
   'data/duel-schema.json',
   'data/analysis-run-schema.json',
   'docs/V1_ELECTRON_ARCHITECTURE.md',
-  '.github/workflows/electron.yml'
+  '.github/workflows/electron.yml',
+  '.github/workflows/release.yml',
+  'electron/telemetry/controller.cjs',
+  'electron/telemetry/event-normalizer.cjs',
+  'js/desktop-telemetry.js',
+  'tests/telemetry-event.test.mjs',
+  'data/input-telemetry-schema.json',
+  'native/input-telemetry/main.cpp',
+  'scripts/build-input-helper.ps1'
 ];
 
 for (const file of requiredFiles) {
@@ -243,6 +251,10 @@ function validateElectronFoundation() {
   const workflow = readText('.github/workflows/electron.yml');
   const metrics = readText('js/detector-metrics.js');
   const detectorTest = readText('js/detector-test.js');
+  const telemetryController = readText('electron/telemetry/controller.cjs');
+  const telemetryNormalizer = readText('electron/telemetry/event-normalizer.cjs');
+  const review = readText('review.html');
+  const inputHelper = readText('native/input-telemetry/main.cpp');
   if (!pkg || !main || !preload) return;
 
   if (!pkg.includes('"main": "electron/main.cjs"')) errors.push('package.json Electron main entry is invalid');
@@ -256,6 +268,13 @@ function validateElectronFoundation() {
   if (!workflow.includes('windows-latest')) errors.push('Electron Windows CI is missing');
   if (!metrics.includes("mode: 'temporal-ground-truth-v1'")) errors.push('Temporal detector metrics are missing');
   if (!detectorTest.includes('auto-scenes.json')) errors.push('Detector Test must evaluate auto-scenes.json when available');
+  if (!pkg.includes('"extraResources"')) errors.push('Electron package must bundle the input telemetry helper');
+  if (!telemetryController.includes("spawn(helper")) errors.push('Telemetry controller must spawn the packaged helper');
+  if (!telemetryNormalizer.includes("ALLOWED_KEYS = new Set(['W', 'A', 'S', 'D'])")) errors.push('Telemetry key allowlist changed unexpectedly');
+  if (!review.includes('telemetryStartBtn') || !review.includes('js/desktop-telemetry.js')) errors.push('Review page telemetry controls are not wired');
+  if (!inputHelper.includes('RIDEV_INPUTSINK')) errors.push('Windows Raw Input telemetry helper is missing');
+  if (inputHelper.includes('SetWindowsHookEx')) errors.push('Telemetry helper must not use global keyboard/mouse hooks');
+  if (inputHelper.includes('WriteProcessMemory') || inputHelper.includes('ReadProcessMemory')) errors.push('Telemetry helper must not read/write game process memory');
 }
 
 function validateReviewRuntime() {
