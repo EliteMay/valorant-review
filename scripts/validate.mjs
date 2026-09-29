@@ -53,6 +53,7 @@ const requiredFiles = [
   'electron/telemetry/event-normalizer.cjs',
   'js/desktop-telemetry.js',
   'tests/telemetry-event.test.mjs',
+  'tests/updater-version.test.mjs',
   'data/input-telemetry-schema.json',
   'native/input-telemetry/main.cpp',
   'scripts/build-input-helper.ps1'
@@ -264,6 +265,8 @@ function validateElectronFoundation() {
   if (!main.includes('nodeIntegration: false')) errors.push('Electron nodeIntegration must be false');
   if (!main.includes('requestSingleInstanceLock')) errors.push('Electron single-instance guard is missing');
   if (!preload.includes('contextBridge.exposeInMainWorld')) errors.push('Electron preload bridge is missing');
+  if (!preload.includes('updateNow:')) errors.push('Electron preload update action is missing');
+  if (!main.includes("ipcMain.handle('updates:update-now'")) errors.push('Electron update-now IPC is missing');
   if (!settings.includes('js/desktop-settings.js')) errors.push('Desktop settings screen is not wired');
   if (!workflow.includes('windows-latest')) errors.push('Electron Windows CI is missing');
   if (!metrics.includes("mode: 'temporal-ground-truth-v1'")) errors.push('Temporal detector metrics are missing');
