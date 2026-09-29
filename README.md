@@ -1,8 +1,8 @@
 # VReview
 
-VALORANTクリップをブラウザ内で確認し、戦闘Scene候補を自動検出・手動修正しながらDetectorを改善する個人用Webツールです。
+VALORANTの強い時・弱い時の差を客観的に測ることを目標にした個人用レビュー / AIM分析ツールです。現行Web Reviewを維持しつつ、v0.9.0からElectron Desktop基盤への移行を開始しています。
 
-最終的には、確定Sceneを高fpsフレームへ変換してChatGPT Plusへ手動提出し、AIM / Movementレビューへつなげます。
+最終的には、動画・受動Input Telemetry・Duel単位の指標を同期し、Strong / Weak Sessionを統計比較したEvidenceをAIへ渡してAIM / Movementレビューへつなげます。
 
 ## 公開URL
 
@@ -12,17 +12,17 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 
 ## 現在の状態
 
-- VReview: **v0.8.0**
+- VReview: **v0.9.0**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
 - Feedback Batch Schema: **v1**
 - Storage Schema: **v1**
 - Diagnostics Schema: **v1**
-- Adopted Web Project Guide: **v1.13.0**
+- Adopted Web Project Guide: **v1.22.0**
 - Profiles: **STATIC + MEDIA + AI-HANDOFF + TOOL**
 - Visual Direction: **Review Workbench**
 
-v0.8.0はDetector条件を変えず、Feedback提出を「1クリップごとにZIPをダウンロード」から「複数クリップを端末へ保存し、最後に1回だけZIP化」へ変更します。Detectorは引き続きv0.5.0です。
+v0.9.0はDetector v0.5.0をLegacy baselineとして凍結し、Electron Desktop FoundationとDetector評価方式の修正を始めます。既存GitHub Pages版は互換用に維持します。
 
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
@@ -31,6 +31,26 @@ Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 - Long-term project learnings: [`PROJECT_LEARNINGS.md`](PROJECT_LEARNINGS.md)
 - Coding agent router: [`AGENTS.md`](AGENTS.md)
 - Work history / verification: [`作業報告書.md`](作業報告書.md)
+
+## Electron Desktop Foundation
+
+v0.9.0では最終Electron化に向け、以下を実装開始しました。
+
+- Secure BrowserWindow: `contextIsolation=true / sandbox=true / nodeIntegration=false`
+- Single Instance
+- Atomic Settings + Backup
+- Bounded local log
+- Window State保存 / 画面外復元防止
+- Desktop Diagnostics
+- Controlled Update check
+- Task Registry
+- Windows NSIS build workflow
+- Electron専用の設定画面
+- `Session / Duel / AnalysisRun` Schema
+
+詳細: [`docs/V1_ELECTRON_ARCHITECTURE.md`](docs/V1_ELECTRON_ARCHITECTURE.md)
+
+Electron版の最終Analysis Engineでは、ゲームへのInjection・Memory Read・入力自動化を行わず、Passive recording → Offline analysisを前提にします。
 
 ## 基本フロー
 
@@ -112,12 +132,12 @@ ZIPを作成してもQueueは自動削除しません。ダウンロードを確
 
 集計:
 
-- Precision
-- Recall
-- primary Precision
+- Strict Precision / Strict Recall（auto-scenesと修正後Ground Truthを時刻照合）
+- Loose Recall（イベント自体を概ね拾えたか）
+- 平均Boundary Error
 - TP / FP / FN
-- weakへ落ちた有効Scene
-- Detector Version別集計
+- Duplicate / Merge / Split
+- v4等でauto-scenesが無い場合のみLegacy集計
 
 Import前に [`data/detector-feedback-schema.json`](data/detector-feedback-schema.json) でPackage / Batch / Scene / Label / TierをValidationします。
 
@@ -196,6 +216,8 @@ GitHub Actionsでpush / pull request時に以下を確認します。
 - 旧Versioned Detector再混入
 - localhost / PC固有Path /代表的Secret Token
 - Storage後方互換Regression Test
+- Temporal Detector Metrics Regression Test
+- Electron security / settings / Windows build contract
 
 Browser / IndexedDB / Media / ZIPの実動作はStatic CIと分離し、[`tests/BROWSER_CHECKLIST.md`](tests/BROWSER_CHECKLIST.md)で確認します。
 
