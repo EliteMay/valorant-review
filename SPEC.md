@@ -4,7 +4,7 @@
 
 - Project: VReview
 - Repository: `EliteMay/valorant-review`
-- App Version: 0.10.2
+- App Version: 0.11.0
 - Detector Version: 0.5.0
 - Feedback Package: 5
 - Feedback Batch Schema: 1
@@ -36,7 +36,7 @@ ClipごとにFeedback内容だけIndexedDBへ保存
 → 最後に1回だけBatch ZIPを作成
 ```
 
-## 2.1 v0.10.0 Electron移行方針
+## 2.1 v0.11.0 Electron移行方針
 
 正本: `docs/V1_ELECTRON_ARCHITECTURE.md`
 
@@ -129,6 +129,62 @@ Electron packaged buildではGitHub Releasesを更新元とする。
 - Development buildでは自動Updateを実行しない。
 - v0.10.0以前の「確認だけして適用しない」挙動へ戻さない。
 
+## 2.4 Gameplay Session Recording
+
+Electron版の`review.html`から、Gameplay録画とInput Telemetryを1操作で開始・停止する。
+
+録画Pipeline:
+
+```text
+User click
+↓
+getDisplayMedia
+↓
+Electron MainがPrimary screenをgrant
+↓
+MediaRecorder
+↓ 1秒Chunk
+Preload IPC
+↓
+electron/recording/controller.cjs
+↓
+gameplay.webm
+```
+
+録画仕様:
+
+- Source: Primary Display
+- Target resolution: 1920×1080
+- Target FPS: 60
+- Container: WebM
+- Codec: VP9+Opus優先、VP8+Opus / WebMへFallback
+- Windows System Audio: loopback
+- Chunk: 約1秒ごと
+- Large BlobをRendererへ最後まで保持せずMainへ順次送る
+- `backgroundThrottling=false`で最小化中も記録継続を狙う
+- Recording outputはTelemetryと同じSession directoryへ保存
+- 保存先はSettingsで選択可能。未指定時は`app.getPath('videos')/VReview`
+- 録画開始時に保存先の空き容量を確認し、2GB未満なら開始を拒否する
+
+保存:
+
+- `gameplay.webm`
+- `recording.json`
+- `telemetry.ndjson`
+- `telemetry-session.json`
+- `session.json`
+
+Security / Safety:
+
+- `desktopCapturer`のScreen sourceだけを使う
+- Display capture requestはlocal `review.html`からだけ許可
+- Game process handleなし
+- Memory readなし
+- Injectionなし
+- Input automationなし
+- Overlayなし
+- 自動外部Uploadなし
+
 ## 3. Primary Task / Visual Priority
 
 Primary Task:
@@ -185,7 +241,7 @@ AI採点用Packageは現在未実装。
 | 画面 | 目的 | 主操作 | 状態 |
 |---|---|---|---|
 | `index.html` | Review開始と直近Detector状態 | New Review / Detector Test / Diagnostics | Empty / Success |
-| `review.html` | 動画解析・Scene編集・Feedback Queue | 動画選択 / 検出 / 修正 / 保存 / Batch ZIP | Loading / Empty / Error / Success |
+| `review.html` | Session記録・動画解析・Scene編集・Feedback Queue | 録画+Input / 動画選択 / 検出 / 修正 / 保存 / Batch ZIP | Recording / Loading / Empty / Error / Success |
 | `detector-test.html` | Feedback精度集計 | 単体ZIP / Batch ZIP Import | Loading / Empty / Error / Success |
 | `diagnostics.html` | Development Diagnostics | Export / Copy / Clear | Empty / Success / Error |
 | `result.html` | 将来のAI結果Import | 未実装 | Development |
@@ -224,6 +280,7 @@ PC版New Review:
 | Detector diagnostics | `js/detector.js` | event timestamp | Package v5 | Queue / ZIP内JSON |
 | Development Diagnostics | `js/diagnostics.js` | Session UUID | Diagnostics v1 | sessionStorage / JSON Export |
 | Input Telemetry | `electron/telemetry/controller.cjs` | Telemetry Session UUID | `vreview-input-telemetry-session` v1 | Electron userData / sessions |
+| Gameplay Recording | `electron/recording/controller.cjs` | Telemetry Session UUID | `vreview-gameplay-recording` v1 | same Session folder / `gameplay.webm` |
 
 ## 8. Scene Data
 

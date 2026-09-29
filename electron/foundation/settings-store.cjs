@@ -11,6 +11,9 @@ const DEFAULT_SETTINGS = Object.freeze({
   analysis: {
     workerConcurrency: 1
   },
+  recording: {
+    saveDirectory: ''
+  },
   privacy: {
     includeFileNamesInDiagnostics: false
   }
@@ -34,6 +37,7 @@ class SettingsStore {
       ...patch,
       update: { ...this.value.update, ...(patch?.update || {}) },
       analysis: { ...this.value.analysis, ...(patch?.analysis || {}) },
+      recording: { ...this.value.recording, ...(patch?.recording || {}) },
       privacy: { ...this.value.privacy, ...(patch?.privacy || {}) }
     });
     this.#write(next);
@@ -90,10 +94,17 @@ function normalizeSettings(input = {}) {
     analysis: {
       workerConcurrency
     },
+    recording: {
+      saveDirectory: normalizeDirectory(input?.recording?.saveDirectory)
+    },
     privacy: {
       includeFileNamesInDiagnostics: Boolean(input?.privacy?.includeFileNamesInDiagnostics)
     }
   };
+}
+
+function normalizeDirectory(value) {
+  return String(value || '').replace(/[\r\n\0]/g, '').slice(0, 1024);
 }
 
 function clampInt(value, min, max, fallback) {

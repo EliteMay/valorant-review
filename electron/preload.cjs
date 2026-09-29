@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
   getSettings: () => invoke('settings:get'),
   updateSettings: patch => invoke('settings:update', patch),
   resetSettings: () => invoke('settings:reset'),
+  chooseRecordingFolder: () => invoke('settings:choose-recording-folder'),
   getDiagnostics: () => invoke('diagnostics:get'),
   openLogFolder: () => invoke('diagnostics:open-log-folder'),
   checkForUpdates: () => invoke('updates:check'),
@@ -29,5 +30,17 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
     const listener = (_event, status) => callback(status);
     ipcRenderer.on('telemetry:status', listener);
     return () => ipcRenderer.removeListener('telemetry:status', listener);
+  },
+  getRecordingStatus: () => invoke('recording:get-status'),
+  prepareRecording: payload => invoke('recording:prepare', payload),
+  appendRecordingChunk: chunk => invoke('recording:append-chunk', chunk),
+  finishRecording: payload => invoke('recording:finish', payload),
+  abortRecording: reason => invoke('recording:abort', reason),
+  openRecordingFolder: () => invoke('recording:open-folder'),
+  onRecordingStatus: callback => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('recording:status', listener);
+    return () => ipcRenderer.removeListener('recording:status', listener);
   }
 }));

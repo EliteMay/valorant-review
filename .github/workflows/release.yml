@@ -91,10 +91,12 @@ jobs:
 
           - Setup.exe形式
           - Electron Desktop Foundation
-          - Passive Input Telemetry（Mouse dx/dy・LMB・W/A/S/D）
-          - VALORANTが最前面の時だけ記録
-          - 設定 / Logs / Diagnostics / Update基盤
-          - まだVideo↔Telemetry同期 / FFmpeg精密解析 / Strong-vs-Weak自動比較は未実装
+          - Gameplay録画 + Passive Input Telemetryを1ボタンで同時開始/停止
+          - Primary画面をWebM / 最大60fpsで録画
+          - Windows System Audio loopback
+          - InputはVALORANTが最前面の時だけMouse dx/dy・LMB・W/A/S/Dを記録
+          - Game Memory Read / Injection / Input Automationなし
+          - まだFrame-accurate同期 / FFmpeg精密解析 / Strong-vs-Weak自動比較は未実装
 
           未署名ビルドのため、Windows SmartScreenが警告を表示する場合があります。
           "@

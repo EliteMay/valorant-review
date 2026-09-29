@@ -32,7 +32,7 @@ class TelemetryController extends EventEmitter {
     };
   }
 
-  async start() {
+  async start(options = {}) {
     if (process.platform !== 'win32') {
       throw new Error('Input TelemetryはWindows版VReviewでのみ利用できます。');
     }
@@ -44,8 +44,10 @@ class TelemetryController extends EventEmitter {
     }
 
     const sessionId = randomUUID();
-    const folderName = `telemetry-${timestampForPath()}-${sessionId.slice(0, 8)}`;
-    const sessionDir = path.join(this.app.getPath('userData'), 'sessions', folderName);
+    const folderName = `session-${timestampForPath()}-${sessionId.slice(0, 8)}`;
+    const baseDirectory = resolveBaseDirectory(options?.baseDirectory, this.app.getPath('userData'));
+    fs.mkdirSync(baseDirectory, { recursive: true });
+    const sessionDir = path.join(baseDirectory, folderName);
     fs.mkdirSync(sessionDir, { recursive: false });
 
     const eventsPath = path.join(sessionDir, 'telemetry.ndjson');
@@ -65,8 +67,7 @@ class TelemetryController extends EventEmitter {
       helperVersion: null,
       qpcFrequency: null,
       valorantForeground: false,
-      foregroundProcess: '',
-      inputEvents: 0,
+            inputEvents: 0,
       mouseSamples: 0,
       buttonEvents: 0,
       keyEvents: 0,
@@ -189,7 +190,6 @@ class TelemetryController extends EventEmitter {
 
       if (event.type === 'focus') {
         this.state.valorantForeground = event.valorant;
-        this.state.foregroundProcess = event.process || '';
         this.#emitStatus(true);
         continue;
       }
@@ -333,8 +333,7 @@ class TelemetryController extends EventEmitter {
       helperVersion: null,
       qpcFrequency: null,
       valorantForeground: false,
-      foregroundProcess: '',
-      inputEvents: 0,
+            inputEvents: 0,
       mouseSamples: 0,
       buttonEvents: 0,
       keyEvents: 0,
@@ -342,6 +341,11 @@ class TelemetryController extends EventEmitter {
       lastError: null
     };
   }
+}
+
+function resolveBaseDirectory(value, userDataPath) {
+  const directory = String(value || '').trim();
+  return directory || path.join(userDataPath, 'sessions');
 }
 
 function timestampForPath() {

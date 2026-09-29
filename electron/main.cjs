@@ -1,5 +1,6 @@
+const fs = require('node:fs');
 const path = require('node:path');
-const { app, BrowserWindow, ipcMain, shell, screen } = require('electron');
+const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, session, shell, screen } = require('electron');
 const { SettingsStore } = require('./foundation/settings-store.cjs');
 const { Logger } = require('./foundation/logger.cjs');
 const { WindowStateStore } = require('./foundation/window-state.cjs');
@@ -7,6 +8,7 @@ const { TaskRegistry } = require('./foundation/task-registry.cjs');
 const { DesktopDiagnostics } = require('./foundation/diagnostics.cjs');
 const { UpdaterController } = require('./updater.cjs');
 const { TelemetryController } = require('./telemetry/controller.cjs');
+const { RecordingController } = require('./recording/controller.cjs');
 
 const APP_ID = 'io.github.elitemay.vreview';
 app.setAppUserModelId(APP_ID);
@@ -22,7 +24,8 @@ let taskRegistry = null;
 let diagnostics = null;
 let updater = null;
 let telemetryController = null;
-let quitAfterTelemetryStop = false;
+let recordingController = null;
+let quitAfterCaptureStop = false;
 
 function createWindow() {
   const state = windowStateStore.load();
@@ -41,7 +44,8 @@ function createWindow() {
       sandbox: true,
       nodeIntegration: false,
       webSecurity: true,
-      spellcheck: false
+      spellcheck: false,
+      backgroundThrottling: false
     }
   });
 
@@ -72,6 +76,32 @@ function createWindow() {
   return win;
 }
 
+function defaultRecordingDirectory() {
+  return path.join(app.getPath('videos'), 'VReview');
+}
+
+function resolveRecordingDirectory() {
+  const configured = String(settingsStore?.get()?.recording?.saveDirectory || '').trim();
+  return configured || defaultRecordingDirectory();
+}
+
+function ensureRecordingSpace(directory) {
+  fs.mkdirSync(directory, { recursive: true });
+  if (typeof fs.statfsSync !== 'function') return;
+  try {
+    const stats = fs.statfsSync(directory);
+    const freeBytes = Number(stats.bavail) * Number(stats.bsize);
+    const minimum = 2 * 1024 * 1024 * 1024;
+    if (Number.isFinite(freeBytes) && freeBytes < minimum) {
+      const freeGb = (freeBytes / 1024 / 1024 / 1024).toFixed(1);
+      throw new Error(`録画保存先の空き容量が不足しています（約 ${freeGb} GB）。設定から別の保存先を選んでください。`);
+    }
+  } catch (error) {
+    if (/空き容量が不足/.test(String(error?.message || ''))) throw error;
+    logger?.warn('recording.disk-check.failed', { message: error?.message || String(error) });
+  }
+}
+
 function registerIpc() {
   ipcMain.handle('desktop:get-info', () => ({
     desktop: true,
@@ -84,6 +114,16 @@ function registerIpc() {
   ipcMain.handle('settings:get', () => settingsStore.get());
   ipcMain.handle('settings:update', (_event, patch) => settingsStore.update(patch && typeof patch === 'object' ? patch : {}));
   ipcMain.handle('settings:reset', () => settingsStore.reset());
+  ipcMain.handle('settings:choose-recording-folder', async () => {
+    const current = settingsStore.get().recording?.saveDirectory || defaultRecordingDirectory();
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'VReview 録画保存先',
+      defaultPath: current,
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || !result.filePaths?.[0]) return settingsStore.get();
+    return settingsStore.update({ recording: { saveDirectory: result.filePaths[0] } });
+  });
   ipcMain.handle('diagnostics:get', () => diagnostics.snapshot());
   ipcMain.handle('diagnostics:open-log-folder', async () => {
     const error = await shell.openPath(app.getPath('logs'));
@@ -95,6 +135,9 @@ function registerIpc() {
     const result = await updater.downloadLatest();
     if (result.status !== 'downloaded') return result;
 
+    if (recordingController?.getStatus().active) {
+      await recordingController.abort('update-install');
+    }
     if (telemetryController?.getStatus().active) {
       await telemetryController.shutdown();
     }
@@ -106,11 +149,123 @@ function registerIpc() {
   ipcMain.handle('telemetry:start', () => telemetryController.start());
   ipcMain.handle('telemetry:stop', () => telemetryController.stop());
   ipcMain.handle('telemetry:open-folder', async () => {
-    const folder = telemetryController.getSessionDirectory();
-    if (!folder) return { ok: false, error: '保存済みTelemetry Sessionがありません。' };
+    const folder = recordingController?.getSessionDirectory() || telemetryController.getSessionDirectory();
+    if (!folder) return { ok: false, error: '保存済みSessionがありません。' };
     const error = await shell.openPath(folder);
     return { ok: !error, error: error || null };
   });
+
+  ipcMain.handle('recording:get-status', () => recordingController.getStatus());
+  ipcMain.handle('recording:prepare', async (_event, payload) => {
+    let telemetry = telemetryController.getStatus();
+    if (!telemetry.active) {
+      const recordingDirectory = resolveRecordingDirectory();
+      ensureRecordingSpace(recordingDirectory);
+      telemetry = await telemetryController.start({ baseDirectory: recordingDirectory });
+    }
+
+    const sessionDir = telemetryController.getSessionDirectory();
+    if (!sessionDir || !telemetry.sessionId) {
+      await telemetryController.shutdown().catch(() => {});
+      throw new Error('Session保存先を準備できませんでした。');
+    }
+
+    return recordingController.prepare({
+      sessionDir,
+      sessionId: telemetry.sessionId,
+      mimeType: payload?.mimeType,
+      video: payload?.video,
+      audio: payload?.audio
+    });
+  });
+
+  ipcMain.handle('recording:append-chunk', (event, chunk) => {
+    if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return false;
+    return recordingController.appendChunk(chunk);
+  });
+
+  ipcMain.handle('recording:finish', async (_event, payload) => {
+    const recording = await recordingController.finish(payload || {});
+    if (telemetryController.getStatus().active) await telemetryController.stop();
+    const telemetry = telemetryController.getStatus();
+    writeCaptureSessionManifest(recording, telemetry);
+    return { recording, telemetry };
+  });
+
+  ipcMain.handle('recording:abort', async (_event, reason) => {
+    const recording = await recordingController.abort(reason || 'renderer-abort');
+    if (telemetryController.getStatus().active) await telemetryController.stop();
+    const telemetry = telemetryController.getStatus();
+    writeCaptureSessionManifest(recording, telemetry);
+    return { recording, telemetry };
+  });
+
+  ipcMain.handle('recording:open-folder', async () => {
+    const folder = recordingController.getSessionDirectory() || telemetryController.getSessionDirectory();
+    if (!folder) return { ok: false, error: '保存済みSessionがありません。' };
+    const error = await shell.openPath(folder);
+    return { ok: !error, error: error || null };
+  });
+}
+
+function writeCaptureSessionManifest(recording, telemetry) {
+  const folder = recordingController?.getSessionDirectory() || telemetryController?.getSessionDirectory();
+  if (!folder) return false;
+
+  const recordingComplete = recording?.phase === 'completed';
+  const telemetryComplete = telemetry?.phase === 'stopped';
+  const manifest = {
+    schema: 'vreview-session',
+    schemaVersion: 1,
+    id: recording?.sessionId || telemetry?.sessionId || null,
+    createdAt: telemetry?.startedAt || recording?.startedAt || new Date().toISOString(),
+    completedAt: recording?.endedAt || telemetry?.endedAt || null,
+    sourceVideo: {
+      file: recording?.fileName || 'gameplay.webm',
+      pathStored: false,
+      contentHash: null,
+      durationMs: recording?.durationMs ?? null,
+      width: recording?.video?.width ?? null,
+      height: recording?.video?.height ?? null,
+      fps: recording?.video?.frameRate ?? null,
+      variableFrameRate: null
+    },
+    recording: {
+      available: Boolean(recording?.fileName),
+      complete: recordingComplete,
+      manifest: 'recording.json',
+      mimeType: recording?.mimeType || null,
+      bytesWritten: Number(recording?.bytesWritten || 0),
+      systemAudio: Boolean(recording?.audio?.enabled)
+    },
+    telemetry: {
+      available: Boolean(telemetry?.sessionId),
+      complete: telemetryComplete,
+      manifest: 'telemetry-session.json',
+      events: 'telemetry.ndjson',
+      clockSync: 'pending',
+      clockOffsetMs: null,
+      clockDriftPpm: null
+    },
+    files: {
+      video: recording?.fileName || 'gameplay.webm',
+      recordingManifest: 'recording.json',
+      telemetryManifest: 'telemetry-session.json',
+      telemetryEvents: 'telemetry.ndjson'
+    },
+    analysisState: recordingComplete && telemetryComplete ? 'new' : 'interrupted'
+  };
+
+  const file = path.join(folder, 'session.json');
+  const temp = `${file}.tmp`;
+  try {
+    fs.writeFileSync(temp, JSON.stringify(manifest, null, 2), 'utf8');
+    fs.renameSync(temp, file);
+    return true;
+  } catch (error) {
+    logger?.warn('capture.session-manifest.failed', { message: error.message });
+    return false;
+  }
 }
 
 app.on('second-instance', () => {
@@ -126,7 +281,8 @@ app.whenReady().then(() => {
   windowStateStore = new WindowStateStore(app.getPath('userData'), screen, logger);
   taskRegistry = new TaskRegistry(logger);
   telemetryController = new TelemetryController({ app, logger, taskRegistry });
-  diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry, telemetryController });
+  recordingController = new RecordingController({ logger });
+  diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry, telemetryController, recordingController });
   updater = new UpdaterController({ app, logger, settingsStore });
   updater.on('status', status => {
     for (const win of BrowserWindow.getAllWindows()) {
@@ -138,6 +294,45 @@ app.whenReady().then(() => {
       if (!win.isDestroyed()) win.webContents.send('telemetry:status', status);
     }
   });
+  recordingController.on('status', status => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('recording:status', status);
+    }
+  });
+
+  session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+    try {
+      const currentUrl = String(mainWindow?.webContents?.getURL?.() || '');
+      const isLocalReview = currentUrl.startsWith('file://') && currentUrl.endsWith('/review.html');
+      if (!request.videoRequested || !isLocalReview) {
+        callback(null);
+        return;
+      }
+
+      const sources = await desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: { width: 0, height: 0 },
+        fetchWindowIcons: false
+      });
+
+      const primaryDisplayId = String(screen.getPrimaryDisplay().id);
+      const primaryScreen = sources.find(source => source.display_id === primaryDisplayId);
+      const source = primaryScreen || sources[0];
+
+      if (!source) {
+        callback(null);
+        return;
+      }
+
+      const grant = { video: source };
+      if (request.audioRequested && process.platform === 'win32') grant.audio = 'loopback';
+      callback(grant);
+    } catch (error) {
+      logger?.warn('recording.display-grant.failed', { message: error.message });
+      callback(null);
+    }
+  });
+
   registerIpc();
 
   logger.info('app.ready', { version: app.getVersion(), packaged: app.isPackaged });
@@ -153,11 +348,18 @@ app.whenReady().then(() => {
 });
 
 app.on('before-quit', event => {
-  if (!quitAfterTelemetryStop && telemetryController?.getStatus().active) {
+  const captureActive = recordingController?.getStatus().active || telemetryController?.getStatus().active;
+  if (!quitAfterCaptureStop && captureActive) {
     event.preventDefault();
-    quitAfterTelemetryStop = true;
-    telemetryController.shutdown()
-      .catch(error => logger?.warn('telemetry.quit-stop.failed', { message: error.message }))
+    quitAfterCaptureStop = true;
+    let finalRecording = recordingController?.getStatus();
+    Promise.resolve()
+      .then(async () => {
+        if (recordingController?.getStatus().active) finalRecording = await recordingController.abort('app-quit');
+      })
+      .then(() => telemetryController?.getStatus().active ? telemetryController.shutdown() : null)
+      .then(() => writeCaptureSessionManifest(finalRecording, telemetryController?.getStatus()))
+      .catch(error => logger?.warn('capture.quit-stop.failed', { message: error.message }))
       .finally(() => app.quit());
     return;
   }

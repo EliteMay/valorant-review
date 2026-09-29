@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07090c">
   <title>設定 | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260929-4">
-  <link rel="stylesheet" href="css/layout.css?v=20260929-4">
-  <link rel="stylesheet" href="css/components.css?v=20260929-4">
+  <link rel="stylesheet" href="css/base.css?v=20260929-5">
+  <link rel="stylesheet" href="css/layout.css?v=20260929-5">
+  <link rel="stylesheet" href="css/components.css?v=20260929-5">
 </head>
 <body>
   <div class="app-shell">
@@ -57,11 +57,16 @@
               <option value="4">4</option>
             </select>
           </label>
+          <div class="status-row">
+            <span>録画保存先</span>
+            <strong class="mono" id="recordingSaveDirectory">既定</strong>
+          </div>
         </div>
 
         <div class="button-row">
           <button class="btn btn-primary" id="saveDesktopSettings" data-desktop-action type="button">設定を保存</button>
           <button class="btn btn-secondary" id="checkDesktopUpdates" data-desktop-action type="button">Update確認・適用</button>
+          <button class="btn btn-secondary" id="chooseRecordingFolder" data-desktop-action type="button">録画保存先を選ぶ</button>
           <button class="btn btn-secondary" id="openDesktopLogs" data-desktop-action type="button">Log Folder</button>
           <button class="btn btn-danger" id="resetDesktopSettings" data-desktop-action type="button">既定値へ戻す</button>
         </div>
@@ -69,7 +74,7 @@
       </section>
     </main>
   </div>
-  <script src="js/version.js?v=20260929-4"></script>
-  <script src="js/desktop-settings.js?v=20260929-4"></script>
+  <script src="js/version.js?v=20260929-5"></script>
+  <script src="js/desktop-settings.js?v=20260929-5"></script>
 </body>
 </html>

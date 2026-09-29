@@ -57,7 +57,11 @@ const requiredFiles = [
   'tests/updater-version.test.mjs',
   'data/input-telemetry-schema.json',
   'native/input-telemetry/main.cpp',
-  'scripts/build-input-helper.ps1'
+  'scripts/build-input-helper.ps1',
+  'electron/recording/controller.cjs',
+  'tests/recording-controller.test.mjs',
+  'tests/settings-store.test.mjs',
+  'data/recording-schema.json'
 ];
 
 for (const file of requiredFiles) {
@@ -75,6 +79,8 @@ if (version) {
   if (version.guide !== EXPECTED_GUIDE) errors.push(`js/version.js guide must be ${EXPECTED_GUIDE}, got ${version.guide ?? 'missing'}`);
   if (!version.app) errors.push('js/version.js app is missing');
   if (!version.detector) errors.push('js/version.js detector is missing');
+  if (!version.telemetry) errors.push('js/version.js telemetry is missing');
+  if (!version.recording) errors.push('js/version.js recording is missing');
   if (!version.build) errors.push('js/version.js build is missing');
   if (!Number.isInteger(version.storageSchema)) errors.push('js/version.js storageSchema must be an integer');
   if (!Number.isInteger(version.feedbackSchema)) errors.push('js/version.js feedbackSchema must be an integer');
@@ -257,6 +263,9 @@ function validateElectronFoundation() {
   const telemetryNormalizer = readText('electron/telemetry/event-normalizer.cjs');
   const review = readText('review.html');
   const inputHelper = readText('native/input-telemetry/main.cpp');
+  const recordingController = readText('electron/recording/controller.cjs');
+  const desktopTelemetry = readText('js/desktop-telemetry.js');
+  const recordingSchema = readText('data/recording-schema.json');
   if (!pkg || !main || !preload) return;
 
   if (!pkg.includes('"main": "electron/main.cjs"')) errors.push('package.json Electron main entry is invalid');
@@ -281,6 +290,19 @@ function validateElectronFoundation() {
   if (inputHelper.includes('WriteProcessMemory') || inputHelper.includes('ReadProcessMemory')) errors.push('Telemetry helper must not read/write game process memory');
   if (inputHelper.includes('OpenProcess(') || inputHelper.includes('QueryFullProcessImageName')) errors.push('Telemetry helper must not open or inspect the VALORANT process');
   if (!inputHelper.includes('GetForegroundWindow') || !inputHelper.includes('GetWindowTextW')) errors.push('Telemetry foreground gating must use public window metadata only');
+  if (!main.includes('setDisplayMediaRequestHandler')) errors.push('Electron display-media grant handler is missing');
+  if (!main.includes("types: ['screen']")) errors.push('Gameplay recording must use screen capture sources only');
+  if (!main.includes('backgroundThrottling: false')) errors.push('Gameplay recording requires backgroundThrottling=false');
+  if (!preload.includes('appendRecordingChunk:')) errors.push('Recording chunk bridge is missing');
+  if (!preload.includes('chooseRecordingFolder:')) errors.push('Recording directory chooser bridge is missing');
+  if (!main.includes("settings:choose-recording-folder")) errors.push('Recording directory chooser IPC is missing');
+  if (!main.includes('ensureRecordingSpace')) errors.push('Recording free-space guard is missing');
+  if (!recordingController.includes("gameplay.") || !recordingController.includes("recording.json")) errors.push('Recording controller output contract is missing');
+  if (!desktopTelemetry.includes('navigator.mediaDevices.getDisplayMedia')) errors.push('Review runtime does not request display capture');
+  if (!desktopTelemetry.includes('new MediaRecorder')) errors.push('Review runtime does not use MediaRecorder');
+  if (!review.includes('recordingVideoState') || !review.includes('recordingBytes')) errors.push('Review recording status UI is missing');
+  if (!recordingSchema.includes('"schema": "vreview-gameplay-recording"')) errors.push('Recording schema is invalid');
+  if (recordingController.includes('OpenProcess(') || recordingController.includes('ReadProcessMemory') || recordingController.includes('WriteProcessMemory')) errors.push('Recording controller must not access game process memory');
 }
 
 function validateReviewRuntime() {
@@ -411,6 +433,8 @@ function readVersionFile(file) {
   return {
     app: readString('app'),
     detector: readString('detector'),
+    telemetry: readString('telemetry'),
+    recording: readString('recording'),
     feedback: readString('feedback'),
     build: readString('build'),
     guide: readString('guide'),

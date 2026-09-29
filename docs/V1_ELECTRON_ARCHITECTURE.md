@@ -22,8 +22,8 @@ The intended flow is passive recording followed by offline analysis.
 
 ```text
 Renderer
-  UI only
-  ↓ minimal IPC
+  UI + MediaRecorder for explicit user-started display capture
+  ↓ bounded IPC chunks
 Preload
   explicit capability bridge
   ↓
@@ -57,6 +57,46 @@ The `electron-v1-foundation` branch introduces:
 - explicit Start / Stop UI
 - VALORANT foreground filter
 - telemetry NDJSON session persistence
+- Primary-screen Gameplay recording via Electron desktop capture
+- MediaRecorder chunk streaming to Main-process disk sink
+- Windows system-audio loopback
+- gameplay.webm + recording.json in the same Session folder
+
+## Gameplay recording boundary
+
+v0.11.0 adds explicit user-started gameplay recording.
+
+Capture path:
+
+```text
+review.html user gesture
+↓
+navigator.mediaDevices.getDisplayMedia
+↓
+Main setDisplayMediaRequestHandler
+↓
+Primary screen + Windows loopback audio
+↓
+MediaRecorder
+↓
+1-second Uint8Array chunks
+↓
+Preload IPC
+↓
+RecordingController file stream
+```
+
+Rules:
+
+- Screen sources only; no process/window handle acquisition is required.
+- Capture requests are granted only to the local `review.html` frame.
+- Recording is local-only and never auto-uploaded.
+- The source file is streamed to disk as `gameplay.webm`, not accumulated as one giant renderer Blob.
+- Recording and telemetry share the same Session ID/folder.
+- The user can choose the base recording directory once in Settings; the default is Windows Videos/VReview.
+- Recording start performs a local free-space guard before creating the Session folder.
+- Navigation away from Review is blocked while MediaRecorder is active.
+- App shutdown may mark the recording interrupted; normal user stop is the expected clean-finalization path.
 
 ## Input telemetry boundary
 
@@ -149,7 +189,8 @@ Desktop work is not complete from static CI alone.
 Required later:
 
 1. Windows install/uninstall smoke
-2. packaged app launch
+2. Gameplay capture real-PC validation: minimized VReview + VALORANT foreground + system audio
+3. packaged app launch
 3. restart + settings/window restore
 4. renderer crash recovery behavior
 5. update check behavior

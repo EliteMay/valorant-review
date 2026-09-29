@@ -58,7 +58,7 @@
     "basePath": "/valorant-review/"
   },
   "desktop": {
-    "status": "telemetry-foundation",
+    "status": "session-recording",
     "runtime": "Electron",
     "appId": "io.github.elitemay.vreview",
     "entry": "electron/main.cjs",
@@ -71,7 +71,6 @@
       "schema": "data/input-telemetry-schema.json",
       "helper": "native/input-telemetry/main.cpp",
       "controller": "electron/telemetry/controller.cjs",
-      "foregroundProcess": "VALORANT-Win64-Shipping.exe",
       "allowedMouse": [
         "dx",
         "dy",
@@ -87,7 +86,28 @@
       "clipboard": false,
       "processInjection": false,
       "processMemoryRead": false,
-      "inputAutomation": false
+      "inputAutomation": false,
+      "foregroundGate": "foreground-window-title-only"
+    },
+    "gameplayRecording": {
+      "schema": "data/recording-schema.json",
+      "controller": "electron/recording/controller.cjs",
+      "renderer": "js/desktop-telemetry.js",
+      "output": "gameplay.webm",
+      "manifest": "recording.json",
+      "capture": "Electron desktopCapturer + getDisplayMedia + MediaRecorder",
+      "source": "primary-display",
+      "targetFrameRate": 60,
+      "targetResolution": "1920x1080",
+      "systemAudioLoopback": true,
+      "processHandle": false,
+      "processMemoryRead": false,
+      "processInjection": false,
+      "inputAutomation": false,
+      "overlay": false,
+      "defaultDirectory": "Windows Videos/VReview",
+      "configurableDirectory": true,
+      "minimumFreeBytes": 2147483648
     }
   },
   "analysisModel": {

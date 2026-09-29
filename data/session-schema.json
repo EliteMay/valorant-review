@@ -1,7 +1,13 @@
 {
   "schema": "vreview-session",
   "schemaVersion": 1,
-  "required": ["id", "createdAt", "sourceVideo", "telemetry", "analysisState"],
+  "required": [
+    "id",
+    "createdAt",
+    "sourceVideo",
+    "telemetry",
+    "analysisState"
+  ],
   "fields": {
     "id": "stable UUID",
     "createdAt": "ISO-8601",
@@ -21,6 +27,20 @@
       "clockOffsetMs": "number|null",
       "clockDriftPpm": "number|null"
     },
-    "analysisState": "new|queued|running|interrupted|completed|failed"
+    "analysisState": "new|queued|running|interrupted|completed|failed",
+    "recording": {
+      "available": "boolean",
+      "complete": "boolean",
+      "manifest": "recording.json",
+      "mimeType": "string|null",
+      "bytesWritten": "number",
+      "systemAudio": "boolean"
+    },
+    "files": {
+      "video": "gameplay.webm",
+      "recordingManifest": "recording.json",
+      "telemetryManifest": "telemetry-session.json",
+      "telemetryEvents": "telemetry.ndjson"
+    }
   }
 }

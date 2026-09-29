@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07090c">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260929-4">
-  <link rel="stylesheet" href="css/layout.css?v=20260929-4">
-  <link rel="stylesheet" href="css/components.css?v=20260929-4">
-  <link rel="stylesheet" href="css/feedback-queue.css?v=20260929-4">
+  <link rel="stylesheet" href="css/base.css?v=20260929-5">
+  <link rel="stylesheet" href="css/layout.css?v=20260929-5">
+  <link rel="stylesheet" href="css/components.css?v=20260929-5">
+  <link rel="stylesheet" href="css/feedback-queue.css?v=20260929-5">
 </head>
 <body class="review-page">
   <div class="app-shell">
@@ -42,17 +42,19 @@
         <div class="status-callout pending hidden" id="uploadStatus" aria-live="polite"></div>
       </section>
 
-      <section class="panel hidden" id="telemetryPanel" aria-label="Input Telemetry">
+      <section class="panel hidden" id="telemetryPanel" aria-label="Gameplay Session Recording">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Input Telemetry</p>
-            <h2>プレイ中の入力を記録</h2>
+            <p class="eyebrow">Session Recording</p>
+            <h2>録画とInputを同時に記録</h2>
           </div>
           <span class="badge" id="telemetryStatus">停止中</span>
         </div>
-        <p class="helper" id="telemetryDetail">開始後にVALORANTへ戻ってプレイしてください。</p>
+        <p class="helper" id="telemetryDetail">「録画＋入力 開始」を押してからVALORANTへ戻ってください。</p>
 
         <div class="status-list">
+          <div class="status-row"><span>録画</span><strong id="recordingVideoState">未開始</strong></div>
+          <div class="status-row"><span>録画サイズ</span><strong id="recordingBytes">0 KB</strong></div>
           <div class="status-row"><span>入力イベント</span><strong id="telemetryEventCount">0</strong></div>
           <div class="status-row"><span>Mouse dx/dy</span><strong id="telemetryMouseCount">0</strong></div>
           <div class="status-row"><span>LMB</span><strong id="telemetryButtonCount">0</strong></div>
@@ -60,14 +62,15 @@
         </div>
 
         <div class="button-row">
-          <button class="btn btn-primary" id="telemetryStartBtn" type="button">記録開始</button>
-          <button class="btn btn-danger" id="telemetryStopBtn" type="button" disabled>記録停止</button>
-          <button class="btn btn-secondary" id="telemetryOpenFolderBtn" type="button" disabled>保存先を開く</button>
+          <button class="btn btn-primary" id="telemetryStartBtn" type="button">録画＋入力 開始</button>
+          <button class="btn btn-danger" id="telemetryStopBtn" type="button" disabled>録画＋入力 停止</button>
+          <button class="btn btn-secondary" id="telemetryOpenFolderBtn" type="button" disabled>Session保存先</button>
         </div>
 
         <p class="helper">
-          VALORANTが最前面の時だけ、Mouseの相対移動量・左クリック・W/A/S/Dを保存します。
-          文字入力、Clipboard、他アプリのKey入力、ゲームMemoryは取得しません。
+          Primary画面をWebMで録画し、WindowsではSystem Audioも一緒に保存します。
+          Input TelemetryはVALORANTが最前面の時だけMouse dx/dy・LMB・W/A/S/Dを記録します。
+          ゲームMemory・Injection・自動操作は使いません。
         </p>
       </section>
 
@@ -203,15 +206,15 @@
     </main>
   </div>
 
-  <script src="js/version.js?v=20260929-4"></script>
-  <script src="js/diagnostics.js?v=20260929-4"></script>
-  <script src="js/storage.js?v=20260929-4"></script>
-  <script src="js/video.js?v=20260929-4"></script>
-  <script src="js/detector.js?v=20260929-4"></script>
-  <script src="js/feedback-library.js?v=20260929-4"></script>
-  <script src="js/feedback-package-v5.js?v=20260929-4"></script>
-  <script src="js/ui.js?v=20260929-4"></script>
-  <script src="js/app.js?v=20260929-4"></script>
-  <script src="js/desktop-telemetry.js?v=20260929-4"></script>
+  <script src="js/version.js?v=20260929-5"></script>
+  <script src="js/diagnostics.js?v=20260929-5"></script>
+  <script src="js/storage.js?v=20260929-5"></script>
+  <script src="js/video.js?v=20260929-5"></script>
+  <script src="js/detector.js?v=20260929-5"></script>
+  <script src="js/feedback-library.js?v=20260929-5"></script>
+  <script src="js/feedback-package-v5.js?v=20260929-5"></script>
+  <script src="js/ui.js?v=20260929-5"></script>
+  <script src="js/app.js?v=20260929-5"></script>
+  <script src="js/desktop-telemetry.js?v=20260929-5"></script>
 </body>
 </html>
