@@ -8,11 +8,16 @@ function hydrateDashboard() {
   const detector = document.getElementById('detectorVersionCard');
   const main = document.getElementById('lastPrimaryCount');
   const weak = document.getElementById('lastWeakCount');
+  const clip = document.getElementById('lastClipName');
 
   if (detector) detector.textContent = `v${window.VReviewVersion?.detector || '--'}`;
   if (!last) return;
   if (main) main.textContent = String(last.primary ?? '--');
   if (weak) weak.textContent = String(last.weak ?? '--');
+  if (clip) {
+    clip.textContent = String(last.fileName || 'No clip yet');
+    clip.title = String(last.fileName || '');
+  }
 }
 
 function initReviewPage() {
