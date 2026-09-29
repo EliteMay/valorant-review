@@ -177,12 +177,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         await stopMediaRecorder();
         await chunkQueue;
+        const video = getVideoMeta();
+        const audio = getAudioMeta();
         stopTracks();
 
         const result = await api.finishRecording({
           reason,
-          video: getVideoMeta(),
-          audio: getAudioMeta()
+          video,
+          audio
         });
         recordingState = result?.recording || recordingState;
         telemetryState = result?.telemetry || telemetryState;
