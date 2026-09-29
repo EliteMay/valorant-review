@@ -73,6 +73,7 @@ Electron版の`New Review`で **「録画＋入力 開始」** を押すと、Ga
 - `recording.json` — 録画Format / Resolution / FPS / Audio等
 - `telemetry.ndjson` — Mouse / LMB / WASD timestamp
 - `telemetry-session.json` — Telemetry manifest
+- `session.json` — 録画とTelemetryを結ぶSession manifest
 
 録画方針:
 
