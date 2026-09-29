@@ -104,7 +104,10 @@
       "processMemoryRead": false,
       "processInjection": false,
       "inputAutomation": false,
-      "overlay": false
+      "overlay": false,
+      "defaultDirectory": "Windows Videos/VReview",
+      "configurableDirectory": true,
+      "minimumFreeBytes": 2147483648
     }
   },
   "analysisModel": {
