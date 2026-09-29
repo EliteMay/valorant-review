@@ -12,7 +12,7 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 
 ## 現在の状態
 
-- VReview: **v0.10.1**
+- VReview: **v0.10.2**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
 - Feedback Batch Schema: **v1**
@@ -25,6 +25,8 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 v0.10.0ではDetector v0.5.0をLegacy baselineのまま維持し、Windows Raw InputでMouse dx/dy・LMB・W/A/S/Dを記録するPassive Input Telemetryを追加します。
 
 v0.10.1ではアプリ内Updateを修正し、`Update確認・適用`から新しいReleaseをダウンロード → 適用 → 再起動できるようにしました。
+
+v0.10.2ではTelemetryのVALORANT判定から`OpenProcess`を削除し、公開Windows APIのForeground Window titleだけで記録可否を判定するSafe Telemetryへ変更しました。ゲームProcess Handleを開きません。
 
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
