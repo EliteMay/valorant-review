@@ -279,6 +279,8 @@ function validateElectronFoundation() {
   if (!inputHelper.includes('RIDEV_INPUTSINK')) errors.push('Windows Raw Input telemetry helper is missing');
   if (inputHelper.includes('SetWindowsHookEx')) errors.push('Telemetry helper must not use global keyboard/mouse hooks');
   if (inputHelper.includes('WriteProcessMemory') || inputHelper.includes('ReadProcessMemory')) errors.push('Telemetry helper must not read/write game process memory');
+  if (inputHelper.includes('OpenProcess(') || inputHelper.includes('QueryFullProcessImageName')) errors.push('Telemetry helper must not open or inspect the VALORANT process');
+  if (!inputHelper.includes('GetForegroundWindow') || !inputHelper.includes('GetWindowTextW')) errors.push('Telemetry foreground gating must use public window metadata only');
 }
 
 function validateReviewRuntime() {
