@@ -75,6 +75,8 @@ Electron版の`New Review`で **「録画＋入力 開始」** を押すと、Ga
 - `telemetry-session.json` — Telemetry manifest
 - `session.json` — 録画とTelemetryを結ぶSession manifest
 
+保存先は設定画面から変更できます。未設定時はWindowsの`Videos/VReview`を使い、録画開始時に空き容量を確認します。
+
 録画方針:
 
 - Target: 1920×1080 / 60fps
