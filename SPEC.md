@@ -163,6 +163,8 @@ gameplay.webm
 - Large BlobをRendererへ最後まで保持せずMainへ順次送る
 - `backgroundThrottling=false`で最小化中も記録継続を狙う
 - Recording outputはTelemetryと同じSession directoryへ保存
+- 保存先はSettingsで選択可能。未指定時は`app.getPath('videos')/VReview`
+- 録画開始時に保存先の空き容量を確認し、2GB未満なら開始を拒否する
 
 保存:
 
