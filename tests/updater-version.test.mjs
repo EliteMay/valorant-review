@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { compareVersions } = require('../electron/updater.cjs');
+const { compareVersions } = require('../electron/foundation/version-compare.cjs');
 
 assert.equal(compareVersions('0.10.0', '0.9.0'), 1);
 assert.equal(compareVersions('0.10.1', '0.10.0'), 1);
