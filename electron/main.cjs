@@ -177,7 +177,7 @@ app.whenReady().then(() => {
   taskRegistry = new TaskRegistry(logger);
   telemetryController = new TelemetryController({ app, logger, taskRegistry });
   recordingController = new RecordingController({ logger });
-  diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry, telemetryController });
+  diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry, telemetryController, recordingController });
   updater = new UpdaterController({ app, logger, settingsStore });
   updater.on('status', status => {
     for (const win of BrowserWindow.getAllWindows()) {
