@@ -4,7 +4,7 @@
 
 - Project: VReview
 - Repository: `EliteMay/valorant-review`
-- App Version: 0.10.1
+- App Version: 0.10.2
 - Detector Version: 0.5.0
 - Feedback Package: 5
 - Feedback Batch Schema: 1
@@ -84,7 +84,7 @@ Windows Raw Inputを使い、ユーザーが明示的に記録開始した期間
 
 - Electron版のみ
 - VALORANTがforegroundの時のみ
-- 対象Process: `VALORANT-Win64-Shipping.exe` / `VALORANT.exe`
+- VALORANT判定: Foreground Window titleのみ。ゲームProcess Handleは開かない。
 - Mouse: `dx / dy`, LMB down/up
 - Keyboard: W / A / S / D down/up
 - timestamp: QueryPerformanceCounter由来
@@ -96,6 +96,8 @@ Windows Raw Inputを使い、ユーザーが明示的に記録開始した期間
 - Text input
 - 他Applicationの入力Event
 - Game memory
+- Game process handle取得
+- `OpenProcess / QueryFullProcessImageName`によるProcess introspection
 - Process injection
 - Gameplay automation
 

@@ -26,8 +26,7 @@ function normalizeTelemetryEvent(input) {
     return {
       type,
       t_us: tUs,
-      valorant: Boolean(input.valorant),
-      process: safeProcessName(input.process)
+      valorant: Boolean(input.valorant)
     };
   }
 
@@ -75,10 +74,6 @@ function safeText(value, maxLength) {
   return String(value || '').replace(/[\r\n\0]/g, '').slice(0, maxLength);
 }
 
-function safeProcessName(value) {
-  const text = safeText(value, 96);
-  return text.replace(/^.*[\\/]/, '');
-}
 
 module.exports = {
   normalizeTelemetryEvent,

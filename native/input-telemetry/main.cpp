@@ -12,13 +12,12 @@
 
 namespace {
 constexpr wchar_t kWindowClass[] = L"VReviewInputTelemetryWindow";
-constexpr char kHelperVersion[] = "0.1.0";
+constexpr char kHelperVersion[] = "0.1.1";
 
 HWND g_window = nullptr;
 LARGE_INTEGER g_frequency{};
 ULONGLONG g_lastForegroundCheckMs = 0;
 bool g_valorantForeground = false;
-std::wstring g_foregroundProcess;
 bool g_keyState[256]{};
 
 std::uint64_t nowMicroseconds() {
@@ -30,52 +29,8 @@ std::uint64_t nowMicroseconds() {
   return static_cast<std::uint64_t>(micros);
 }
 
-std::string wideToUtf8(const std::wstring& value) {
-  if (value.empty()) return {};
-  const int size = WideCharToMultiByte(CP_UTF8, 0, value.data(),
-                                       static_cast<int>(value.size()),
-                                       nullptr, 0, nullptr, nullptr);
-  if (size <= 0) return {};
-  std::string output(static_cast<std::size_t>(size), '\0');
-  WideCharToMultiByte(CP_UTF8, 0, value.data(),
-                      static_cast<int>(value.size()),
-                      output.data(), size, nullptr, nullptr);
-  return output;
-}
-
-std::string jsonEscape(const std::string& value) {
-  std::string output;
-  output.reserve(value.size() + 8);
-  for (unsigned char ch : value) {
-    switch (ch) {
-      case '"': output += "\\\""; break;
-      case '\\': output += "\\\\"; break;
-      case '\b': output += "\\b"; break;
-      case '\f': output += "\\f"; break;
-      case '\n': output += "\\n"; break;
-      case '\r': output += "\\r"; break;
-      case '\t': output += "\\t"; break;
-      default:
-        if (ch < 0x20) {
-          const char hex[] = "0123456789abcdef";
-          output += "\\u00";
-          output += hex[(ch >> 4) & 0x0f];
-          output += hex[ch & 0x0f];
-        } else {
-          output.push_back(static_cast<char>(ch));
-        }
-    }
-  }
-  return output;
-}
-
 void emitLine(const std::string& line) {
   std::cout << line << std::endl;
-}
-
-std::wstring basenameOf(const std::wstring& path) {
-  const auto pos = path.find_last_of(L"\\/");
-  return pos == std::wstring::npos ? path : path.substr(pos + 1);
 }
 
 std::wstring lower(const std::wstring& value) {
@@ -85,32 +40,25 @@ std::wstring lower(const std::wstring& value) {
   return result;
 }
 
-std::wstring foregroundProcessName() {
+std::wstring foregroundWindowTitle() {
   const HWND foreground = GetForegroundWindow();
   if (!foreground) return {};
 
-  DWORD processId = 0;
-  GetWindowThreadProcessId(foreground, &processId);
-  if (!processId) return {};
+  const int length = GetWindowTextLengthW(foreground);
+  if (length <= 0 || length > 512) return {};
 
-  HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
-  if (!process) return {};
+  std::vector<wchar_t> buffer(static_cast<std::size_t>(length) + 1, L'\0');
+  const int copied = GetWindowTextW(foreground, buffer.data(), static_cast<int>(buffer.size()));
+  if (copied <= 0) return {};
 
-  std::vector<wchar_t> buffer(32768);
-  DWORD size = static_cast<DWORD>(buffer.size());
-  std::wstring result;
-  if (QueryFullProcessImageNameW(process, 0, buffer.data(), &size) && size > 0) {
-    result.assign(buffer.data(), size);
-    result = basenameOf(result);
-  }
-
-  CloseHandle(process);
-  return result;
+  return std::wstring(buffer.data(), static_cast<std::size_t>(copied));
 }
 
-bool isValorantProcess(const std::wstring& processName) {
-  const std::wstring name = lower(processName);
-  return name == L"valorant-win64-shipping.exe" || name == L"valorant.exe";
+bool isValorantWindow(const std::wstring& title) {
+  const std::wstring normalized = lower(title);
+  return normalized == L"valorant" ||
+         normalized.rfind(L"valorant ", 0) == 0 ||
+         normalized.rfind(L"valorant-", 0) == 0;
 }
 
 void refreshForeground(bool force = false) {
@@ -118,18 +66,13 @@ void refreshForeground(bool force = false) {
   if (!force && now - g_lastForegroundCheckMs < 100) return;
   g_lastForegroundCheckMs = now;
 
-  const std::wstring process = foregroundProcessName();
-  const bool valorant = isValorantProcess(process);
-  if (valorant == g_valorantForeground && process == g_foregroundProcess) return;
+  const bool valorant = isValorantWindow(foregroundWindowTitle());
+  if (valorant == g_valorantForeground) return;
 
   g_valorantForeground = valorant;
-  g_foregroundProcess = process;
-
-  const std::string processUtf8 = jsonEscape(wideToUtf8(process));
   emitLine(
       "{\"type\":\"focus\",\"t_us\":" + std::to_string(nowMicroseconds()) +
-      ",\"valorant\":" + std::string(valorant ? "true" : "false") +
-      ",\"process\":\"" + processUtf8 + "\"}");
+      ",\"valorant\":" + std::string(valorant ? "true" : "false") + "}");
 }
 
 void emitMouse(LONG dx, LONG dy) {
