@@ -170,6 +170,7 @@ gameplay.webm
 - `recording.json`
 - `telemetry.ndjson`
 - `telemetry-session.json`
+- `session.json`
 
 Security / Safety:
 
