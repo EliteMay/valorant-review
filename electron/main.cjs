@@ -184,7 +184,7 @@ function writeCaptureSessionManifest(recording, telemetry) {
       file: recording?.fileName || 'gameplay.webm',
       pathStored: false,
       contentHash: null,
-      durationMs: null,
+      durationMs: recording?.durationMs ?? null,
       width: recording?.video?.width ?? null,
       height: recording?.video?.height ?? null,
       fps: recording?.video?.frameRate ?? null,
