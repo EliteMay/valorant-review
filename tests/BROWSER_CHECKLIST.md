@@ -1,6 +1,6 @@
 # VReview Browser / Visual Validation Checklist
 
-`web-project-guide` v1.13.0 の `STATIC + MEDIA + AI-HANDOFF + TOOL` と Visual Quality Baseline用の手動確認項目です。
+`web-project-guide` v1.22.0 の `STATIC + MEDIA + AI-HANDOFF + TOOL` と Visual Quality Baseline用の手動確認項目です。
 
 このファイルが存在するだけでは Browser / Visual Validated 扱いにしません。実施結果は `作業報告書.md` へ記録します。
 
@@ -117,7 +117,12 @@
 - [ ] v5単体Feedback ZIPをImport可能
 - [ ] 従来どおり複数の単体ZIPをまとめてImport可能
 - [ ] v0.8.0 Batch ZIPを1個Importすると中の複数Clipが表へ出る
-- [ ] Batch ZIP内各ClipのPrecision / Recallが個別計算される
+- [ ] Batch ZIP内各ClipのStrict Precision / Strict Recallが個別計算される
+- [ ] auto-scenes.jsonがあるv5ではTemporal Ground Truth modeになる
+- [ ] 広すぎるAuto Sceneを人間が修正してもStrict TPへ自動昇格しない
+- [ ] 削除したAuto誤検出もFPとして残る
+- [ ] Boundary Error / Duplicate / Merge / Splitが表示される
+- [ ] auto-scenes.jsonが無いLegacy Packageだけ旧方式へFallbackする
 - [ ] Batchの`clip_count`不一致を拒否
 - [ ] Batch内folder重複を拒否
 - [ ] 不正Pathを拒否
@@ -137,6 +142,23 @@
 - [ ] 診断JSONへ動画本体・Scene本文・Feedbackメモ本文・Storage値本体が含まれない
 - [ ] Breadcrumb / Errorが上限を超えて無限増加しない
 
+## Electron Desktop Foundation
+
+- [ ] Windowsで`npm install`後に`npm start`で起動
+- [ ] 2回起動してもWindowが二重起動せず既存WindowへFocus
+- [ ] RendererからNode.jsの`require`へ直接アクセスできない
+- [ ] 設定画面でAuto Update / Channel / Worker数を保存できる
+- [ ] 再起動後も設定が復元する
+- [ ] Window位置・Size・Maximizedが復元する
+- [ ] Display構成を変えても画面外へ復元しない
+- [ ] Log Folderを設定画面から開ける
+- [ ] Development buildのUpdate確認が安全に`development`扱いになる
+- [ ] Renderer crash時に診断情報へFailureが残る
+- [ ] Windows CIでNSIS Installerが生成される
+- [ ] Setup.exeでInstall → 起動 → Uninstallを実Windows確認
+- [ ] 更新後もuserData設定が消えない
+- [ ] source videoがDesktop Diagnosticsへ含まれない
+
 ## GitHub Pages
 
 - [ ] Dashboard → New Review → Detector Test → Diagnosticsのリンクが正常
@@ -149,4 +171,4 @@
 
 完了時は作業報告へ対象Browser・Viewport / Zoom・日時・未確認項目を記載してください。
 
-v0.8.0 Feedback Queue / Batch Exportは、Static CI成功だけではBrowser Validated扱いにしません。実動画を使ったIndexedDB保存・再読込・Batch ZIP生成・Detector Test Importまで確認して初めてBrowser Validatedとします。
+v0.9.0 Electron Foundation / Temporal Detector Metricsは、Static CI成功だけではDesktop / Browser Validated扱いにしません。実動画を使ったIndexedDB保存・再読込・Batch ZIP生成・Detector Test Importまで確認して初めてBrowser Validatedとします。
