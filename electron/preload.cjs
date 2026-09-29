@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
   getSettings: () => invoke('settings:get'),
   updateSettings: patch => invoke('settings:update', patch),
   resetSettings: () => invoke('settings:reset'),
+  chooseRecordingFolder: () => invoke('settings:choose-recording-folder'),
   getDiagnostics: () => invoke('diagnostics:get'),
   openLogFolder: () => invoke('diagnostics:open-log-folder'),
   checkForUpdates: () => invoke('updates:check'),
