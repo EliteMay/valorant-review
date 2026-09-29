@@ -159,9 +159,29 @@
 - [ ] 更新後もuserData設定が消えない
 - [ ] source videoがDesktop Diagnosticsへ含まれない
 
+## Gameplay Recording — Windows Real PC
+
+- [ ] v0.11.0 Setup.exeでNew Reviewに「録画＋入力 開始」が表示される
+- [ ] 開始を押すとOSのScreen pickerを出さずPrimary画面録画が始まる
+- [ ] VReviewを最小化してVALORANTへ戻っても録画が継続する
+- [ ] 60fps設定のVALORANTで録画が極端にカクつかない
+- [ ] Windows System Audioが`gameplay.webm`へ入る
+- [ ] Input countも同時に増える
+- [ ] VALORANTからAlt+TabするとInput Telemetryだけ停止し、画面録画は継続する
+- [ ] 「録画＋入力 停止」で正常終了する
+- [ ] 保存先に`gameplay.webm` / `recording.json` / `telemetry.ndjson` / `telemetry-session.json`がある
+- [ ] `gameplay.webm`をVLC / Browser等で再生できる
+- [ ] `recording.json`にResolution / FPS / Audio / bytes / chunksが記録される
+- [ ] 録画中にSidebar linkを押してもページ移動しない
+- [ ] 録画停止後はSidebar linkが使える
+- [ ] 録画中にAppを閉じた場合、HelperやVReview Processが残留しない
+- [ ] Diagnosticsに録画本文やSession pathが含まれない
+- [ ] Task Manager上で録画中のCPU/GPU負荷がプレイ不能レベルに増えない
+- [ ] Multi-monitor環境では現状Primary画面が録画されることを確認
+
 ## Input Telemetry — Windows Real PC
 
-- [ ] v0.10.0 Setup.exeをInstall後、New ReviewにInput Telemetry Panelが表示される
+- [ ] v0.11.0 Setup.exeをInstall後、New ReviewにInput Telemetry Panelが表示される
 - [ ] 「記録開始」で状態が「VALORANT待機」になる
 - [ ] VReviewやChromeを前面にしてKey入力してもEvent数が増えない
 - [ ] VALORANTを前面にすると「記録中 · VALORANT」へ変わる
@@ -188,4 +208,4 @@
 
 完了時は作業報告へ対象Browser・Viewport / Zoom・日時・未確認項目を記載してください。
 
-v0.10.0 Electron Foundation / Input Telemetry / Temporal Detector Metricsは、Static CI成功だけではDesktop / Browser Validated扱いにしません。実動画を使ったIndexedDB保存・再読込・Batch ZIP生成・Detector Test Importまで確認して初めてBrowser Validatedとします。
+v0.11.0 Electron Foundation / Gameplay Recording / Input Telemetry / Temporal Detector Metricsは、Static CI成功だけではDesktop / Browser Validated扱いにしません。実動画を使ったIndexedDB保存・再読込・Batch ZIP生成・Detector Test Importまで確認して初めてBrowser Validatedとします。
