@@ -6,6 +6,7 @@ const { WindowStateStore } = require('./foundation/window-state.cjs');
 const { TaskRegistry } = require('./foundation/task-registry.cjs');
 const { DesktopDiagnostics } = require('./foundation/diagnostics.cjs');
 const { UpdaterController } = require('./updater.cjs');
+const { TelemetryController } = require('./telemetry/controller.cjs');
 
 const APP_ID = 'io.github.elitemay.vreview';
 app.setAppUserModelId(APP_ID);
@@ -20,6 +21,8 @@ let windowStateStore = null;
 let taskRegistry = null;
 let diagnostics = null;
 let updater = null;
+let telemetryController = null;
+let quitAfterTelemetryStop = false;
 
 function createWindow() {
   const state = windowStateStore.load();
@@ -88,6 +91,15 @@ function registerIpc() {
   });
   ipcMain.handle('updates:check', () => updater.check());
   ipcMain.handle('tasks:list', () => taskRegistry.list());
+  ipcMain.handle('telemetry:get-status', () => telemetryController.getStatus());
+  ipcMain.handle('telemetry:start', () => telemetryController.start());
+  ipcMain.handle('telemetry:stop', () => telemetryController.stop());
+  ipcMain.handle('telemetry:open-folder', async () => {
+    const folder = telemetryController.getSessionDirectory();
+    if (!folder) return { ok: false, error: '保存済みTelemetry Sessionがありません。' };
+    const error = await shell.openPath(folder);
+    return { ok: !error, error: error || null };
+  });
 }
 
 app.on('second-instance', () => {
@@ -102,8 +114,14 @@ app.whenReady().then(() => {
   settingsStore = new SettingsStore(app.getPath('userData'), logger);
   windowStateStore = new WindowStateStore(app.getPath('userData'), screen, logger);
   taskRegistry = new TaskRegistry(logger);
-  diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry });
+  telemetryController = new TelemetryController({ app, logger, taskRegistry });
+  diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry, telemetryController });
   updater = new UpdaterController({ app, logger, settingsStore });
+  telemetryController.on('status', status => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('telemetry:status', status);
+    }
+  });
   registerIpc();
 
   logger.info('app.ready', { version: app.getVersion(), packaged: app.isPackaged });
@@ -118,7 +136,16 @@ app.whenReady().then(() => {
   app.quit();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', event => {
+  if (!quitAfterTelemetryStop && telemetryController?.getStatus().active) {
+    event.preventDefault();
+    quitAfterTelemetryStop = true;
+    telemetryController.shutdown()
+      .catch(error => logger?.warn('telemetry.quit-stop.failed', { message: error.message }))
+      .finally(() => app.quit());
+    return;
+  }
+
   taskRegistry?.interruptRunning();
   if (mainWindow && !mainWindow.isDestroyed()) windowStateStore?.save(mainWindow);
   logger?.info('app.before-quit');
