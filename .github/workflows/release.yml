@@ -9,6 +9,8 @@ on:
       - "js/**"
       - "css/**"
       - "data/**"
+      - "native/**"
+      - "scripts/build-input-helper.ps1"
       - "*.html"
       - ".github/workflows/release.yml"
   workflow_dispatch:
