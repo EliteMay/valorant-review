@@ -2,12 +2,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 class DesktopDiagnostics {
-  constructor({ app, logger, settingsStore, taskRegistry, telemetryController = null }) {
+  constructor({ app, logger, settingsStore, taskRegistry, telemetryController = null, recordingController = null }) {
     this.app = app;
     this.logger = logger;
     this.settingsStore = settingsStore;
     this.taskRegistry = taskRegistry;
     this.telemetryController = telemetryController;
+    this.recordingController = recordingController;
     this.startedAt = new Date().toISOString();
     this.lastRendererFailure = null;
   }
@@ -51,6 +52,7 @@ class DesktopDiagnostics {
       },
       tasks: this.taskRegistry.list(),
       telemetry: sanitizeTelemetry(this.telemetryController?.getStatus?.()),
+      recording: sanitizeRecording(this.recordingController?.getStatus?.()),
       lastRendererFailure: this.lastRendererFailure,
       privacy: {
         includesVideoBody: false,
@@ -59,6 +61,23 @@ class DesktopDiagnostics {
       }
     };
   }
+}
+
+function sanitizeRecording(status) {
+  if (!status) return null;
+  return {
+    active: Boolean(status.active),
+    phase: String(status.phase || 'unknown'),
+    bytesWritten: Number(status.bytesWritten || 0),
+    chunksWritten: Number(status.chunksWritten || 0),
+    mimeType: String(status.mimeType || ''),
+    video: {
+      width: Number(status.video?.width || 0) || null,
+      height: Number(status.video?.height || 0) || null,
+      frameRate: Number(status.video?.frameRate || 0) || null
+    },
+    audioEnabled: Boolean(status.audio?.enabled)
+  };
 }
 
 function sanitizeTelemetry(status) {
