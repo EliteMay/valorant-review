@@ -60,6 +60,7 @@ const requiredFiles = [
   'scripts/build-input-helper.ps1',
   'electron/recording/controller.cjs',
   'tests/recording-controller.test.mjs',
+  'tests/settings-store.test.mjs',
   'data/recording-schema.json'
 ];
 
@@ -293,6 +294,9 @@ function validateElectronFoundation() {
   if (!main.includes("types: ['screen']")) errors.push('Gameplay recording must use screen capture sources only');
   if (!main.includes('backgroundThrottling: false')) errors.push('Gameplay recording requires backgroundThrottling=false');
   if (!preload.includes('appendRecordingChunk:')) errors.push('Recording chunk bridge is missing');
+  if (!preload.includes('chooseRecordingFolder:')) errors.push('Recording directory chooser bridge is missing');
+  if (!main.includes("settings:choose-recording-folder")) errors.push('Recording directory chooser IPC is missing');
+  if (!main.includes('ensureRecordingSpace')) errors.push('Recording free-space guard is missing');
   if (!recordingController.includes("gameplay.") || !recordingController.includes("recording.json")) errors.push('Recording controller output contract is missing');
   if (!desktopTelemetry.includes('navigator.mediaDevices.getDisplayMedia')) errors.push('Review runtime does not request display capture');
   if (!desktopTelemetry.includes('new MediaRecorder')) errors.push('Review runtime does not use MediaRecorder');
