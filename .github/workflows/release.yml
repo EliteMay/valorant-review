@@ -1,0 +1,99 @@
+name: Publish VReview Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "electron/**"
+      - "js/**"
+      - "css/**"
+      - "data/**"
+      - "*.html"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Read app version
+        shell: pwsh
+        run: |
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          "VERSION=$($pkg.version)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "TAG=v$($pkg.version)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Check existing release
+        id: release_check
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$env:TAG" --repo "$env:GITHUB_REPOSITORY" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            "exists=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          } else {
+            "exists=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            exit 0
+          }
+
+      - name: Install dependencies
+        if: steps.release_check.outputs.exists != 'true'
+        run: npm install
+
+      - name: Run tests
+        if: steps.release_check.outputs.exists != 'true'
+        run: npm test
+
+      - name: Build Windows installer
+        if: steps.release_check.outputs.exists != 'true'
+        run: npm run dist:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Publish GitHub Release
+        if: steps.release_check.outputs.exists != 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $assets = Get-ChildItem dist -File | Where-Object {
+            $_.Name -like 'VReview-Setup-*.exe' -or
+            $_.Name -eq 'latest.yml' -or
+            $_.Name -like '*.blockmap'
+          } | ForEach-Object { $_.FullName }
+
+          if (-not $assets -or $assets.Count -eq 0) {
+            throw "Release assets were not produced."
+          }
+
+          $notes = @"
+          Windows向け VReview v$env:VERSION のテスト配布版です。
+
+          - Setup.exe形式
+          - Electron Desktop Foundation
+          - Detector Temporal Metrics修正
+          - 設定 / Logs / Diagnostics / Update基盤
+          - まだInput Telemetry / FFmpeg精密解析 / Strong-vs-Weak自動比較は未実装
+
+          未署名ビルドのため、Windows SmartScreenが警告を表示する場合があります。
+          "@
+
+          gh release create "$env:TAG" $assets `
+            --repo "$env:GITHUB_REPOSITORY" `
+            --target "$env:GITHUB_SHA" `
+            --title "VReview v$env:VERSION" `
+            --notes "$notes"
