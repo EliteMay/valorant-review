@@ -197,21 +197,21 @@ app.whenReady().then(() => {
 
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
     try {
-      if (!recordingController?.getStatus().active || !request.videoRequested) {
+      const frameUrl = String(request.frame?.url || '');
+      if (!request.videoRequested || !frameUrl.startsWith('file://') || !frameUrl.endsWith('/review.html')) {
         callback({});
         return;
       }
 
       const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
+        types: ['screen'],
         thumbnailSize: { width: 0, height: 0 },
         fetchWindowIcons: false
       });
 
-      const valorantWindow = sources.find(source => /^valorant(?:\s|$|-)/i.test(String(source.name || '').trim()));
       const primaryDisplayId = String(screen.getPrimaryDisplay().id);
       const primaryScreen = sources.find(source => source.display_id === primaryDisplayId);
-      const source = valorantWindow || primaryScreen || sources.find(item => String(item.id || '').startsWith('screen:'));
+      const source = primaryScreen || sources[0];
 
       if (!source) {
         callback({});
