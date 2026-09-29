@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { app, BrowserWindow, desktopCapturer, ipcMain, session, shell, screen } = require('electron');
+const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, session, shell, screen } = require('electron');
 const { SettingsStore } = require('./foundation/settings-store.cjs');
 const { Logger } = require('./foundation/logger.cjs');
 const { WindowStateStore } = require('./foundation/window-state.cjs');
@@ -76,6 +76,32 @@ function createWindow() {
   return win;
 }
 
+function defaultRecordingDirectory() {
+  return path.join(app.getPath('videos'), 'VReview');
+}
+
+function resolveRecordingDirectory() {
+  const configured = String(settingsStore?.get()?.recording?.saveDirectory || '').trim();
+  return configured || defaultRecordingDirectory();
+}
+
+function ensureRecordingSpace(directory) {
+  fs.mkdirSync(directory, { recursive: true });
+  if (typeof fs.statfsSync !== 'function') return;
+  try {
+    const stats = fs.statfsSync(directory);
+    const freeBytes = Number(stats.bavail) * Number(stats.bsize);
+    const minimum = 2 * 1024 * 1024 * 1024;
+    if (Number.isFinite(freeBytes) && freeBytes < minimum) {
+      const freeGb = (freeBytes / 1024 / 1024 / 1024).toFixed(1);
+      throw new Error(`録画保存先の空き容量が不足しています（約 ${freeGb} GB）。設定から別の保存先を選んでください。`);
+    }
+  } catch (error) {
+    if (/空き容量が不足/.test(String(error?.message || ''))) throw error;
+    logger?.warn('recording.disk-check.failed', { message: error?.message || String(error) });
+  }
+}
+
 function registerIpc() {
   ipcMain.handle('desktop:get-info', () => ({
     desktop: true,
@@ -88,6 +114,16 @@ function registerIpc() {
   ipcMain.handle('settings:get', () => settingsStore.get());
   ipcMain.handle('settings:update', (_event, patch) => settingsStore.update(patch && typeof patch === 'object' ? patch : {}));
   ipcMain.handle('settings:reset', () => settingsStore.reset());
+  ipcMain.handle('settings:choose-recording-folder', async () => {
+    const current = settingsStore.get().recording?.saveDirectory || defaultRecordingDirectory();
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'VReview 録画保存先',
+      defaultPath: current,
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || !result.filePaths?.[0]) return settingsStore.get();
+    return settingsStore.update({ recording: { saveDirectory: result.filePaths[0] } });
+  });
   ipcMain.handle('diagnostics:get', () => diagnostics.snapshot());
   ipcMain.handle('diagnostics:open-log-folder', async () => {
     const error = await shell.openPath(app.getPath('logs'));
@@ -122,7 +158,11 @@ function registerIpc() {
   ipcMain.handle('recording:get-status', () => recordingController.getStatus());
   ipcMain.handle('recording:prepare', async (_event, payload) => {
     let telemetry = telemetryController.getStatus();
-    if (!telemetry.active) telemetry = await telemetryController.start();
+    if (!telemetry.active) {
+      const recordingDirectory = resolveRecordingDirectory();
+      ensureRecordingSpace(recordingDirectory);
+      telemetry = await telemetryController.start({ baseDirectory: recordingDirectory });
+    }
 
     const sessionDir = telemetryController.getSessionDirectory();
     if (!sessionDir || !telemetry.sessionId) {
