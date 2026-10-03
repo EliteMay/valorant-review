@@ -4,7 +4,7 @@ const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const execFileAsync = promisify(execFile);
 
-async function createTrackerPackage({ sessionDir, compression = 'standard', logger }) {
+async function createTrackerPackage({ app, sessionDir, compression = 'standard', logger }) {
   if (process.platform !== 'win32') {
     throw new Error('Tracker PackageはWindows版VReviewで作成してください。');
   }
@@ -14,7 +14,9 @@ async function createTrackerPackage({ sessionDir, compression = 'standard', logg
   const parent = path.dirname(sessionDir);
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').replace(/\.\d{3}Z$/, 'Z');
   const outputPath = path.join(parent, `VReview-Tracker-${stamp}.zip`);
-  const scriptPath = path.join(__dirname, 'create-package.ps1');
+  const scriptPath = app?.isPackaged
+    ? path.join(process.resourcesPath, 'tracker-helper', 'create-package.ps1')
+    : path.join(__dirname, 'create-package.ps1');
 
   try {
     const { stdout } = await execFileAsync('powershell.exe', [
