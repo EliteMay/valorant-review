@@ -14,6 +14,20 @@ const DEFAULT_SETTINGS = Object.freeze({
   recording: {
     saveDirectory: ''
   },
+  tracker: {
+    saveDirectory: '',
+    captureFormat: 'png',
+    scrollStepRatio: 0.8,
+    stableWaitMs: 400,
+    stableMaxWaitMs: 3000,
+    maxCaptures: 100,
+    maxMatches: 5,
+    browserTarget: 'chrome',
+    calibration: null,
+    autoOpenResultFolder: false,
+    packageCompression: 'standard',
+    maxDurationMs: 900000
+  },
   privacy: {
     includeFileNamesInDiagnostics: false
   }
@@ -38,6 +52,7 @@ class SettingsStore {
       update: { ...this.value.update, ...(patch?.update || {}) },
       analysis: { ...this.value.analysis, ...(patch?.analysis || {}) },
       recording: { ...this.value.recording, ...(patch?.recording || {}) },
+      tracker: { ...this.value.tracker, ...(patch?.tracker || {}) },
       privacy: { ...this.value.privacy, ...(patch?.privacy || {}) }
     });
     this.#write(next);
@@ -84,6 +99,14 @@ class SettingsStore {
 
 function normalizeSettings(input = {}) {
   const workerConcurrency = clampInt(input?.analysis?.workerConcurrency, 1, 4, 1);
+  const browserTarget = ['chrome', 'edge', 'firefox'].includes(input?.tracker?.browserTarget)
+    ? input.tracker.browserTarget
+    : 'chrome';
+  const packageCompression = ['fast', 'standard', 'maximum'].includes(input?.tracker?.packageCompression)
+    ? input.tracker.packageCompression
+    : 'standard';
+  const captureFormat = input?.tracker?.captureFormat === 'webp-lossless' ? 'webp-lossless' : 'png';
+
   return {
     schemaVersion: 1,
     theme: input.theme === 'system' ? 'system' : 'dark',
@@ -97,10 +120,36 @@ function normalizeSettings(input = {}) {
     recording: {
       saveDirectory: normalizeDirectory(input?.recording?.saveDirectory)
     },
+    tracker: {
+      saveDirectory: normalizeDirectory(input?.tracker?.saveDirectory),
+      captureFormat,
+      scrollStepRatio: clampNumber(input?.tracker?.scrollStepRatio, 0.65, 0.9, 0.8),
+      stableWaitMs: clampInt(input?.tracker?.stableWaitMs, 250, 1200, 400),
+      stableMaxWaitMs: clampInt(input?.tracker?.stableMaxWaitMs, 1500, 6000, 3000),
+      maxCaptures: clampInt(input?.tracker?.maxCaptures, 5, 100, 100),
+      maxMatches: clampInt(input?.tracker?.maxMatches, 1, 20, 5),
+      browserTarget,
+      calibration: normalizeCalibration(input?.tracker?.calibration),
+      autoOpenResultFolder: input?.tracker?.autoOpenResultFolder === true,
+      packageCompression,
+      maxDurationMs: clampInt(input?.tracker?.maxDurationMs, 60000, 3600000, 900000)
+    },
     privacy: {
       includeFileNamesInDiagnostics: Boolean(input?.privacy?.includeFileNamesInDiagnostics)
     }
   };
+}
+
+function normalizeCalibration(value) {
+  if (!value || typeof value !== 'object') return null;
+  if (value.schemaVersion !== 1 || !value.geometry || !value.points) return null;
+  const required = ['scoreboard', 'performance', 'economy', 'rounds', 'duels'];
+  for (const key of required) {
+    const point = value.points[key];
+    if (!point || !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y))) return null;
+    if (Number(point.x) < 0 || Number(point.x) > 1 || Number(point.y) < 0 || Number(point.y) > 1) return null;
+  }
+  return structuredClone(value);
 }
 
 function normalizeDirectory(value) {
@@ -110,6 +159,12 @@ function normalizeDirectory(value) {
 function clampInt(value, min, max, fallback) {
   const number = Number(value);
   if (!Number.isInteger(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, number));
 }
 
