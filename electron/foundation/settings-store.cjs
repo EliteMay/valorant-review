@@ -105,7 +105,7 @@ function normalizeSettings(input = {}) {
   const packageCompression = ['fast', 'standard', 'maximum'].includes(input?.tracker?.packageCompression)
     ? input.tracker.packageCompression
     : 'standard';
-  const captureFormat = input?.tracker?.captureFormat === 'webp-lossless' ? 'webp-lossless' : 'png';
+  const captureFormat = 'png';
 
   return {
     schemaVersion: 1,
