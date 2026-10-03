@@ -17,6 +17,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const recordingDirectory = document.getElementById('recordingSaveDirectory');
   const status = document.getElementById('desktopSettingsStatus');
   const updateButton = document.getElementById('checkDesktopUpdates');
+  const trackerDirectory = document.getElementById('trackerSaveDirectory');
+  const trackerMaxCaptures = document.getElementById('trackerMaxCaptures');
+  const trackerStableWait = document.getElementById('trackerStableWait');
+  const trackerScrollRatio = document.getElementById('trackerScrollRatio');
+  const trackerBrowser = document.getElementById('trackerBrowser');
+  const trackerCompression = document.getElementById('trackerCompression');
+  const trackerAutoOpen = document.getElementById('trackerAutoOpen');
 
   async function refresh() {
     const [settings, runtime] = await Promise.all([api.getSettings(), api.getInfo()]);
@@ -25,6 +32,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     concurrency.value = String(settings.analysis.workerConcurrency);
     recordingDirectory.textContent = settings.recording?.saveDirectory || '既定: Windows Videos / VReview';
     recordingDirectory.title = settings.recording?.saveDirectory || '';
+    trackerDirectory.textContent = settings.tracker?.saveDirectory || '既定: VReview userData / TrackerCaptures';
+    trackerDirectory.title = settings.tracker?.saveDirectory || '';
+    trackerMaxCaptures.value = String(settings.tracker?.maxCaptures || 100);
+    trackerStableWait.value = String(settings.tracker?.stableWaitMs || 400);
+    trackerScrollRatio.value = String(settings.tracker?.scrollStepRatio || 0.8);
+    trackerBrowser.value = settings.tracker?.browserTarget || 'chrome';
+    trackerCompression.value = settings.tracker?.packageCompression || 'standard';
+    trackerAutoOpen.checked = settings.tracker?.autoOpenResultFolder === true;
     info.textContent = `VReview ${runtime.appVersion} · Electron ${runtime.electronVersion} · ${runtime.platform}/${runtime.arch}`;
     if (mode) mode.textContent = 'Electron Desktop mode';
   }
@@ -32,7 +47,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function save() {
     await api.updateSettings({
       update: { autoCheck: autoCheck.checked, channel: channel.value },
-      analysis: { workerConcurrency: Number(concurrency.value) }
+      analysis: { workerConcurrency: Number(concurrency.value) },
+      tracker: {
+        maxCaptures: Number(trackerMaxCaptures.value),
+        stableWaitMs: Number(trackerStableWait.value),
+        scrollStepRatio: Number(trackerScrollRatio.value),
+        browserTarget: trackerBrowser.value,
+        packageCompression: trackerCompression.value,
+        autoOpenResultFolder: trackerAutoOpen.checked
+      }
     });
     setStatus('設定を保存しました。');
     await refresh();
@@ -111,6 +134,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       await refresh();
     } catch (error) {
       setStatus(`録画保存先の変更に失敗しました: ${error.message || String(error)}`);
+    }
+  });
+  document.getElementById('chooseTrackerFolder')?.addEventListener('click', async () => {
+    try {
+      await api.chooseTrackerFolder();
+      setStatus('Tracker収集の保存先を更新しました。');
+      await refresh();
+    } catch (error) {
+      setStatus(`Tracker保存先の変更に失敗しました: ${error.message || String(error)}`);
     }
   });
   document.getElementById('openDesktopLogs')?.addEventListener('click', () => api.openLogFolder());
