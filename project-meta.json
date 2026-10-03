@@ -58,7 +58,7 @@
     "basePath": "/valorant-review/"
   },
   "desktop": {
-    "status": "session-recording",
+    "status": "tracker-collector",
     "runtime": "Electron",
     "appId": "io.github.elitemay.vreview",
     "entry": "electron/main.cjs",
@@ -108,6 +108,26 @@
       "defaultDirectory": "Windows Videos/VReview",
       "configurableDirectory": true,
       "minimumFreeBytes": 2147483648
+    },
+    "trackerCollector": {
+      "version": "0.1.0",
+      "page": "tracker-collector.html",
+      "controller": "electron/tracker-collector/controller.cjs",
+      "helper": "native/tracker-collector/main.cpp",
+      "defaultDirectory": "userData/TrackerCaptures",
+      "capture": "Electron desktopCapturer window thumbnails",
+      "automation": "foreground-gated Win32 SendInput to explicit user-selected browser window",
+      "calibration": "window-relative 5-tab coordinates",
+      "source": "visible Tracker.gg browser window only",
+      "rawCaptureRetained": true,
+      "privateApi": false,
+      "domScraping": false,
+      "networkInterception": false,
+      "cookies": false,
+      "credentials": false,
+      "valorantProcessAccess": false,
+      "vanguardAccess": false,
+      "externalUpload": false
     }
   },
   "analysisModel": {

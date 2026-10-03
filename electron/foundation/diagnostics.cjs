@@ -2,13 +2,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 class DesktopDiagnostics {
-  constructor({ app, logger, settingsStore, taskRegistry, telemetryController = null, recordingController = null }) {
+  constructor({ app, logger, settingsStore, taskRegistry, telemetryController = null, recordingController = null, trackerController = null }) {
     this.app = app;
     this.logger = logger;
     this.settingsStore = settingsStore;
     this.taskRegistry = taskRegistry;
     this.telemetryController = telemetryController;
     this.recordingController = recordingController;
+    this.trackerController = trackerController;
     this.startedAt = new Date().toISOString();
     this.lastRendererFailure = null;
   }
@@ -53,14 +54,34 @@ class DesktopDiagnostics {
       tasks: this.taskRegistry.list(),
       telemetry: sanitizeTelemetry(this.telemetryController?.getStatus?.()),
       recording: sanitizeRecording(this.recordingController?.getStatus?.()),
+      trackerCollector: sanitizeTracker(this.trackerController?.getStatus?.()),
       lastRendererFailure: this.lastRendererFailure,
       privacy: {
         includesVideoBody: false,
+        includesTrackerImages: false,
         includesFileContents: false,
         includesSecrets: false
       }
     };
   }
+}
+
+function sanitizeTracker(status) {
+  if (!status) return null;
+  return {
+    collectorVersion: String(status.collectorVersion || ''),
+    active: Boolean(status.active),
+    phase: String(status.phase || 'unknown'),
+    captureMode: status.captureMode ? String(status.captureMode) : null,
+    browser: status.target?.browser ? String(status.target.browser) : null,
+    windowTitle: status.target?.title ? String(status.target.title).slice(0, 240) : null,
+    windowBounds: status.target?.bounds || null,
+    captureCount: Number(status.captureCount || 0),
+    currentScreen: status.currentScreen ? String(status.currentScreen) : null,
+    stopReason: status.stopReason ? String(status.stopReason) : null,
+    errorId: status.lastError?.id ? String(status.lastError.id) : null,
+    packageStatus: String(status.packageStatus || 'idle')
+  };
 }
 
 function sanitizeRecording(status) {

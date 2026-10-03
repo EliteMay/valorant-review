@@ -9,6 +9,7 @@ const { DesktopDiagnostics } = require('./foundation/diagnostics.cjs');
 const { UpdaterController } = require('./updater.cjs');
 const { TelemetryController } = require('./telemetry/controller.cjs');
 const { RecordingController } = require('./recording/controller.cjs');
+const { TrackerCollectorController } = require('./tracker-collector/controller.cjs');
 
 const APP_ID = 'io.github.elitemay.vreview';
 app.setAppUserModelId(APP_ID);
@@ -25,6 +26,7 @@ let diagnostics = null;
 let updater = null;
 let telemetryController = null;
 let recordingController = null;
+let trackerController = null;
 let quitAfterCaptureStop = false;
 
 function createWindow() {
@@ -102,6 +104,19 @@ function ensureRecordingSpace(directory) {
   }
 }
 
+function isTrustedLocalRenderer(event, pageName = null) {
+  if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return false;
+  const url = String(event.sender.getURL?.() || '');
+  if (!url.startsWith('file://')) return false;
+  return pageName ? url.endsWith(`/${pageName}`) : true;
+}
+
+function requireTrackerRenderer(event) {
+  if (!isTrustedLocalRenderer(event, 'tracker-collector.html')) {
+    throw new Error('Tracker Collector IPC sender was rejected.');
+  }
+}
+
 function registerIpc() {
   ipcMain.handle('desktop:get-info', () => ({
     desktop: true,
@@ -124,6 +139,70 @@ function registerIpc() {
     if (result.canceled || !result.filePaths?.[0]) return settingsStore.get();
     return settingsStore.update({ recording: { saveDirectory: result.filePaths[0] } });
   });
+  ipcMain.handle('settings:choose-tracker-folder', async event => {
+    if (!isTrustedLocalRenderer(event)) throw new Error('Settings IPC sender was rejected.');
+    const current = settingsStore.get().tracker?.saveDirectory || path.join(app.getPath('userData'), 'TrackerCaptures');
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Tracker収集 保存先',
+      defaultPath: current,
+      properties: ['openDirectory', 'createDirectory']
+    });
+    if (result.canceled || !result.filePaths?.[0]) return settingsStore.get();
+    return settingsStore.update({ tracker: { saveDirectory: result.filePaths[0] } });
+  });
+
+  ipcMain.handle('tracker:get-status', event => {
+    requireTrackerRenderer(event);
+    return trackerController.getStatus();
+  });
+  ipcMain.handle('tracker:list-windows', async event => {
+    requireTrackerRenderer(event);
+    return trackerController.listWindows();
+  });
+  ipcMain.handle('tracker:preview', (event, candidateId) => {
+    requireTrackerRenderer(event);
+    return trackerController.preview(candidateId);
+  });
+  ipcMain.handle('tracker:select-window', async (event, candidateId) => {
+    requireTrackerRenderer(event);
+    return trackerController.selectWindow(candidateId);
+  });
+  ipcMain.handle('tracker:get-calibration', async event => {
+    requireTrackerRenderer(event);
+    return trackerController.getCalibration();
+  });
+  ipcMain.handle('tracker:save-calibration', async (event, calibration) => {
+    requireTrackerRenderer(event);
+    return trackerController.saveCalibration(calibration);
+  });
+  ipcMain.handle('tracker:start-history', async event => {
+    requireTrackerRenderer(event);
+    return trackerController.startMatchHistory();
+  });
+  ipcMain.handle('tracker:start-current-match', async event => {
+    requireTrackerRenderer(event);
+    return trackerController.startCurrentMatch();
+  });
+  ipcMain.handle('tracker:stop', (event, reason) => {
+    requireTrackerRenderer(event);
+    return trackerController.requestStop(reason || 'user-stop');
+  });
+  ipcMain.handle('tracker:create-package', async event => {
+    requireTrackerRenderer(event);
+    return trackerController.createPackage();
+  });
+  ipcMain.handle('tracker:discard-recovery', event => {
+    requireTrackerRenderer(event);
+    return trackerController.discardRecoveredSession();
+  });
+  ipcMain.handle('tracker:open-folder', async event => {
+    requireTrackerRenderer(event);
+    const folder = trackerController.getLastSessionDirectory();
+    if (!folder) return { ok: false, error: '保存済みTracker Sessionがありません。' };
+    const error = await shell.openPath(folder);
+    return { ok: !error, error: error || null };
+  });
+
   ipcMain.handle('diagnostics:get', () => diagnostics.snapshot());
   ipcMain.handle('diagnostics:open-log-folder', async () => {
     const error = await shell.openPath(app.getPath('logs'));
@@ -282,7 +361,8 @@ app.whenReady().then(() => {
   taskRegistry = new TaskRegistry(logger);
   telemetryController = new TelemetryController({ app, logger, taskRegistry });
   recordingController = new RecordingController({ logger });
-  diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry, telemetryController, recordingController });
+  trackerController = new TrackerCollectorController({ app, logger, settingsStore, taskRegistry });
+  diagnostics = new DesktopDiagnostics({ app, logger, settingsStore, taskRegistry, telemetryController, recordingController, trackerController });
   updater = new UpdaterController({ app, logger, settingsStore });
   updater.on('status', status => {
     for (const win of BrowserWindow.getAllWindows()) {
@@ -298,6 +378,14 @@ app.whenReady().then(() => {
     for (const win of BrowserWindow.getAllWindows()) {
       if (!win.isDestroyed()) win.webContents.send('recording:status', status);
     }
+  });
+  trackerController.on('status', status => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) win.webContents.send('tracker:status', status);
+    }
+  });
+  trackerController.on('request-open-result', folder => {
+    shell.openPath(folder).catch(error => logger?.warn('tracker.open-folder.failed', { message: error.message }));
   });
 
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
@@ -347,18 +435,31 @@ app.whenReady().then(() => {
   app.quit();
 });
 
+async function waitForTrackerStop() {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    if (!trackerController?.getStatus().active) return;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+}
+
 app.on('before-quit', event => {
-  const captureActive = recordingController?.getStatus().active || telemetryController?.getStatus().active;
+  const recordingWasActive = Boolean(recordingController?.getStatus().active || telemetryController?.getStatus().active);
+  const trackerWasActive = Boolean(trackerController?.getStatus().active);
+  const captureActive = recordingWasActive || trackerWasActive;
   if (!quitAfterCaptureStop && captureActive) {
     event.preventDefault();
     quitAfterCaptureStop = true;
     let finalRecording = recordingController?.getStatus();
     Promise.resolve()
       .then(async () => {
+        if (trackerController?.getStatus().active) {
+          trackerController.requestStop('app-quit');
+          await waitForTrackerStop();
+        }
         if (recordingController?.getStatus().active) finalRecording = await recordingController.abort('app-quit');
       })
       .then(() => telemetryController?.getStatus().active ? telemetryController.shutdown() : null)
-      .then(() => writeCaptureSessionManifest(finalRecording, telemetryController?.getStatus()))
+      .then(() => recordingWasActive ? writeCaptureSessionManifest(finalRecording, telemetryController?.getStatus()) : null)
       .catch(error => logger?.warn('capture.quit-stop.failed', { message: error.message }))
       .finally(() => app.quit());
     return;

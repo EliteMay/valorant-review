@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#07090c">
   <title>設定 | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20260929-5">
-  <link rel="stylesheet" href="css/layout.css?v=20260929-5">
-  <link rel="stylesheet" href="css/components.css?v=20260929-5">
+  <link rel="stylesheet" href="css/base.css?v=20261003-1">
+  <link rel="stylesheet" href="css/layout.css?v=20261003-1">
+  <link rel="stylesheet" href="css/components.css?v=20261003-1">
 </head>
 <body>
   <div class="app-shell">
@@ -17,6 +17,7 @@
       <nav class="nav-list" aria-label="メインナビゲーション">
         <a class="nav-item" href="index.html">Dashboard</a>
         <a class="nav-item" href="review.html">New Review</a>
+        <a class="nav-item" href="tracker-collector.html">Tracker収集</a>
         <a class="nav-item" href="detector-test.html">Detector Test</a>
         <a class="nav-item" href="diagnostics.html">Diagnostics</a>
         <a class="nav-item active" href="settings.html" aria-current="page">設定</a>
@@ -63,6 +64,21 @@
           </div>
         </div>
 
+        <div class="section-heading" style="margin-top:22px"><div><p class="eyebrow">Tracker Collector</p><h2>Tracker収集</h2></div></div>
+        <div class="status-list">
+          <div class="status-row"><span>保存先</span><strong class="mono" id="trackerSaveDirectory">既定</strong></div>
+          <label class="status-row"><span>最大Capture数</span><select id="trackerMaxCaptures"><option value="20">20</option><option value="50">50</option><option value="100">100</option></select></label>
+          <label class="status-row"><span>画面安定待ち</span><select id="trackerStableWait"><option value="300">300 ms</option><option value="400">400 ms</option><option value="600">600 ms</option><option value="900">900 ms</option></select></label>
+          <label class="status-row"><span>Scroll重複</span><select id="trackerScrollRatio"><option value="0.75">約25%</option><option value="0.8">約20%</option><option value="0.85">約15%</option></select></label>
+          <label class="status-row"><span>対象ブラウザ</span><select id="trackerBrowser"><option value="chrome">Chrome</option><option value="edge">Edge</option><option value="firefox">Firefox</option></select></label>
+          <label class="status-row"><span>ZIP圧縮</span><select id="trackerCompression"><option value="fast">高速</option><option value="standard">標準</option><option value="maximum">最大</option></select></label>
+          <label class="status-row"><span>完了後にFolderを開く</span><input id="trackerAutoOpen" type="checkbox"></label>
+        </div>
+        <div class="button-row">
+          <button class="btn btn-secondary" id="chooseTrackerFolder" data-desktop-action type="button">Tracker保存先を選ぶ</button>
+          <a class="btn btn-secondary" href="tracker-collector.html">Calibration / 収集画面</a>
+        </div>
+
         <div class="button-row">
           <button class="btn btn-primary" id="saveDesktopSettings" data-desktop-action type="button">設定を保存</button>
           <button class="btn btn-secondary" id="checkDesktopUpdates" data-desktop-action type="button">Update確認・適用</button>
@@ -74,7 +90,7 @@
       </section>
     </main>
   </div>
-  <script src="js/version.js?v=20260929-5"></script>
-  <script src="js/desktop-settings.js?v=20260929-5"></script>
+  <script src="js/version.js?v=20261003-1"></script>
+  <script src="js/desktop-settings.js?v=20261003-1"></script>
 </body>
 </html>

@@ -159,6 +159,44 @@
 - [ ] 更新後もuserData設定が消えない
 - [ ] source videoがDesktop Diagnosticsへ含まれない
 
+## Tracker Collector — Windows Real PC
+
+- [ ] VALORANTを終了した状態でTracker Collectorを使用する
+- [ ] ChromeでTracker.ggを開き、Window候補一覧へ表示される
+- [ ] Trackerを含むTitleが候補上位になるが、自動確定されない
+- [ ] 候補選択後に正しいWindow Previewだけが表示される
+- [ ] Discord等の別Windowを誤選択していないことをPreviewで確認できる
+- [ ] Chrome 100% / Windows 100%でMatch Historyを先頭から自動Scroll Captureできる
+- [ ] Windows 125%相当でWindow Capture / Click / Scrollが致命的にずれない
+- [ ] Windows 150%相当でTarget bounds取得が壊れない
+- [ ] Chrome Zoom 90% / 100% / 110%でCalibrationをやり直せば5Tabを操作できる
+- [ ] 1回ごとのCaptureに重複領域が残り、完全な1画面飛ばしにならない
+- [ ] Lazy-load中は即Captureせず、画面安定後に保存される
+- [ ] ページ下端でFull + lower-region差分の連続一致により停止する
+- [ ] 無限Scroll等ではmaxCaptures上限で`safety-limit`停止する
+- [ ] Raw PNGが順番に残り、Manifestのpathと一致する
+- [ ] Current Match CalibrationでScoreboard / Performance / Economy / Rounds / Duelsを順に登録できる
+- [ ] Current Match 5Tabが順番に切り替わる
+- [ ] Rounds / Duels等の長いTabで複数Captureされる
+- [ ] Collection中にDiscord等へAlt+Tabすると`paused-focus`になり、別Appへ入力が送られない
+- [ ] Target Chromeへ戻すと同じSessionで再開する
+- [ ] Target Chromeを最小化すると安全にError/停止する
+- [ ] Target Chromeを閉じると安全にError/停止する
+- [ ] 「安全停止」でClick / Scroll / Capture queueが停止し、途中Raw PNGが残る
+- [ ] Escで安全停止できる
+- [ ] Multi-monitorで選択したBrowser WindowだけがCaptureされる
+- [ ] 別Monitorの個人情報がRaw Captureへ混ざらない
+- [ ] 保存先の空き容量不足では開始を拒否する
+- [ ] AppをCollection中に終了→再起動すると前回Sessionが`interrupted / crash-recovery`になる
+- [ ] Recovery SessionをFolder確認 / ZIP化 / 明示破棄できる
+- [ ] ChatGPT用ZIPにmanifest.json / README.txt / diagnostics.json / captures/が入る
+- [ ] ZIP生成失敗でもRaw Capture Sessionが残る
+- [ ] Diagnosticsに画像本文 / Cookie / Password / Tokenが含まれない
+- [ ] Tracker Network / DevTools / Private APIへの通信・解析をCollectorが行っていない
+- [ ] VALORANT / Vanguard process accessが発生していない
+- [ ] v0.12.0 Setup.exeでTracker HelperとPackage scriptが同梱される
+- [ ] v0.11.x → v0.12.0 Update後も既存Settings / Recording / Telemetryが動く
+
 ## Gameplay Recording — Windows Real PC
 
 - [ ] v0.11.0 Setup.exeでNew Reviewに「録画＋入力 開始」が表示される
@@ -201,7 +239,8 @@
 
 ## GitHub Pages
 
-- [ ] Dashboard → New Review → Detector Test → Diagnosticsのリンクが正常
+- [ ] Dashboard → New Review → Tracker収集 → Detector Test → Diagnosticsのリンクが正常
+- [ ] Tracker収集はWeb版ではDesktop版案内になり、Windows操作を試みない
 - [ ] 公開URLが `/valorant-review/` で正常
 - [ ] CSS / JS 404なし
 - [ ] Consoleに重大Errorなし

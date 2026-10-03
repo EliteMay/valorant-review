@@ -192,6 +192,19 @@
 
 ---
 
+### PL-S-004 外部Browser自動操作を明示Target + Foreground Gateへ限定
+
+- Date: 2026-10-03
+- Goal / Problem: Tracker.ggの大量Screenshotを自動化したいが、誤ってDiscord等の別WindowへClick/Scrollを送ること、Tracker内部APIへ依存すること、VALORANT/Vanguardと接触することは避ける必要があった。
+- Adopted Pattern: UserがTarget Windowを明示選択し、Main側でopaque Candidateとして保持。Native Helperは操作直前にも同じHWNDがForeground / visible / non-minimizedであることを再確認し、条件外ではSendInputを拒否する。CaptureはElectron window source、保存はfile-backed Raw PNG、Tab位置はPreview上のnormalized Calibrationとした。
+- Why it worked: DOM/API依存を作らず、外部入力の対象をOS Window境界で限定できる。既存Electron Foundation / Native Helper / Atomic Settings / Task Registryも再利用できる。
+- Trade-off: Tracker UI変更時はCalibrationのやり直しが必要。Windows実機でDesktopCapturer source名とHWNDの対応、DPI/Zoom、Scroll量を検証する必要がある。
+- Reuse when: Desktop AppがUser-visibleな別Applicationを限定的に補助操作し、誤送信のCostが高い場合。
+- Avoid when: 対象Serviceが正式APIを提供し、そのAPIがUser taskの正本として適切な場合。
+- Related files / tests: `electron/tracker-collector/*`, `native/tracker-collector/main.cpp`, `tests/tracker-collector-core.test.mjs`, `tests/BROWSER_CHECKLIST.md`
+- Guide candidate: yes
+- Guide note: External-app automationではTarget selection / focus gate / allowlisted action / recoveryを一体で設計する。
+
 ## Guide Feedback Queue
 
 | ID | Type | Summary | Evidence | Next action |

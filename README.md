@@ -1,6 +1,6 @@
 # VReview
 
-VALORANTの強い時・弱い時の差を客観的に測ることを目標にした個人用レビュー / AIM分析ツールです。現行Web Reviewを維持しつつ、v0.9.0からElectron Desktop基盤へ移行し、v0.10.0でPassive Input Telemetryを追加し、v0.11.0でGameplay録画とTelemetryを1ボタンで同時記録できるようにしました。
+VALORANTの強い時・弱い時の差を客観的に測ることを目標にした個人用レビュー / AIM分析ツールです。現行Web Reviewを維持しつつ、v0.9.0からElectron Desktop基盤へ移行し、v0.10.0でPassive Input Telemetryを追加し、v0.11.0でGameplay録画とTelemetryを1ボタンで同時記録できるようにし、v0.12.0でTracker.ggの表示画面を安全に自動CaptureするTracker Collectorを追加しました。
 
 最終的には、動画・受動Input Telemetry・Duel単位の指標を同期し、Strong / Weak Sessionを統計比較したEvidenceをAIへ渡してAIM / Movementレビューへつなげます。
 
@@ -12,7 +12,7 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 
 ## 現在の状態
 
-- VReview: **v0.11.0**
+- VReview: **v0.12.0**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
 - Feedback Batch Schema: **v1**
@@ -29,6 +29,8 @@ v0.10.1ではアプリ内Updateを修正し、`Update確認・適用`から新�
 v0.10.2ではTelemetryのVALORANT判定から`OpenProcess`を削除し、公開Windows APIのForeground Window titleだけで記録可否を判定するSafe Telemetryへ変更しました。ゲームProcess Handleを開きません。
 
 v0.11.0ではGameplay録画を追加し、`New Review`の「録画＋入力 開始」からPrimary画面のWebM録画・Windows System Audio・Input Telemetryを同じSessionへ保存します。
+
+v0.12.0ではElectron専用の **Tracker収集 / Tracker Collector v0.1.0** を追加します。ユーザーが明示的に選択したTracker.ggのブラウザウィンドウだけを対象に、Match Historyの自動Scroll CaptureとCurrent Matchの5Tab Captureを行います。VALORANT / Vanguard / Tracker private APIにはアクセスしません。
 
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
@@ -58,10 +60,44 @@ v0.10.0では最終Electron化に向け、以下を実装しています。
 - Telemetry session JSON / NDJSON保存
 - Gameplay録画: Primary画面 / WebM / 60fps目標 / Windows System Audio
 - 録画とTelemetryを同じSession folderへ保存
+- Tracker Collector: Tracker.gg window-only Raw PNG Capture / Focus-safe browser automation / ChatGPT ZIP
 
 詳細: [`docs/V1_ELECTRON_ARCHITECTURE.md`](docs/V1_ELECTRON_ARCHITECTURE.md)
 
 Electron版の最終Analysis Engineでは、ゲームへのInjection・Memory Read・入力自動化を行わず、Passive recording → Offline analysisを前提にします。
+
+## Tracker Collector
+
+Electron版の`Tracker収集`は、**VALORANT終了後**に使用するローカルCapture機能です。
+
+Phase 1 / v0.12.0で対応:
+
+- ユーザーによる対象ブラウザウィンドウの明示選択 + Preview
+- Tracker候補の優先表示。ただし自動確定しない
+- 対象ウィンドウだけをRaw PNGとして保存
+- Match Historyの自動Scroll Capture
+- 10〜25%程度の重複を意識したScroll量 + 画面安定待ち
+- 連続画像差分による最下部推定 + 最大100枚の安全上限
+- Current Match: Scoreboard / Performance / Economy / Rounds / Duels
+- Preview上で5Tab位置を登録するWindow-relative Calibration
+- 対象ChromeからFocusが外れた場合の自動Pause
+- 常時使える安全停止 + Esc停止
+- Session Manifest / Diagnostics / README.txt
+- Local-only保存 + ChatGPT用ZIP Package
+- 設定画面から保存先 / Capture上限 / 安定待ち / Scroll / Browser / ZIP圧縮を変更
+
+安全境界:
+
+- **VALORANT game process / Vanguardへアクセスしない**
+- Process Handle / Memory Read / Memory Write / Injection / Hook / Overlayを行わない
+- VALORANTへ入力を送らない
+- Tracker.ggのInternal Endpoint / Private API / GraphQL / Network interceptionを使わない
+- Tracker DOMから大量データをScrapeしない
+- Cookie / Token / Password / Riot credentialを取得しない
+- Collectorから画像を外部Serverへ自動Uploadしない
+- Browser操作は、ユーザーが選んだTarget WindowがForegroundである時だけ行う
+
+保存先の既定はElectron `userData/TrackerCaptures` です。Raw Captureを残したままManifestとZIPを生成します。
 
 ## Gameplay Session Recording
 
@@ -278,7 +314,8 @@ GitHub Actionsでpush / pull request時に以下を確認します。
 - Temporal Detector Metrics Regression Test
 - Electron security / settings / Windows build contract
 - Telemetry allowlist / privacy Regression Test
-- Native Raw Input HelperのWindows build
+- Native Raw Input Helper / Tracker Collector HelperのWindows build
+- Tracker CollectorのIPC / Focus gate / Private API非使用Contract
 
 Browser / IndexedDB / Media / ZIPの実動作はStatic CIと分離し、[`tests/BROWSER_CHECKLIST.md`](tests/BROWSER_CHECKLIST.md)で確認します。
 

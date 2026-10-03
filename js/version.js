@@ -1,14 +1,15 @@
 window.VReviewVersion = Object.freeze({
-  app: '0.11.0',
+  app: '0.12.0',
   detector: '0.5.0',
   telemetry: '0.1.1',
   recording: '0.1.0',
+  trackerCollector: '0.1.0',
   feedback: '5',
   storageSchema: 1,
   feedbackSchema: 1,
   feedbackBatchSchema: 1,
   diagnosticsSchema: 1,
-  build: '20260929-5',
+  build: '20261003-1',
   guide: '1.22.0'
 });
 

@@ -4,7 +4,7 @@
 
 - Project: VReview
 - Repository: `EliteMay/valorant-review`
-- App Version: 0.11.0
+- App Version: 0.12.0
 - Detector Version: 0.5.0
 - Feedback Package: 5
 - Feedback Batch Schema: 1
@@ -184,6 +184,76 @@ Security / Safety:
 - Input automationなし
 - Overlayなし
 - 自動外部Uploadなし
+
+## 2.5 Tracker Collector
+
+Electron版の`tracker-collector.html`から、ユーザーがブラウザに表示しているTracker.gg画面をローカルCaptureする。
+
+### Safety Contract
+
+Tracker Collectorの対象は **ユーザーが明示選択したブラウザWindow** のみ。
+
+禁止:
+
+- VALORANT / Vanguard processへのアクセス
+- Process Handle / Memory Read / Memory Write / Injection / Hook / Overlay
+- VALORANTへの入力送信
+- Riot Client内部 / game file / game log監視
+- Tracker Internal Endpoint / Undocumented API / Private GraphQL
+- DevTools Network interception / hidden JSON endpoint
+- Tracker DOMを正本とする大量Scraping
+- Cookie / Token / Password / Riot credential取得
+- CollectorからのScreenshot自動Upload
+
+### Capture
+
+- 初期Browser: Chrome（Edge / Firefoxへ拡張可能なBrowser profile）
+- UserがWindow一覧からTargetを明示選択
+- `desktopCapturer`でTarget WindowのRaw PNGを取得
+- Match HistoryはScroll後の画面安定を待ち、連続Captureする
+- 画像全体 + 下部領域の差分が2回連続で閾値以下なら最下部と推定
+- Default最大100枚。上限停止は`safety-limit`としてManifestへ残す
+- PNG原本を必ず保存し、解析結果で上書きしない
+
+### Browser Input / Focus Safety
+
+外部Browser操作は`native/tracker-collector/main.cpp`の小さいWin32 Helperへ限定する。
+
+- Target HWNDはRendererへ直接操作APIとして公開しない
+- Input前にTargetが存在 / visible / non-minimized / foregroundであることをHelper側でも再確認
+- Focus喪失時は`paused-focus`へ遷移し、TargetがForegroundへ戻るまで入力を送らない
+- 許可操作はScroll / Window-relative Click / Homeだけ
+- Global Hook / Process introspectionは使わない
+- Current Match 5TabはPreview上のCalibration座標を0..1のWindow-relative値として保存
+
+### Session / Package
+
+Default root: Electron `userData/TrackerCaptures`
+
+```text
+YYYY-MM-DD/
+  session-*/
+    manifest.json
+    manifest.json.backup.json
+    README.txt
+    diagnostics.json
+    captures/
+      match-history/
+      scoreboard/
+      performance/
+      economy/
+      rounds/
+      duels/
+```
+
+- Manifest Schema: `vreview-tracker-capture-session` v1
+- Collector Version: 0.1.0
+- Atomic manifest write + backup
+- Stop時も途中Captureを削除しない
+- ZIPはPowerShell/.NET ZipArchiveでfile-streaming生成し、Rendererへ大量Blobを保持しない
+- External auto uploadは行わない
+
+Phase 2の「直近N試合を履歴から順番に開く」はv0.12.0の完成条件に含めない。
 
 ## 3. Primary Task / Visual Priority
 

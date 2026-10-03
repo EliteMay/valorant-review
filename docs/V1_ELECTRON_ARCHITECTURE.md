@@ -121,6 +121,55 @@ It intentionally does not use:
 
 Renderer receives only aggregate counts/status. Raw events are written by the Electron main-process controller to the local telemetry session folder.
 
+## Tracker Collector boundary
+
+v0.12.0 adds an Electron-only Tracker.gg screenshot collector. It is intentionally separated from gameplay capture and telemetry.
+
+```text
+tracker-collector.html
+  ↓ explicit, allowlisted preload IPC
+TrackerCollectorController (Main)
+  ├─ desktopCapturer: target browser window image only
+  ├─ file-backed session store: Raw PNG + manifest + diagnostics
+  ├─ PowerShell/.NET ZipArchive: streaming ChatGPT package
+  └─ Tracker Windows helper
+       ├─ enumerate visible top-level windows
+       ├─ foreground/visible/minimized/bounds checks
+       └─ Scroll / normalized Click / Home via SendInput
+```
+
+Safety boundary:
+
+- The user explicitly selects the browser window; Tracker-like titles are only ranked, never auto-confirmed.
+- Browser input is refused unless the exact selected HWND is the foreground, visible, non-minimized window.
+- Focus loss moves the task to `paused-focus`; no click/scroll is sent to another app.
+- The helper uses window metadata and `SendInput` only. It does not use `OpenProcess`, Process Memory, DLL injection, global hooks, overlay APIs, Riot Client internals, or Vanguard APIs.
+- The Collector does not call Tracker private/internal APIs, inspect DevTools network requests, scrape the Tracker DOM as a data source, or collect cookies/tokens/credentials.
+- Raw screenshots remain local and are never automatically uploaded.
+- Tracker Collector is documented and presented as a post-game feature: **use after VALORANT is closed**.
+
+Capture strategy:
+
+- Electron `desktopCapturer` returns only window sources.
+- Match History is captured as overlapping Raw PNG frames.
+- After each browser scroll, capture waits for image stability rather than a fixed long delay.
+- Bottom inference combines full-frame difference + lower-region difference across two consecutive scrolls.
+- `maxCaptures` and `maxDurationMs` are hard safety limits.
+- Current Match uses preview-based, normalized 5-tab Calibration so 1920×1080 absolute coordinates are not hard-coded.
+- Geometry changes beyond tolerance require recalibration.
+- Manifest and settings writes use atomic replacement + backup.
+- Startup recovery converts a left-over `running` session to `interrupted` without deleting Raw Capture.
+
+Why a small native helper instead of Playwright/Selenium/browser extension:
+
+- No Tracker credential/session integration is required.
+- No DOM selector contract is created.
+- No extension install is required.
+- It reuses the existing Windows native-helper build lane.
+- The privileged surface remains limited to foreground-safe browser UI input, while image capture and persistence remain in Electron Main.
+
+Phase 2 may add recent-N-match traversal only after Phase 1 browser/window workflows are real-PC validated.
+
 ## Detector v0.5 status
 
 Detector v0.5 remains a legacy baseline. Do not keep tuning per-clip thresholds as the main path to v1.
