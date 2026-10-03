@@ -48,6 +48,7 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
   startTrackerCurrentMatch: () => invoke('tracker:start-current-match'),
   stopTrackerCollector: reason => invoke('tracker:stop', reason),
   createTrackerPackage: () => invoke('tracker:create-package'),
+  discardRecoveredTrackerSession: () => invoke('tracker:discard-recovery'),
   openTrackerFolder: () => invoke('tracker:open-folder'),
   onTrackerStatus: callback => {
     if (typeof callback !== 'function') return () => {};
