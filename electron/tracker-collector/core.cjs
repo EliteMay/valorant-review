@@ -38,7 +38,7 @@ function clampNumber(value, min, max, fallback) {
 }
 
 function normalizeTrackerSettings(input = {}) {
-  const captureFormat = input.captureFormat === 'webp-lossless' ? 'webp-lossless' : 'png';
+  const captureFormat = 'png';
   const browserTarget = ['chrome', 'edge', 'firefox'].includes(input.browserTarget) ? input.browserTarget : 'chrome';
   const packageCompression = ['fast', 'standard', 'maximum'].includes(input.packageCompression)
     ? input.packageCompression
