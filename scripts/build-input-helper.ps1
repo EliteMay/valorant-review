@@ -13,10 +13,10 @@ if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
 
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
-function Build-Helper([string]$Source, [string]$Output, [string]$Name) {
+function Build-Helper([string]$Source, [string]$Output, [string]$Name, [string]$Subsystem) {
   Push-Location $root
   try {
-    & cl.exe /nologo /std:c++17 /O2 /EHsc /DUNICODE /D_UNICODE $Source /Fe:$Output /link /SUBSYSTEM:CONSOLE user32.lib kernel32.lib
+    & cl.exe /nologo /std:c++17 /O2 /EHsc /DUNICODE /D_UNICODE $Source /Fe:$Output /link "/SUBSYSTEM:$Subsystem" user32.lib kernel32.lib
     if ($LASTEXITCODE -ne 0) {
       throw "$Name build failed with exit code $LASTEXITCODE."
     }
@@ -29,5 +29,5 @@ function Build-Helper([string]$Source, [string]$Output, [string]$Name) {
   Write-Host "Built $Output"
 }
 
-Build-Helper $inputSource $inputExe "Input telemetry helper"
-Build-Helper $trackerSource $trackerExe "Tracker collector helper"
+Build-Helper $inputSource $inputExe "Input telemetry helper" "WINDOWS"
+Build-Helper $trackerSource $trackerExe "Tracker collector helper" "CONSOLE"
