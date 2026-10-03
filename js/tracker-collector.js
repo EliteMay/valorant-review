@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     marker: $('trackerCalibrationMarker'), phase: $('trackerPhase'), target: $('trackerTarget'), mode: $('trackerMode'),
     currentState: $('trackerCurrent'), count: $('trackerCaptureCount'), elapsed: $('trackerElapsed'), save: $('trackerSaveState'),
     message: $('trackerMessage'), error: $('trackerError'), stop: $('trackerStopBtn'), result: $('trackerResultPanel'),
-    resultSummary: $('trackerResultSummary'), openFolder: $('openTrackerFolderBtn'), packageBtn: $('createTrackerPackageBtn'),
+    resultSummary: $('trackerResultSummary'), openFolder: $('openTrackerFolderBtn'), packageBtn: $('createTrackerPackageBtn'), discardRecovery: $('discardRecoveredSessionBtn'),
     packageStatus: $('trackerPackageStatus')
   };
   let state = null;
@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (['completed','interrupted','failed'].includes(state.phase) && state.sessionDirectory) {
       els.result.classList.remove('hidden');
       els.resultSummary.textContent = `${state.captureCount || 0}枚を保存 · 終了理由: ${state.stopReason || state.phase}`;
+      els.discardRecovery?.classList.toggle('hidden', !state.recoveredSession);
     }
     if (state.packageStatus === 'completed') {
       els.packageStatus.textContent = `ZIP作成済み · ${formatBytes(state.packageBytes || 0)}`;
@@ -132,6 +133,18 @@ document.addEventListener('DOMContentLoaded', () => {
   els.stop.addEventListener('click', () => api.stopTrackerCollector('user-stop'));
   els.refresh.addEventListener('click', refreshWindows);
   els.openFolder.addEventListener('click', () => api.openTrackerFolder());
+  els.discardRecovery?.addEventListener('click', async () => {
+    if (!confirm('途中終了したTracker SessionとRaw Captureを削除します。よろしいですか？')) return;
+    try {
+      await api.discardRecoveredTrackerSession();
+      els.result.classList.add('hidden');
+      els.discardRecovery.classList.add('hidden');
+      renderStatus(await api.getTrackerStatus());
+    } catch (error) {
+      els.packageStatus.textContent = error.message || String(error);
+    }
+  });
+
   els.packageBtn.addEventListener('click', async () => {
     els.packageBtn.disabled = true;
     try {
