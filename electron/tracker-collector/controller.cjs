@@ -4,7 +4,7 @@ const { EventEmitter } = require('node:events');
 const { randomUUID } = require('node:crypto');
 const { TrackerWindowsHelper } = require('./windows-helper.cjs');
 const { TrackerWindowCapture } = require('./capture.cjs');
-const { TrackerSessionStore } = require('./session-store.cjs');
+const { TrackerSessionStore, atomicWriteJson } = require('./session-store.cjs');
 const { createTrackerPackage } = require('./package.cjs');
 const {
   COLLECTOR_VERSION,
@@ -45,6 +45,7 @@ class TrackerCollectorController extends EventEmitter {
     this.stopRequested = false;
     this.runStartedAt = 0;
     this.state = this.#emptyState();
+    this.#recoverInterruptedSession();
   }
 
   getStatus() {
@@ -218,6 +219,22 @@ class TrackerCollectorController extends EventEmitter {
 
   getLastSessionDirectory() {
     return this.lastSessionDir || null;
+  }
+
+  discardRecoveredSession() {
+    const recovered = this.state.recoveredSession;
+    if (!recovered?.directory) return { ok: false, error: '復旧対象Sessionがありません。' };
+    const settings = normalizeTrackerSettings(this.settingsStore.get().tracker || {});
+    const root = resolveRootDirectory(settings.saveDirectory, this.app.getPath('userData'));
+    const directory = path.resolve(recovered.directory);
+    const rootPath = path.resolve(root);
+    if (!directory.startsWith(rootPath + path.sep)) {
+      throw new Error('Recovered Tracker session path was rejected.');
+    }
+    fs.rmSync(directory, { recursive: true, force: true });
+    if (this.lastSessionDir === directory) this.lastSessionDir = null;
+    this.#setState({ recoveredSession: null, message: '途中終了Sessionを破棄しました。' });
+    return { ok: true };
   }
 
   async #run(mode, worker) {
@@ -407,6 +424,38 @@ class TrackerCollectorController extends EventEmitter {
     }
   }
 
+  #recoverInterruptedSession() {
+    try {
+      const settings = normalizeTrackerSettings(this.settingsStore.get().tracker || {});
+      const root = resolveRootDirectory(settings.saveDirectory, this.app.getPath('userData'));
+      const recovered = findLatestRunningSession(root);
+      if (!recovered) return;
+      const manifest = {
+        ...recovered.manifest,
+        status: 'interrupted',
+        finishedAt: new Date().toISOString(),
+        stopReason: 'crash-recovery'
+      };
+      atomicWriteJson(recovered.manifestPath, manifest, this.logger, true);
+      this.lastSessionDir = recovered.directory;
+      this.state = {
+        ...this.state,
+        phase: 'interrupted',
+        captureCount: Array.isArray(manifest.captures) ? manifest.captures.length : 0,
+        sessionDirectory: recovered.directory,
+        stopReason: 'crash-recovery',
+        message: '前回のTracker収集Sessionが途中終了しました。結果を確認・Package化・破棄できます。',
+        recoveredSession: {
+          directory: recovered.directory,
+          sessionId: manifest.sessionId || null,
+          captureCount: Array.isArray(manifest.captures) ? manifest.captures.length : 0
+        }
+      };
+    } catch (error) {
+      this.logger?.warn('tracker.recovery.failed', { message: String(error?.message || error).slice(0, 220) });
+    }
+  }
+
   #diagnosticsSnapshot(outcome, stopReason) {
     return {
       schema: 'vreview-tracker-diagnostics',
@@ -452,7 +501,8 @@ class TrackerCollectorController extends EventEmitter {
       message: '待機中',
       packageStatus: 'idle',
       packagePath: null,
-      packageBytes: 0
+      packageBytes: 0,
+      recoveredSession: null
     };
   }
 }
@@ -503,6 +553,37 @@ function ensureDiskSpace(root, requiredBytes) {
     const requiredMb = Math.round(requiredBytes / 1024 / 1024);
     throw new TrackerCollectorError('TC-DISK-001', `必要見積 ${requiredMb} MB / 空き ${freeMb} MB`);
   }
+}
+
+function findLatestRunningSession(root) {
+  if (!fs.existsSync(root)) return null;
+  const dateDirs = fs.readdirSync(root, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(entry.name))
+    .map(entry => entry.name)
+    .sort()
+    .reverse();
+  for (const date of dateDirs.slice(0, 14)) {
+    const datePath = path.join(root, date);
+    const sessions = fs.readdirSync(datePath, { withFileTypes: true })
+      .filter(entry => entry.isDirectory() && entry.name.startsWith('session-'))
+      .map(entry => entry.name)
+      .sort()
+      .reverse();
+    for (const name of sessions) {
+      const directory = path.join(datePath, name);
+      const manifestPath = path.join(directory, 'manifest.json');
+      if (!fs.existsSync(manifestPath)) continue;
+      try {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        if (manifest?.schema === 'vreview-tracker-capture-session' && manifest.status === 'running') {
+          return { directory, manifestPath, manifest };
+        }
+      } catch {
+        // Ignore unrelated/corrupt sessions; raw captures remain untouched.
+      }
+    }
+  }
+  return null;
 }
 
 function delay(ms) {
