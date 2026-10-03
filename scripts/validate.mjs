@@ -61,7 +61,19 @@ const requiredFiles = [
   'electron/recording/controller.cjs',
   'tests/recording-controller.test.mjs',
   'tests/settings-store.test.mjs',
-  'data/recording-schema.json'
+  'data/recording-schema.json',
+  'tracker-collector.html',
+  'js/tracker-collector.js',
+  'css/tracker-collector.css',
+  'electron/tracker-collector/core.cjs',
+  'electron/tracker-collector/controller.cjs',
+  'electron/tracker-collector/capture.cjs',
+  'electron/tracker-collector/session-store.cjs',
+  'electron/tracker-collector/package.cjs',
+  'electron/tracker-collector/create-package.ps1',
+  'electron/tracker-collector/windows-helper.cjs',
+  'native/tracker-collector/main.cpp',
+  'tests/tracker-collector-core.test.mjs'
 ];
 
 for (const file of requiredFiles) {
@@ -177,7 +189,7 @@ if (diagnosticsSchema && version && projectMeta) {
 const htmlFiles = fs.readdirSync(root).filter(name => name.endsWith('.html'));
 for (const htmlFile of htmlFiles) validateHtml(htmlFile);
 
-const activeDiagnosticPages = ['index.html', 'review.html', 'detector-test.html', 'diagnostics.html'];
+const activeDiagnosticPages = ['index.html', 'review.html', 'tracker-collector.html', 'detector-test.html', 'diagnostics.html'];
 for (const htmlFile of activeDiagnosticPages) {
   const file = path.join(root, htmlFile);
   if (!fs.existsSync(file)) continue;
@@ -266,6 +278,12 @@ function validateElectronFoundation() {
   const recordingController = readText('electron/recording/controller.cjs');
   const desktopTelemetry = readText('js/desktop-telemetry.js');
   const recordingSchema = readText('data/recording-schema.json');
+  const trackerPage = readText('tracker-collector.html');
+  const trackerRenderer = readText('js/tracker-collector.js');
+  const trackerController = readText('electron/tracker-collector/controller.cjs');
+  const trackerCore = readText('electron/tracker-collector/core.cjs');
+  const trackerHelper = readText('native/tracker-collector/main.cpp');
+  const trackerPackage = readText('electron/tracker-collector/package.cjs');
   if (!pkg || !main || !preload) return;
 
   if (!pkg.includes('"main": "electron/main.cjs"')) errors.push('package.json Electron main entry is invalid');
@@ -303,6 +321,22 @@ function validateElectronFoundation() {
   if (!review.includes('recordingVideoState') || !review.includes('recordingBytes')) errors.push('Review recording status UI is missing');
   if (!recordingSchema.includes('"schema": "vreview-gameplay-recording"')) errors.push('Recording schema is invalid');
   if (recordingController.includes('OpenProcess(') || recordingController.includes('ReadProcessMemory') || recordingController.includes('WriteProcessMemory')) errors.push('Recording controller must not access game process memory');
+
+  if (!main.includes('TrackerCollectorController')) errors.push('Tracker Collector controller is not wired into Electron main');
+  if (!main.includes('requireTrackerRenderer')) errors.push('Tracker Collector privileged IPC sender guard is missing');
+  if (!preload.includes('listTrackerWindows:')) errors.push('Tracker Collector preload bridge is missing');
+  if (!pkg.includes('vreview-tracker-helper.exe')) errors.push('Tracker Collector native helper is not bundled');
+  if (!trackerPage.includes('VALORANT終了後に使用する機能です')) errors.push('Tracker Collector safety notice is missing');
+  if (!trackerPage.includes('安全停止')) errors.push('Tracker Collector safety stop UI is missing');
+  if (!trackerRenderer.includes("event.key === 'Escape'")) errors.push('Tracker Collector Escape stop is missing');
+  if (!trackerController.includes("phase: 'paused-focus'")) errors.push('Tracker Collector focus-loss pause is missing');
+  if (!trackerController.includes('estimateRequiredBytes')) errors.push('Tracker Collector disk-space guard is missing');
+  if (!trackerCore.includes("'scoreboard', 'performance', 'economy', 'rounds', 'duels'")) errors.push('Tracker Collector five-tab contract is missing');
+  if (!trackerPackage.includes('powershell.exe')) errors.push('Tracker Collector ZIP package builder is missing');
+  if (!trackerHelper.includes('GetForegroundWindow')) errors.push('Tracker helper must gate external input by foreground HWND');
+  if (!trackerHelper.includes('SendInput')) errors.push('Tracker helper browser input implementation is missing');
+  if (trackerHelper.includes('OpenProcess(') || trackerHelper.includes('ReadProcessMemory') || trackerHelper.includes('WriteProcessMemory') || trackerHelper.includes('SetWindowsHookEx')) errors.push('Tracker helper must not inspect process memory or install hooks');
+  if (trackerController.includes('cookies.get') || trackerController.includes('executeJavaScript') || trackerController.includes('webRequest')) errors.push('Tracker Collector must not inspect Tracker session/DOM/network internals');
 }
 
 function validateReviewRuntime() {
