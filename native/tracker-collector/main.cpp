@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <cwctype>
 #include <iostream>
 #include <sstream>
