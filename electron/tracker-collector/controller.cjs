@@ -198,6 +198,7 @@ class TrackerCollectorController extends EventEmitter {
     try {
       const settings = normalizeTrackerSettings(this.settingsStore.get().tracker || {});
       const result = await createTrackerPackage({
+        app: this.app,
         sessionDir,
         compression: settings.packageCompression,
         logger: this.logger
