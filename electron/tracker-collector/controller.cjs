@@ -178,7 +178,11 @@ class TrackerCollectorController extends EventEmitter {
         if (!home.ok) throw new TrackerCollectorError('TC-TAB-003', `${tab}: home`);
         await delay(180);
 
-        await this.#captureScrollable(tab, settings, false);
+        const tabResult = await this.#captureScrollable(tab, settings, false);
+        if (tabResult?.stopReason === 'safety-limit') {
+          this.sessionStore.setTabStatus(tab, 'safety-limit');
+          return { stopReason: `safety-limit:${tab}` };
+        }
         this.sessionStore.setTabStatus(tab, 'completed');
       }
       return { stopReason: 'all-tabs-completed' };
@@ -233,7 +237,7 @@ class TrackerCollectorController extends EventEmitter {
     }
     fs.rmSync(directory, { recursive: true, force: true });
     if (this.lastSessionDir === directory) this.lastSessionDir = null;
-    this.#setState({ recoveredSession: null, message: '途中終了Sessionを破棄しました。' });
+    this.#setState({ phase: 'idle', recoveredSession: null, sessionDirectory: null, captureCount: 0, stopReason: null, message: '途中終了Sessionを破棄しました。' });
     return { ok: true };
   }
 
@@ -285,6 +289,9 @@ class TrackerCollectorController extends EventEmitter {
     try {
       const result = await worker(settings);
       stopReason = result?.stopReason || 'completed';
+      if (String(stopReason).startsWith('safety-limit')) {
+        outcome = 'interrupted';
+      }
       if (this.stopRequested) {
         outcome = 'interrupted';
         stopReason = this.state.stopReason || 'user-stop';
@@ -420,6 +427,8 @@ class TrackerCollectorController extends EventEmitter {
 
   #throwIfTimedOut(settings) {
     if (this.runStartedAt && Date.now() - this.runStartedAt > settings.maxDurationMs) {
+      this.stopRequested = true;
+      this.state.stopReason = 'time-limit';
       throw new TrackerCollectorError('TC-STOP-001', '最大実行時間に到達しました。');
     }
   }
