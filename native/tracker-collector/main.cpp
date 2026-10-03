@@ -217,7 +217,7 @@ void printStatus(HWND hwnd) {
 
 void printResult(bool ok, const char* reason = nullptr) {
   std::cout << "{\"ok\":" << (ok ? "true" : "false");
-  if (reason) std::cout << ",\"reason\":\"" << reason << "\"";
+  if (!ok && reason) std::cout << ",\"reason\":\"" << reason << "\"";
   std::cout << "}";
 }
 
