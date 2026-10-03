@@ -191,6 +191,10 @@ function registerIpc() {
     requireTrackerRenderer(event);
     return trackerController.createPackage();
   });
+  ipcMain.handle('tracker:discard-recovery', event => {
+    requireTrackerRenderer(event);
+    return trackerController.discardRecoveredSession();
+  });
   ipcMain.handle('tracker:open-folder', async event => {
     requireTrackerRenderer(event);
     const folder = trackerController.getLastSessionDirectory();
@@ -439,7 +443,9 @@ async function waitForTrackerStop() {
 }
 
 app.on('before-quit', event => {
-  const captureActive = recordingController?.getStatus().active || telemetryController?.getStatus().active || trackerController?.getStatus().active;
+  const recordingWasActive = Boolean(recordingController?.getStatus().active || telemetryController?.getStatus().active);
+  const trackerWasActive = Boolean(trackerController?.getStatus().active);
+  const captureActive = recordingWasActive || trackerWasActive;
   if (!quitAfterCaptureStop && captureActive) {
     event.preventDefault();
     quitAfterCaptureStop = true;
@@ -453,7 +459,7 @@ app.on('before-quit', event => {
         if (recordingController?.getStatus().active) finalRecording = await recordingController.abort('app-quit');
       })
       .then(() => telemetryController?.getStatus().active ? telemetryController.shutdown() : null)
-      .then(() => writeCaptureSessionManifest(finalRecording, telemetryController?.getStatus()))
+      .then(() => recordingWasActive ? writeCaptureSessionManifest(finalRecording, telemetryController?.getStatus()) : null)
       .catch(error => logger?.warn('capture.quit-stop.failed', { message: error.message }))
       .finally(() => app.quit());
     return;
