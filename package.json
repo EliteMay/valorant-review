@@ -63,6 +63,10 @@
       {
         "from": "native/bin/vreview-tracker-helper.exe",
         "to": "tracker-helper/vreview-tracker-helper.exe"
+      },
+      {
+        "from": "electron/tracker-collector/create-package.ps1",
+        "to": "tracker-helper/create-package.ps1"
       }
     ]
   }
