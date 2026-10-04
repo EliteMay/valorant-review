@@ -53,8 +53,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (state.lastError) {
+      const detail = state.lastError.detail
+        ? '<br><span class="mono">詳細: ' + escapeHtml(state.lastError.detail) + '</span>'
+        : '';
       els.error.innerHTML = '<strong>' + escapeHtml(state.lastError.id || 'TC-ERROR') + '</strong><br>' +
-        escapeHtml(state.lastError.message || '') + '<br><span>' + escapeHtml(state.lastError.action || '') + '</span>';
+        escapeHtml(state.lastError.message || '') + '<br><span>' + escapeHtml(state.lastError.action || '') + '</span>' + detail;
       els.error.classList.remove('hidden');
     } else {
       els.error.classList.add('hidden');
