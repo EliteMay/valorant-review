@@ -73,7 +73,8 @@ const requiredFiles = [
   'electron/tracker-collector/create-package.ps1',
   'electron/tracker-collector/windows-helper.cjs',
   'native/tracker-collector/main.cpp',
-  'tests/tracker-collector-core.test.mjs'
+  'tests/tracker-collector-core.test.mjs',
+  'tests/tracker-package-windows.test.mjs'
 ];
 
 for (const file of requiredFiles) {
