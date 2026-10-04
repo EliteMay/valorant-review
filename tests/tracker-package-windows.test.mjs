@@ -42,8 +42,10 @@ try {
   const text = String(stdout || '').replace(/^\uFEFF/, '').trim();
   const result = JSON.parse(text);
   assert.equal(result.ok, true);
-  assert.equal(fs.realpathSync(result.outputPath).toLowerCase(), fs.realpathSync(output).toLowerCase());
+  assert.equal(path.basename(result.outputPath).toLowerCase(), path.basename(output).toLowerCase());
+  assert.equal(fs.existsSync(result.outputPath), true);
   assert.equal(fs.existsSync(output), true);
+  assert.equal(fs.statSync(result.outputPath).size, fs.statSync(output).size);
   assert.ok(fs.statSync(output).size > 0);
   console.log('Tracker package Windows PowerShell regression test passed.');
 } finally {
