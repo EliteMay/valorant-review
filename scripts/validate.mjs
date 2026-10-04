@@ -73,7 +73,8 @@ const requiredFiles = [
   'electron/tracker-collector/create-package.ps1',
   'electron/tracker-collector/windows-helper.cjs',
   'native/tracker-collector/main.cpp',
-  'tests/tracker-collector-core.test.mjs'
+  'tests/tracker-collector-core.test.mjs',
+  'tests/tracker-package-windows.test.mjs'
 ];
 
 for (const file of requiredFiles) {
@@ -329,6 +330,7 @@ function validateElectronFoundation() {
   if (!trackerPage.includes('VALORANT終了後に使用する機能です')) errors.push('Tracker Collector safety notice is missing');
   if (!trackerPage.includes('安全停止')) errors.push('Tracker Collector safety stop UI is missing');
   if (!trackerRenderer.includes("event.key === 'Escape'")) errors.push('Tracker Collector Escape stop is missing');
+  if (!trackerRenderer.includes('state.lastError.detail')) errors.push('Tracker Collector must show package/runtime error detail when available');
   if (!trackerController.includes("phase: 'paused-focus'")) errors.push('Tracker Collector focus-loss pause is missing');
   if (!trackerController.includes('estimateRequiredBytes')) errors.push('Tracker Collector disk-space guard is missing');
   if (!trackerCore.includes("'scoreboard', 'performance', 'economy', 'rounds', 'duels'")) errors.push('Tracker Collector five-tab contract is missing');

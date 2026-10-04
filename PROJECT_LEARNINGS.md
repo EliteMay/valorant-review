@@ -149,6 +149,23 @@
 
 ---
 
+### PL-F-009 Packaged Appが使うWindows PowerShell 5.1をCIで実行していなかった
+
+- Date: 2026-10-04
+- Status: resolved in v0.12.1
+- Severity: high
+- Cost: medium
+- Symptom: Tracker収集は5枚のRaw PNGまで正常完了したが、ChatGPT用Package作成だけ`TC-PACKAGE-001`で失敗した。
+- Expected: Windows標準`powershell.exe`で`create-package.ps1`がZIPを生成できる。
+- Actual: Scriptは`System.IO.Compression.FileSystem`だけをloadし、Windows PowerShell 5.1では`System.IO.Compression.ZipArchiveMode`を解決できなかった。Windows CIはInstaller buildまでは成功していたがPackage Scriptそのものを実行していなかった。
+- Root Cause: Build successをRuntime Script互換性のEvidenceとして扱い、実際にPackaged Appが呼ぶShell / Entry PointをRegression Testしていなかった。
+- Final Fix: `System.IO.Compression`を明示loadし、`tests/tracker-package-windows.test.mjs`から実`powershell.exe`でSession fixtureをZIP化するRegression Testを追加。
+- Regression Guard: Windows CIの`npm test`でPackage Scriptを実行し、ZIP file生成まで確認する。
+- Prevention: OS固有Script / Helperは「同梱された」だけで完成扱いせず、Productと同じRuntime executableで最小E2Eを行う。
+- Related files / tests: `electron/tracker-collector/create-package.ps1`, `tests/tracker-package-windows.test.mjs`
+- Guide candidate: yes
+- Guide note: ElectronのOS固有Runtime scriptはBuild validationとRuntime validationを分離する。
+
 ## Success
 
 ### PL-S-001 primary / weakの二段階表示でRecall保険と操作性を両立

@@ -4,7 +4,7 @@
 
 - Project: VReview
 - Repository: `EliteMay/valorant-review`
-- App Version: 0.12.0
+- App Version: 0.12.1
 - Detector Version: 0.5.0
 - Feedback Package: 5
 - Feedback Batch Schema: 1
@@ -250,7 +250,7 @@ YYYY-MM-DD/
 - Collector Version: 0.1.0
 - Atomic manifest write + backup
 - Stop時も途中Captureを削除しない
-- ZIPはPowerShell/.NET ZipArchiveでfile-streaming生成し、Rendererへ大量Blobを保持しない
+- ZIPはPowerShell/.NET ZipArchiveでfile-streaming生成し、Rendererへ大量Blobを保持しない\n- ZIP RuntimeはWindows標準`powershell.exe`（Windows PowerShell 5.1）をRegression Test対象に含める
 - External auto uploadは行わない
 
 Phase 2の「直近N試合を履歴から順番に開く」はv0.12.0の完成条件に含めない。

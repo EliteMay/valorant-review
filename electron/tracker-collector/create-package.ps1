@@ -25,6 +25,7 @@ $level = switch ($Compression) {
   default { [System.IO.Compression.CompressionLevel]::Optimal }
 }
 
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [System.IO.Compression.ZipFile]::Open($output, [System.IO.Compression.ZipArchiveMode]::Create)
 try {

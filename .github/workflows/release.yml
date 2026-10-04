@@ -91,12 +91,13 @@ jobs:
 
           - Setup.exe形式
           - Electron Desktop Foundation
-          - Gameplay録画 + Passive Input Telemetryを1ボタンで同時開始/停止
-          - Primary画面をWebM / 最大60fpsで録画
-          - Windows System Audio loopback
-          - InputはVALORANTが最前面の時だけMouse dx/dy・LMB・W/A/S/Dを記録
-          - Game Memory Read / Injection / Input Automationなし
-          - まだFrame-accurate同期 / FFmpeg精密解析 / Strong-vs-Weak自動比較は未実装
+          - Gameplay録画 + Passive Input Telemetry
+          - Tracker Collector: Tracker.ggの表示WindowをRaw PNGとして収集
+          - Match History自動Scroll Capture / Current Match 5Tab Calibration
+          - v0.12.1: Windows PowerShell 5.1でChatGPT用ZIP生成が失敗する問題を修正
+          - VALORANT / Vanguard Process Memory Read / Injectionなし
+          - Tracker private/internal API・Cookie・Token取得なし
+          - 未署名の個人向けテスト配布版
 
           未署名ビルドのため、Windows SmartScreenが警告を表示する場合があります。
           "@

@@ -12,7 +12,7 @@ GitHub Pagesで直接利用します。通常利用にNode.js・Backend・有料
 
 ## 現在の状態
 
-- VReview: **v0.12.0**
+- VReview: **v0.12.1**
 - Detector: **v0.5.0**
 - Feedback Package: **v5**
 - Feedback Batch Schema: **v1**
@@ -30,7 +30,7 @@ v0.10.2ではTelemetryのVALORANT判定から`OpenProcess`を削除し、公開W
 
 v0.11.0ではGameplay録画を追加し、`New Review`の「録画＋入力 開始」からPrimary画面のWebM録画・Windows System Audio・Input Telemetryを同じSessionへ保存します。
 
-v0.12.0ではElectron専用の **Tracker収集 / Tracker Collector v0.1.0** を追加します。ユーザーが明示的に選択したTracker.ggのブラウザウィンドウだけを対象に、Match Historyの自動Scroll CaptureとCurrent Matchの5Tab Captureを行います。VALORANT / Vanguard / Tracker private APIにはアクセスしません。
+v0.12.0ではElectron専用の **Tracker収集 / Tracker Collector v0.1.0** を追加しました。ユーザーが明示的に選択したTracker.ggのブラウザウィンドウだけを対象に、Match Historyの自動Scroll CaptureとCurrent Matchの5Tab Captureを行います。VALORANT / Vanguard / Tracker private APIにはアクセスしません。\n\nv0.12.1ではWindows PowerShell 5.1でChatGPT用ZIP生成が失敗する問題を修正し、実際の`powershell.exe`でPackage生成するWindows Regression Testを追加しました。
 
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
