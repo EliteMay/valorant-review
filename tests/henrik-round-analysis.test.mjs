@@ -51,13 +51,13 @@ test('missing identity or winner yields no evaluated rounds, not guesses', () =>
 });
 
 test('first enemy kill ignores friendly fire but fails closed for ambiguous events', () => {
-  const teamkill = k(100, 'mate', 'ally', 'Blue', 'Blue');
-  const firstMine = k(200, 'me', 'foe', 'Blue', 'Red');
-  const otherKill = k(250, 'mate', 'foe2', 'Blue', 'Red');
+  const teamkill = k(0, 100, 'mate', 'ally', 'Blue', 'Blue');
+  const firstMine = k(0, 200, 'me', 'foe', 'Blue', 'Red');
+  const otherKill = k(0, 250, 'mate', 'foe2', 'Blue', 'Red');
   assert.equal(firstEnemyKill([otherKill, teamkill, firstMine]), firstMine);
   assert.equal(firstEnemyKill([teamkill]), null);
   assert.equal(firstEnemyKill([teamkill, firstMine, { ...otherKill, time_in_round_in_ms: 200 }]), null);
   assert.equal(firstEnemyKill([teamkill, { ...otherKill, killer: { puuid: 'x', team: null } }, firstMine]), null);
   assert.equal(firstEnemyKill([teamkill, { ...otherKill, time_in_round_in_ms: NaN }, firstMine]), null);
-  assert.equal(firstEnemyKill([k(200, 'mate', 'ally', 'Blue', 'Blue'), firstMine]), firstMine);
+  assert.equal(firstEnemyKill([k(0, 200, 'mate', 'ally', 'Blue', 'Blue'), firstMine]), firstMine);
 });
