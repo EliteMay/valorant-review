@@ -7,6 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ProbeError, boundedJson } from './henrik-match-probe.mjs';
+import { aggregateRounds } from './henrik-round-analysis.mjs';
 import { analyzeOneMatch, analyzeMatch, AnalysisError } from './henrik-match-analyze.mjs';
 
 export const DEFAULT_STORE = '.vreview-local/henrik-matches.json';
@@ -21,7 +22,7 @@ export function toRecord(matchId, a) {
   return {
     matchId: matchId.toLowerCase(), map: a.map, outcome: a.outcome, agent: a.agent, rounds: a.rounds,
     kills: a.kills, deaths: a.deaths, assists: a.assists, estimatedAcs: a.estimatedAcs,
-    firstKills: a.opening.firstKills, firstDeaths: a.opening.firstDeaths, openingRounds: a.opening.evaluatedRounds,
+    firstKills: a.opening.firstKills, firstDeaths: a.opening.firstDeaths, openingRounds: a.opening.evaluatedRounds, roundStats: a.roundStats,
   };
 }
 
@@ -65,6 +66,12 @@ export function compareMatches(matches) {
     unknownOutcome: matches.length - decided.length,
     overall: summarizeGroup(matches),
     byOutcome: groupBy(decided, 'outcome'),
+    roundAnalysis: {
+      all: aggregateRounds(matches.map(m => m.roundStats).filter(Boolean)),
+      byOutcome: Object.fromEntries(['勝利', '敗北'].map(o => [o,
+        aggregateRounds(decided.filter(m => m.outcome === o).map(m => m.roundStats).filter(Boolean))])),
+      recordsWithoutRoundData: matches.filter(m => !m.roundStats).length,
+    },
     byMap: groupBy(matches, 'map'),
     byAgent: groupBy(matches, 'agent'),
     caution: matches.length < 20
@@ -103,7 +110,7 @@ export async function importMatches({ region, matchIds, apiKey, name, tag, store
  * One GET returns up to 10 full match records (OpenAPI MatchesV4HistoryResponse), so no per-match request is needed.
  * The Riot ID is sent only in the request path to the API; it is never stored or printed.
  */
-export async function importRecent({ region, name, tag, apiKey, count = 5, start = 0, mode = 'competitive', store, fetchImpl = fetch }) {
+export async function importRecent({ region, name, tag, apiKey, count = 5, start = 0, mode = 'competitive', store, fetchImpl = fetch, refresh = false }) {
   if (!REGIONS.has(region)) throw new ProbeError('INPUT_REGION', 'region は ap / eu / na / kr のいずれかにしてください。');
   if (!name?.trim() || !tag?.trim()) throw new AnalysisError('MISSING_PLAYER', 'VREVIEW_PLAYER_NAME と VREVIEW_PLAYER_TAG を設定してください。');
   if (typeof apiKey !== 'string' || !apiKey.trim()) throw new ProbeError('MISSING_KEY', 'HENRIKDEV_API_KEYが未設定です。キーはチャットやGitHubに投稿しないでください。');
@@ -131,11 +138,18 @@ export async function importRecent({ region, name, tag, apiKey, count = 5, start
   for (const item of body.data) {
     const id = typeof item?.metadata?.match_id === 'string' ? item.metadata.match_id.toLowerCase() : '';
     if (!UUID.test(id)) { result.failed++; result.failureCodes.push('NO_MATCH_ID'); continue; }
-    if (known.has(id)) { result.skipped++; continue; }
+    const exists = known.has(id);
+    if (exists && !refresh) { result.skipped++; continue; }
     try {
-      store.matches.push(toRecord(id, analyzeMatch(item, { name, tag })));
-      known.add(id);
-      result.added++;
+      const record = toRecord(id, analyzeMatch(item, { name, tag }));
+      if (exists) {
+        store.matches[store.matches.findIndex(m => m.matchId === id)] = record;
+        result.refreshed = (result.refreshed ?? 0) + 1;
+      } else {
+        store.matches.push(record);
+        known.add(id);
+        result.added++;
+      }
     } catch (e) {
       result.failed++;
       result.failureCodes.push(e?.code ?? 'UNKNOWN');
@@ -147,7 +161,7 @@ export async function importRecent({ region, name, tag, apiKey, count = 5, start
 function parse(args) {
   const o = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--region', '--match-ids', '--recent', '--start', '--mode', '--store', '--summary-only'].includes(args[i])) {
+    if (!['--region', '--match-ids', '--recent', '--start', '--mode', '--refresh', '--store', '--summary-only'].includes(args[i])) {
       throw new AnalysisError('INPUT_ARGS', '引数: --region ap --recent 10 [--start 0] [--mode competitive] / --match-ids UUID,UUID / --summary-only true');
     }
     o[args[i]] = args[i + 1];
@@ -163,7 +177,7 @@ export async function main(args = process.argv.slice(2), env = process.env) {
   if (o['--recent'] !== undefined) {
     imported = await importRecent({
       region: o['--region'] ?? 'ap', count: Number(o['--recent']), start: Number(o['--start'] ?? 0),
-      mode: o['--mode'] ?? 'competitive', apiKey: env.HENRIKDEV_API_KEY,
+      mode: o['--mode'] ?? 'competitive', refresh: o['--refresh'] === 'true', apiKey: env.HENRIKDEV_API_KEY,
       name: env.VREVIEW_PLAYER_NAME, tag: env.VREVIEW_PLAYER_TAG, store,
     });
     saveStore(path, store);

@@ -5,6 +5,7 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { probeMatch, parseArgs, ProbeError } from './henrik-match-probe.mjs';
+import { analyzeRounds } from './henrik-round-analysis.mjs';
 
 export class AnalysisError extends Error {
   constructor(code, message) {
@@ -93,6 +94,7 @@ export function analyzeMatch(match, { name, tag }) {
     assists: positiveCount(stats.assists),
     estimatedAcs: score !== null && rounds > 0 ? Math.round(score / rounds * 10) / 10 : null,
     opening,
+    roundStats: analyzeRounds(match, { puuid: player.puuid, teamId: player.team_id }),
     note: 'FK/FDは各ラウンドの時刻付き最初の敵対キルから算出。欠損・同時刻・チームキルは除外。敗因の断定は不可。',
   };
 }

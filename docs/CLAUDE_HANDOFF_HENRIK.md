@@ -146,3 +146,15 @@ node scripts/henrik-match-history.mjs --summary-only true
 node scripts/henrik-match-history.mjs --region ap --recent 10
 node scripts/henrik-match-history.mjs --region ap --recent 10 --start 10   # さらに前の10試合
 ```
+
+## 9. ラウンド単位の敗因分析（関連指標）
+`scripts/henrik-round-analysis.mjs`。各試合の `rounds` と `kills` から、本人視点の攻撃/防御別に次の匿名カウントを算出し、`.vreview-local` の記録へ保存する。
+
+- ラウンド勝率、自分の死亡が5秒以内にトレードされた割合、負けたラウンドのうち自分が2キル以上していた割合、負けたラウンドで自分が生き残っていた割合、自分がFKまたはFDだったラウンドの勝率。
+- サイドは `winning_team_role` と `result`（設置/解除）から推定し、前半12ラウンドで入れ替わる前提で整合を確認する。矛盾する場合は全ラウンドを「不明」とし、推測で埋めない。
+- **未検証**: `winning_team_role` の実際の値の表記、サイド推定の成功率、トレード5秒の妥当性。実データの出力で `sideUnknown.rounds` が0に近いかを確認する。
+- 保存形式を拡張したため、取り込み済みの試合は `--refresh true` で再計算する。
+
+```powershell
+node scripts/henrik-match-history.mjs --region ap --recent 10 --refresh true
+```
