@@ -32,3 +32,11 @@ test('free-form team strings are masked and mismatches surface', () => {
   assert.equal(out.consistency.killTeamLabelsMatchTeamIds, false);
   assert.ok(!JSON.stringify(out).includes('a1b2'));
 });
+
+test('round result breakdown reports survival per result label without identifiers', () => {
+  const d = data();
+  d.rounds = [{ winning_team: 'Blue', result: 'Detonate', winning_team_role: 'Attacker' }, { winning_team: 'Red', result: 'Elimination', winning_team_role: 'Defender' }];
+  const out = diagnoseMatch(d, { name: 'My Name', tag: 'JPN' });
+  assert.deepEqual(out.roundResultBreakdown['won/Detonate/Attacker'], { rounds: 1, selectedPlayerSurvived: 1 });
+  assert.deepEqual(out.roundResultBreakdown['lost/Elimination/Defender'], { rounds: 1, selectedPlayerSurvived: 0 });
+});

@@ -31,6 +31,17 @@ export function diagnoseMatch(match, { name, tag } = {}) {
   }
   const tied = [...firstByRound].filter(([r, t]) =>
     kills.filter(k => k?.round === r && k?.time_in_round_in_ms === t).length > 1).length;
+  const myTeam = clean(mine?.team_id);
+  const deathRounds = new Set(kills.filter(k => puuid && clean(k?.victim?.puuid) === puuid).map(k => k.round));
+  const tally = {};
+  rounds.forEach((r, i) => {
+    if (!mine || !clean(r?.winning_team)) return;
+    const outcome = clean(r.winning_team) === myTeam ? 'won' : 'lost';
+    const key = outcome + '/' + (label(r?.result) ?? 'none') + '/' + (label(r?.winning_team_role) ?? 'none');
+    const t = tally[key] ?? (tally[key] = { rounds: 0, selectedPlayerSurvived: 0 });
+    t.rounds++;
+    if (!deathRounds.has(i)) t.selectedPlayerSurvived++;
+  });
   return {
     ok: true,
     counts: { players: players.length, teams: teams.length, rounds: rounds.length, kills: kills.length },
@@ -52,6 +63,7 @@ export function diagnoseMatch(match, { name, tag } = {}) {
       killerTeams: uniq(kills.map(k => label(k?.killer?.team))),
       victimTeams: uniq(kills.map(k => label(k?.victim?.team))),
     },
+    roundResultBreakdown: tally,
     consistency: {
       playerTeamIdsAllInTeams: players.every(p => teamIds.includes(p?.team_id)),
       killTeamLabelsMatchTeamIds: kills.every(k => teamIds.includes(k?.killer?.team) && teamIds.includes(k?.victim?.team)),
