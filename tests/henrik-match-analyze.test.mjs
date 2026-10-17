@@ -108,3 +108,37 @@ test('reads the agent from the official v4 `agent` field', () => {
   delete data.players[0].character;
   assert.equal(analyzeMatch(data, { name: 'My Name', tag: 'JPN' }).agent, 'Sova');
 });
+
+test('teamkill first does not suppress the first enemy FK/FD across both analyzers', () => {
+  const data = fixture();
+  data.rounds = Array.from({ length: 5 }, (_, i) => ({
+    winning_team: i === 1 ? 'Red' : 'Blue',
+    winning_team_role: i === 1 ? 'Defender' : 'Attacker',
+  }));
+  data.kills = [
+    // A teamkill before an opposing kill must not prevent recording FK.
+    mk(0, 100, 'mate', 'mate2', 'Blue', 'Blue'),
+    mk(0, 300, 'private-mine', 'private-foe'),
+    // An enemy teamkill before my death must not prevent recording FD.
+    mk(1, 100, 'foe2', 'foe3', 'Red', 'Red'),
+    mk(1, 300, 'private-foe', 'private-mine', 'Red', 'Blue'),
+    // A round containing only a teamkill has no enemy opening.
+    mk(2, 100, 'mate', 'mate2', 'Blue', 'Blue'),
+    // Same-time opposing kills remain ambiguous even after a teamkill.
+    mk(3, 100, 'mate', 'mate2', 'Blue', 'Blue'),
+    mk(3, 300, 'private-mine', 'private-foe'),
+    mk(3, 300, 'mate', 'foe2', 'Blue', 'Red'),
+    // Missing time on an enemy event cannot be silently ignored.
+    mk(4, NaN, 'private-mine', 'private-foe'),
+    mk(4, 300, 'private-mine', 'foe2'),
+  ];
+  const result = analyzeMatch(data, { name: 'My Name', tag: 'JPN' });
+  assert.deepEqual(result.opening, {
+    firstKills: 1, firstDeaths: 1, evaluatedRounds: 2, excludedRounds: 3,
+  });
+  assert.equal(result.roundStats.buckets.attack.fkRounds, 1);
+  assert.equal(result.roundStats.buckets.attack.fdRounds, 1);
+  assert.equal(result.roundStats.buckets.attack.fkWon, 1);
+  assert.equal(result.roundStats.buckets.attack.fdWon, 0);
+  assert.ok(!JSON.stringify(result).includes('private-mine'));
+});
