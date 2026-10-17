@@ -7,6 +7,30 @@ export const TRADE_WINDOW_MS = 5000;
 const SIDES = ['attack', 'defense', 'unknown'];
 const flip = s => s === 'attack' ? 'defense' : s === 'defense' ? 'attack' : null;
 
+/**
+ * First kill against the opposing team, not simply the earliest kill event.
+ * Known teamkills/suicides are ignored. Unknown affiliation, invalid timestamps,
+ * missing identities and tied opposing kills fail closed (no confident opening).
+ * The input order is not authoritative.
+ */
+export function firstEnemyKill(events) {
+  if (!Array.isArray(events)) return null;
+  const candidates = [];
+  for (const event of events) {
+    const killerTeam = clean(event?.killer?.team);
+    const victimTeam = clean(event?.victim?.team);
+    if (!killerTeam || !victimTeam) return null;
+    if (killerTeam === victimTeam) continue;
+    if (!Number.isFinite(event?.time_in_round_in_ms) || event.time_in_round_in_ms < 0 ||
+        !clean(event?.killer?.puuid) || !clean(event?.victim?.puuid)) return null;
+    candidates.push(event);
+  }
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => a.time_in_round_in_ms - b.time_in_round_in_ms);
+  if (candidates[1]?.time_in_round_in_ms === candidates[0].time_in_round_in_ms) return null;
+  return candidates[0];
+}
+
 function roleOf(round) {
   const role = clean(round?.winning_team_role);
   if (role.startsWith('att')) return 'attack';
@@ -50,8 +74,12 @@ export function analyzeRounds(match, { puuid, teamId }) {
   if (!me || !myTeam) return { evaluatedRounds: 0, skippedRounds: rounds.length, sideTrusted: false, buckets };
   const { sides, trusted } = sideByRound(rounds, myTeam);
   const byRound = new Map();
+  const openingByRound = new Map();
   for (const k of match.kills) {
-    if (!Number.isInteger(k?.round) || !Number.isFinite(k?.time_in_round_in_ms)) continue;
+    if (!Number.isInteger(k?.round)) continue;
+    (openingByRound.get(k.round) ?? openingByRound.set(k.round, []).get(k.round)).push(k);
+    // Other round metrics preserve the old behavior for invalid timestamps.
+    if (!Number.isFinite(k?.time_in_round_in_ms)) continue;
     (byRound.get(k.round) ?? byRound.set(k.round, []).get(k.round)).push(k);
   }
   let evaluated = 0;
@@ -76,11 +104,9 @@ export function analyzeRounds(match, { puuid, teamId }) {
     }
     if (!won && myKills >= 2) b.lostWithMultiKill++;
     if (!won && !death) b.lostWhileSurviving++;
-    const first = ev[0];
-    const clearOpening = first && clean(first.killer?.team) && clean(first.victim?.team)
-      && clean(first.killer.team) !== clean(first.victim.team) && !(ev[1] && ev[1].time_in_round_in_ms === first.time_in_round_in_ms);
-    if (clearOpening && clean(first.killer.puuid) === me) { b.fkRounds++; if (won) b.fkWon++; }
-    if (clearOpening && clean(first.victim.puuid) === me) { b.fdRounds++; if (won) b.fdWon++; }
+    const first = firstEnemyKill(openingByRound.get(i) ?? []);
+    if (first && clean(first.killer.puuid) === me) { b.fkRounds++; if (won) b.fkWon++; }
+    if (first && clean(first.victim.puuid) === me) { b.fdRounds++; if (won) b.fdWon++; }
   });
   return { evaluatedRounds: evaluated, skippedRounds: rounds.length - evaluated, sideTrusted: trusted, buckets };
 }
