@@ -63,3 +63,13 @@ node --test tests/henrik-match-analyze.test.mjs
 Mock成功は実HenrikDev応答のフィールドを完全には保証しません。実試合での分析成功は別途確認します。
 
 公式仕様: https://docs.henrikdev.xyz/api-reference/valorant/get-match-details-v4
+
+## 実データの形を匿名で確認する診断モード
+
+数値が合っているかを確認するための読み取り専用コマンドです。型、件数、真偽値、短い英字のチーム名だけを表示し、Riot ID、PUUID、試合ID、生JSONは表示しません。分析コマンドと同じ環境変数を使います。
+
+```powershell
+node scripts/henrik-match-diagnose.mjs --region ap --match-id <試合UUID>
+```
+
+出力のうち `consistency` と `selectedPlayer` の各値が `true`、`teamLabels` が一致していれば、キルとチームの対応が実データで裏づけられます。`false` や `null` があれば、その項目の出力だけをチャットに貼ってください。
