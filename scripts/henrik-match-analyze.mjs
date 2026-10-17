@@ -5,7 +5,7 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { probeMatch, parseArgs, ProbeError } from './henrik-match-probe.mjs';
-import { analyzeRounds } from './henrik-round-analysis.mjs';
+import { analyzeRounds, firstEnemyKill } from './henrik-round-analysis.mjs';
 
 export class AnalysisError extends Error {
   constructor(code, message) {
@@ -45,19 +45,8 @@ function openingDuelStats(match, puuid) {
   let evaluatedRounds = 0;
   let excludedRounds = 0;
   for (const events of byRound.values()) {
-    if (events.some(e => !Number.isFinite(e?.time_in_round_in_ms) || e.time_in_round_in_ms < 0)) {
-      excludedRounds++;
-      continue;
-    }
-    const ordered = [...events].sort((a, b) => a.time_in_round_in_ms - b.time_in_round_in_ms);
-    if (ordered.length > 1 && ordered[0].time_in_round_in_ms === ordered[1].time_in_round_in_ms) {
-      excludedRounds++;
-      continue;
-    }
-    const first = ordered[0];
-    if (!cleanId(first?.killer?.puuid) || !cleanId(first?.victim?.puuid) ||
-        !cleanId(first?.killer?.team) || !cleanId(first?.victim?.team) ||
-        cleanId(first.killer.team) === cleanId(first.victim.team)) {
+    const first = firstEnemyKill(events);
+    if (!first) {
       excludedRounds++;
       continue;
     }
