@@ -124,3 +124,17 @@ npm test
 | FK / FD | 5 / 0 | 5 / 0 |
 
 **Phase 1 は1試合について検証済み。** K/D/A、勝敗、FK/FD、参考ACS（この試合では表示値と丸めの範囲で一致）。ACSは公式式と断定せず「参考」表記を維持する。FK/FDが0になりうる点も実データで確認（FD 0・死亡18）。
+
+### 7.2 2試合目の目視照合
+別の試合（Tracker.ggの試合ページと同一の試合ID）でも、ユーザーが `henrik-match-analyze.mjs` の出力と画面表示を照合し「合っている」と確認。具体的な数値は記録していない（ユーザーの口頭確認のみ）。検証済みは計2試合。
+
+## 8. Phase 2 実装状況: 複数試合比較（初版）
+
+`scripts/henrik-match-history.mjs`（手動・1回最大10試合・2.5秒間隔）。試合IDで重複を除外し、匿名化した指標だけを `.vreview-local/henrik-matches.json`（gitignore済み）へ保存。名前・タグ・PUUID・生JSONは保存しない。401/403/429とキー未設定は即中止し、他の失敗は件数とコードだけ出力。勝敗・マップ・エージェント別に試合数、平均ACS、K/D、ラウンド当たりのFK/FDを表示。20試合未満では「偶然の範囲かもしれない」と注意を出す。
+
+```powershell
+node scripts/henrik-match-history.mjs --region ap --match-ids UUID,UUID
+node scripts/henrik-match-history.mjs --summary-only true
+```
+
+未実装: 攻撃/防御別、Backup/Restore、UI統合（Phase 3）。
