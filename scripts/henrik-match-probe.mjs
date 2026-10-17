@@ -98,7 +98,7 @@ export function summarizeMatch(body) {
   };
 }
 
-export async function probeMatch({ region, matchId, apiKey, fetchImpl = fetch }) {
+export async function probeMatch({ region, matchId, apiKey, fetchImpl = fetch, transform = summarizeMatch }) {
   const url = endpoint(region, matchId);
   if (typeof apiKey !== 'string' || !apiKey.trim()) {
     throw new ProbeError('MISSING_KEY', 'HENRIKDEV_API_KEYが未設定です。キーはチャットやGitHubに投稿しないでください。');
@@ -129,7 +129,9 @@ export async function probeMatch({ region, matchId, apiKey, fetchImpl = fetch })
     // Do not read or print third-party error responses.
     throw new ProbeError('HTTP_' + response.status, 'HTTP ' + response.status + ': ' + message);
   }
-  return summarizeMatch(await boundedJson(response));
+  const body = await boundedJson(response);
+  summarizeMatch(body); // Fail closed before processing personal match data in memory.
+  return transform(body);
 }
 
 export async function main(args = process.argv.slice(2), env = process.env) {
