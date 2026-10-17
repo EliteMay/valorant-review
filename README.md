@@ -42,7 +42,7 @@ Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
 ## 戦績APIの検証（開発中）
 
-HenrikDev VALORANT API v4の単一試合データ形式を検証する、読み取り専用のローカルNode.jsスクリプトをDraft PRで追加しました。**実API接続は本人のAPIキーで未検証**です。既存の録画・Tracker収集・GitHub Pagesには影響しません。
+HenrikDev VALORANT API v4の単一試合データ形式を検証する、読み取り専用のローカルNode.jsスクリプトをDraft PRで追加しました。**本人のWindows PCで実API接続が成功**し、試合1件の10人・24ラウンド・180キルイベントを確認済みです。主な個人指標は2試合でユーザーによる画面照合が報告されていますが、チームキルが先にある例を含む全パターンの実データ検証は未完了です。既存の録画・Tracker収集・GitHub Pagesには影響しません。
 
 手順と秘密情報の扱いは [`docs/HENRIK_API_PROBE.md`](docs/HENRIK_API_PROBE.md) を参照してください。
 
