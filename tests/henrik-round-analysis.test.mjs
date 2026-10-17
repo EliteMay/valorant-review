@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyzeRounds, aggregateRounds, sideByRound } from '../scripts/henrik-round-analysis.mjs';
+import { analyzeRounds, aggregateRounds, firstEnemyKill, sideByRound } from '../scripts/henrik-round-analysis.mjs';
 
 const k = (round, ms, killer, victim, kt, vt) =>
   ({ round, time_in_round_in_ms: ms, killer: { puuid: killer, team: kt }, victim: { puuid: victim, team: vt } });
@@ -48,4 +48,16 @@ test('counts trades, multikill losses, survived losses and opening outcomes', ()
 test('missing identity or winner yields no evaluated rounds, not guesses', () => {
   assert.equal(analyzeRounds({ rounds: [{}], kills: [] }, { puuid: 'me', teamId: 'Blue' }).evaluatedRounds, 0);
   assert.equal(analyzeRounds({ rounds: [{ winning_team: 'Red' }], kills: [] }, { puuid: '', teamId: 'Blue' }).evaluatedRounds, 0);
+});
+
+test('first enemy kill ignores friendly fire but fails closed for ambiguous events', () => {
+  const teamkill = k(100, 'mate', 'ally', 'Blue', 'Blue');
+  const firstMine = k(200, 'me', 'foe', 'Blue', 'Red');
+  const otherKill = k(250, 'mate', 'foe2', 'Blue', 'Red');
+  assert.equal(firstEnemyKill([otherKill, teamkill, firstMine]), firstMine);
+  assert.equal(firstEnemyKill([teamkill]), null);
+  assert.equal(firstEnemyKill([teamkill, firstMine, { ...otherKill, time_in_round_in_ms: 200 }]), null);
+  assert.equal(firstEnemyKill([teamkill, { ...otherKill, killer: { puuid: 'x', team: null } }, firstMine]), null);
+  assert.equal(firstEnemyKill([teamkill, { ...otherKill, time_in_round_in_ms: NaN }, firstMine]), null);
+  assert.equal(firstEnemyKill([k(200, 'mate', 'ally', 'Blue', 'Blue'), firstMine]), firstMine);
 });
