@@ -138,3 +138,11 @@ node scripts/henrik-match-history.mjs --summary-only true
 ```
 
 未実装: 攻撃/防御別、Backup/Restore、UI統合（Phase 3）。
+
+### 8.1 直近の試合を自動取得（`--recent`）
+公式OpenAPI（`/valorant/v4/matches/{affinity}/{platform}/{name}/{tag}`、`size` は10で上限、`start` で位置指定）は、試合IDだけでなく**試合詳細そのもの**を返すため、1回のGETで最大10試合を取り込める。platformは `pc` 固定、既定の `mode` は `competitive`。Riot IDはリクエストのパスにだけ使い、保存・表示しない。実APIでの動作は**未検証**（Mockテストのみ）。
+
+```powershell
+node scripts/henrik-match-history.mjs --region ap --recent 10
+node scripts/henrik-match-history.mjs --region ap --recent 10 --start 10   # さらに前の10試合
+```

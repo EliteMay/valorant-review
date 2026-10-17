@@ -43,9 +43,9 @@ export function parseArgs(args) {
   return { region, matchId };
 }
 
-async function boundedJson(response) {
+export async function boundedJson(response, maxBytes = MAX_BYTES) {
   const length = Number(response.headers.get('content-length'));
-  if (Number.isFinite(length) && length > MAX_BYTES) {
+  if (Number.isFinite(length) && length > maxBytes) {
     throw new ProbeError('TOO_LARGE', 'API応答がサイズ上限を超えました。');
   }
   if (!response.body) throw new ProbeError('EMPTY_RESPONSE', 'API応答本文がありません。');
@@ -57,7 +57,7 @@ async function boundedJson(response) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > MAX_BYTES) throw new ProbeError('TOO_LARGE', 'API応答がサイズ上限を超えました。');
+      if (size > maxBytes) throw new ProbeError('TOO_LARGE', 'API応答がサイズ上限を超えました。');
       chunks.push(value);
     }
   } catch (error) {

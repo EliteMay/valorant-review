@@ -57,3 +57,32 @@ test('comparison groups by outcome and warns on small samples', async () => {
   assert.match(c.caution, /少ない/);
   assert.equal(toRecord(A, { map: null, outcome: '未確認', agent: null, rounds: 0, opening: { firstKills: 0, firstDeaths: 0, evaluatedRounds: 0 } }).matchId, A);
 });
+
+import { importRecent } from '../scripts/henrik-match-history.mjs';
+const item = (id, won) => { const d = body(won).data; d.metadata.match_id = id; d.players[0].name = 'Me Name'; return d; };
+
+test('recent import: one GET, encoded Riot ID in path, dedupe, no identifiers stored', async () => {
+  const store = { version: 1, matches: [] };
+  const urls = [];
+  const fetchImpl = async (url, init) => {
+    urls.push([url, init.method, init.headers.Authorization]);
+    return Response.json({ status: 200, data: [item(A, true), item(B, false), item(A, true)] });
+  };
+  const r = await importRecent({ region: 'ap', name: 'Me Name', tag: 'JP', apiKey: 'k', count: 3, store, fetchImpl });
+  assert.equal(urls.length, 1);
+  assert.match(urls[0][0], /\/valorant\/v4\/matches\/ap\/pc\/Me%20Name\/JP\?mode=competitive&size=3&start=0$/);
+  assert.deepEqual([r.fetched, r.added, r.skipped], [3, 2, 1]);
+  const text = JSON.stringify(store);
+  for (const s of ['p1', 'p2', 'Me Name', 'JP', 'Foe']) assert.ok(!text.includes(s));
+});
+
+test('recent import validates input before any request and stops on 429', async () => {
+  let called = false;
+  const fetchImpl = async () => { called = true; return new Response('{}', { status: 429 }); };
+  const base2 = { region: 'ap', name: 'Me', tag: 'JP', apiKey: 'k', store: { matches: [] }, fetchImpl };
+  await assert.rejects(importRecent({ ...base2, count: 11 }), /--recent/);
+  await assert.rejects(importRecent({ ...base2, count: 3, mode: 'a/../b' }), /--mode/);
+  await assert.rejects(importRecent({ ...base2, count: 3, apiKey: '' }), /未設定/);
+  assert.equal(called, false);
+  await assert.rejects(importRecent({ ...base2, count: 3 }), /429/);
+});

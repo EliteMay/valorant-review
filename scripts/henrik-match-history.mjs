@@ -6,11 +6,15 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ProbeError } from './henrik-match-probe.mjs';
-import { analyzeOneMatch, AnalysisError } from './henrik-match-analyze.mjs';
+import { ProbeError, boundedJson } from './henrik-match-probe.mjs';
+import { analyzeOneMatch, analyzeMatch, AnalysisError } from './henrik-match-analyze.mjs';
 
 export const DEFAULT_STORE = '.vreview-local/henrik-matches.json';
 export const MAX_BATCH = 10;
+const LIST_ORIGIN = 'https://api.henrikdev.xyz';
+const LIST_MAX_BYTES = 48 * 1024 * 1024;
+const REGIONS = new Set(['ap', 'eu', 'na', 'kr']);
+const MODE = /^[a-z0-9_-]{1,32}$/i;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function toRecord(matchId, a) {
@@ -95,11 +99,56 @@ export async function importMatches({ region, matchIds, apiKey, name, tag, store
   return result;
 }
 
+/**
+ * One GET returns up to 10 full match records (OpenAPI MatchesV4HistoryResponse), so no per-match request is needed.
+ * The Riot ID is sent only in the request path to the API; it is never stored or printed.
+ */
+export async function importRecent({ region, name, tag, apiKey, count = 5, start = 0, mode = 'competitive', store, fetchImpl = fetch }) {
+  if (!REGIONS.has(region)) throw new ProbeError('INPUT_REGION', 'region は ap / eu / na / kr のいずれかにしてください。');
+  if (!name?.trim() || !tag?.trim()) throw new AnalysisError('MISSING_PLAYER', 'VREVIEW_PLAYER_NAME と VREVIEW_PLAYER_TAG を設定してください。');
+  if (typeof apiKey !== 'string' || !apiKey.trim()) throw new ProbeError('MISSING_KEY', 'HENRIKDEV_API_KEYが未設定です。キーはチャットやGitHubに投稿しないでください。');
+  if (!Number.isInteger(count) || count < 1 || count > MAX_BATCH || !Number.isInteger(start) || start < 0 || start > 1000 || !MODE.test(mode)) {
+    throw new AnalysisError('INPUT_RECENT', `--recent は1〜${MAX_BATCH}、--start は0以上、--mode は英数字で指定してください。`);
+  }
+  const url = `${LIST_ORIGIN}/valorant/v4/matches/${region}/pc/${encodeURIComponent(name.trim())}/${encodeURIComponent(tag.trim())}`
+    + `?mode=${encodeURIComponent(mode)}&size=${count}&start=${start}`;
+  let response;
+  try {
+    response = await fetchImpl(url, { method: 'GET', headers: { Authorization: apiKey.trim(), Accept: 'application/json' },
+      redirect: 'error', signal: AbortSignal.timeout(30000) });
+  } catch (error) {
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new ProbeError('TIMEOUT', '30秒以内にAPIから応答がありませんでした。');
+    throw new ProbeError('NETWORK', 'APIへの通信に失敗しました。');
+  }
+  if (!response.ok) {
+    const messages = { 401: 'キーの認証に失敗しました。', 403: 'アクセス権限がありません。', 404: '戦績が見つかりません（地域・Riot ID・プラットフォームを確認）。', 429: 'リクエスト上限に達しました。' };
+    throw new ProbeError('HTTP_' + response.status, 'HTTP ' + response.status + ': ' + (messages[response.status] || 'APIリクエストが失敗しました。'));
+  }
+  const body = await boundedJson(response, LIST_MAX_BYTES);
+  if (body?.status !== 200 || !Array.isArray(body.data)) throw new ProbeError('SCHEMA_MISMATCH', '想定する試合一覧と構造が違います。');
+  const known = new Set(store.matches.map(m => m.matchId));
+  const result = { fetched: body.data.length, added: 0, skipped: 0, failed: 0, failureCodes: [] };
+  for (const item of body.data) {
+    const id = typeof item?.metadata?.match_id === 'string' ? item.metadata.match_id.toLowerCase() : '';
+    if (!UUID.test(id)) { result.failed++; result.failureCodes.push('NO_MATCH_ID'); continue; }
+    if (known.has(id)) { result.skipped++; continue; }
+    try {
+      store.matches.push(toRecord(id, analyzeMatch(item, { name, tag })));
+      known.add(id);
+      result.added++;
+    } catch (e) {
+      result.failed++;
+      result.failureCodes.push(e?.code ?? 'UNKNOWN');
+    }
+  }
+  return result;
+}
+
 function parse(args) {
   const o = {};
   for (let i = 0; i < args.length; i += 2) {
-    if (!['--region', '--match-ids', '--store', '--summary-only'].includes(args[i])) {
-      throw new AnalysisError('INPUT_ARGS', '引数: --region ap --match-ids UUID,UUID [--store パス]  または --summary-only true');
+    if (!['--region', '--match-ids', '--recent', '--start', '--mode', '--store', '--summary-only'].includes(args[i])) {
+      throw new AnalysisError('INPUT_ARGS', '引数: --region ap --recent 10 [--start 0] [--mode competitive] / --match-ids UUID,UUID / --summary-only true');
     }
     o[args[i]] = args[i + 1];
   }
@@ -111,7 +160,14 @@ export async function main(args = process.argv.slice(2), env = process.env) {
   const path = resolve(o['--store'] ?? DEFAULT_STORE);
   const store = loadStore(path);
   let imported = null;
-  if (o['--summary-only'] !== 'true') {
+  if (o['--recent'] !== undefined) {
+    imported = await importRecent({
+      region: o['--region'] ?? 'ap', count: Number(o['--recent']), start: Number(o['--start'] ?? 0),
+      mode: o['--mode'] ?? 'competitive', apiKey: env.HENRIKDEV_API_KEY,
+      name: env.VREVIEW_PLAYER_NAME, tag: env.VREVIEW_PLAYER_TAG, store,
+    });
+    saveStore(path, store);
+  } else if (o['--summary-only'] !== 'true') {
     imported = await importMatches({
       region: o['--region'] ?? 'ap', matchIds: (o['--match-ids'] ?? '').split(','),
       apiKey: env.HENRIKDEV_API_KEY, name: env.VREVIEW_PLAYER_NAME, tag: env.VREVIEW_PLAYER_TAG, store,
