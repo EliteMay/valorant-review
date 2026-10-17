@@ -101,3 +101,10 @@ test('malformed data fails and malformed numbers remain null', () => {
   data.players[0].stats.deaths = 'invalid';
   assert.equal(analyzeMatch(data, { name: 'My Name', tag: 'JPN' }).deaths, null);
 });
+
+test('reads the agent from the official v4 `agent` field', () => {
+  const data = fixture();
+  data.players[0].agent = { id: 'a', name: 'Sova' };
+  delete data.players[0].character;
+  assert.equal(analyzeMatch(data, { name: 'My Name', tag: 'JPN' }).agent, 'Sova');
+});

@@ -86,7 +86,8 @@ export function analyzeMatch(match, { name, tag }) {
     map,
     outcome,
     rounds,
-    agent: typeof player.character?.name === 'string' ? player.character.name : null,
+    // v4 official field is `agent`; `character` kept only as a legacy fallback.
+    agent: [player.agent?.name, player.character?.name].find(v => typeof v === 'string') ?? null,
     kills: positiveCount(stats.kills),
     deaths: positiveCount(stats.deaths),
     assists: positiveCount(stats.assists),
