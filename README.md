@@ -46,6 +46,8 @@ HenrikDev VALORANT API v4の単一試合データ形式を検証する、読み�
 
 手順と秘密情報の扱いは [`docs/HENRIK_API_PROBE.md`](docs/HENRIK_API_PROBE.md) を参照してください。
 
+本人の試合を1件取得し、K/D/A・参考ACS・先制キル/先制デスを集計するローカル分析CLIの使い方は [`docs/HENRIK_PERSONAL_MATCH_ANALYSIS.md`](docs/HENRIK_PERSONAL_MATCH_ANALYSIS.md) に記載しています。**ゲーム映像なしに敗因は断定できません。**
+
 ## Electron Desktop Foundation
 
 v0.10.0では最終Electron化に向け、以下を実装しています。
