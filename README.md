@@ -40,6 +40,12 @@ Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 - Coding agent router: [`AGENTS.md`](AGENTS.md)
 - Work history / verification: [`作業報告書.md`](作業報告書.md)
 
+## 戦績APIの検証（開発中）
+
+HenrikDev VALORANT API v4の単一試合データ形式を検証する、読み取り専用のローカルNode.jsスクリプトをDraft PRで追加しました。**実API接続は本人のAPIキーで未検証**です。既存の録画・Tracker収集・GitHub Pagesには影響しません。
+
+手順と秘密情報の扱いは [`docs/HENRIK_API_PROBE.md`](docs/HENRIK_API_PROBE.md) を参照してください。
+
 ## Electron Desktop Foundation
 
 v0.10.0では最終Electron化に向け、以下を実装しています。
