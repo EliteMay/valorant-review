@@ -44,3 +44,6 @@ jobs:
 
       - name: Run HenrikDev match probe offline tests
         run: node --test tests/henrik-match-probe.test.mjs
+
+      - name: Run HenrikDev personal match analysis tests
+        run: node --test tests/henrik-match-analyze.test.mjs
