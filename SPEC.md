@@ -36,6 +36,15 @@ ClipごとにFeedback内容だけIndexedDBへ保存
 → 最後に1回だけBatch ZIPを作成
 ```
 
+## 検証中: HenrikDev個人試合分析（未リリース）
+
+- HenrikDev v4の本人1試合データを、Node.js CLIで明示操作による読み取り専用取得として解析する。
+- 本人特定はローカル入力のRiot ID name / tagとの一致のみ。第三者の一括解析を行わない。
+- K/D/A・参考ACS・勝敗・ラウンド先制キル/デスを、根拠のあるフィールドから集計する。欠損・曖昧な先制イベントは不明として扱う。
+- APIキー・Riot ID・PUUID・全員の生データはコンソール出力・GitHub・永続ストレージへ保存しない。
+- Electron本体UI・保存Schema・Windowsビルド・Pagesはこの段階で変更しない。Phase 2の実API結果を確認後、正式採用するか判断する。
+- 開発中の説明: `docs/HENRIK_PERSONAL_MATCH_ANALYSIS.md`。本機能は正式リリース済みではない。
+
 ## 2.1 v0.11.0 Electron移行方針
 
 正本: `docs/V1_ELECTRON_ARCHITECTURE.md`
