@@ -36,6 +36,18 @@ v0.12.0ではElectron専用の **Tracker収集 / Tracker Collector v0.1.0** を�
 
 New Reviewのフレーム抽出は、Web版では短い指定範囲をブラウザでJPEG化します（厳密なフレーム番号は保証しません）。Windowsアプリ版では、PCにインストールされたFFmpeg / FFprobeを使って元動画の実フレームを抽出し、ZIPの保存先を選べます。10 / 30 / 60枚/秒は**最大抽出頻度**で、ソースが低fpsなら架空のフレームを増やしません。最大180枚・画像合計100MB。両方式とも元動画や音声をZIPへ含めず、自動アップロードはしません。FFmpegがないPCでは利用者にエラーを表示し、勝手に精度の低い方式へ切り替えません。正式Release前のDraft PR機能です。
 
+## OpenCV画面変化候補（Draft / Windows版のみ）
+
+New Reviewの「OpenCV 画面変化を調べる」から30秒以内の範囲を解析できます。HP・シールド表示周辺とキルログ付近を**画像差分で調べる実験機能**です。候補をクリックして録画へ移動でき、`VisionRuns`にJSONと根拠画像を保存します。**数字・HP・キル数を自動確定する機能ではありません**。初期ROIは固定のため、HUD位置・解像度・画面エフェクトで誤検出します。外部送信、ゲームプロセスへのアクセス、リアルタイム支援はありません。
+
+Python 3.11とOpenCVが必要です。別のPython環境へ影響させないため、専用仮想環境を使います。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-vision.ps1 -TargetDir "D:\AI\tools\vreview-vision" -PersistUserEnvironment
+```
+
+`TargetDir`は**空のフォルダー**を指定し、セットアップ後はアプリを再起動してください。`VREVIEW_VISION_PYTHON`環境変数から専用Pythonを選びます。OpenCVは`opencv-python-headless==4.14.0.94`、NumPyは`2.4.6`に固定し、不要なGUIパッケージを避けています。セットアップは明示コマンド実行時のみネット接続を行います。プログラム自体はローカル処理です。
+
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
 - Project metadata: [`project-meta.json`](project-meta.json)

@@ -6,3 +6,5 @@ out/
 .vreview-local/
 native/bin/
 *.obj
+__pycache__/
+*.pyc

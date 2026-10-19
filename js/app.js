@@ -65,7 +65,8 @@ function initReviewPage() {
   let detectionController = null;
 
   const frameExporter = window.VReviewFrameExport?.init({ preview, getVideo: () => ({ file: currentFile, videoData: currentVideoData }) });
-  const isFeedbackBusy = () => exportingFeedback || batchExporting || Boolean(frameExporter?.isBusy());
+  const vision = window.VReviewVisionReview?.init({ preview, getVideo: () => ({ file: currentFile, videoData: currentVideoData }) });
+  const isFeedbackBusy = () => exportingFeedback || batchExporting || Boolean(frameExporter?.isBusy()) || Boolean(vision?.isBusy());
 
   const setCallout = (element, message = '', tone = 'pending') => {
     if (!element) return;
@@ -204,6 +205,7 @@ function initReviewPage() {
       currentFile = file;
       currentVideoData = data;
       frameExporter?.reset(data.duration);
+      vision?.reset(data.duration);
       currentFingerprint = window.VReviewVideo.makeFingerprint(file, data);
       lastDetectionRun = null;
 

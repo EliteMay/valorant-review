@@ -11,6 +11,7 @@ const { TelemetryController } = require('./telemetry/controller.cjs');
 const { RecordingController } = require('./recording/controller.cjs');
 const { TrackerCollectorController } = require('./tracker-collector/controller.cjs');
 const { exportNativeFrames, planNativeFrames } = require('./frame-export/controller.cjs');
+const { scan: scanVision, validateSettings: validateVisionSettings } = require('./vision/controller.cjs');
 
 const APP_ID = 'io.github.elitemay.vreview';
 app.setAppUserModelId(APP_ID);
@@ -29,6 +30,7 @@ let telemetryController = null;
 let recordingController = null;
 let trackerController = null;
 let frameExportTask = null;
+let visionScanTask = null;
 let quitAfterCaptureStop = false;
 
 function createWindow() {
@@ -276,6 +278,42 @@ function registerIpc() {
     return { cancelled: true };
   });
 
+  ipcMain.handle('vision:scan', async (event, payload) => {
+    if (!isTrustedLocalRenderer(event, 'review.html')) throw new Error('Vision IPC sender rejected.');
+    if (visionScanTask) throw new Error('画像解析はすでに実行中です。');
+    validateVisionSettings(payload || {});
+    const sourcePath = String(payload?.sourcePath || '');
+    if (!/\.(mp4|webm)$/i.test(sourcePath)) throw new Error('MP4 / WebMを指定してください。');
+    const controller = new AbortController();
+    visionScanTask = controller;
+    try {
+      return await scanVision({
+        sourcePath, start: payload.start, end: payload.end, fps: payload.fps
+      }, {
+        userDataDir: app.getPath('userData'),
+        scriptPath: app.isPackaged
+          ? path.join(process.resourcesPath, 'vision', 'hud_change_scan.py')
+          : path.join(__dirname, 'vision', 'hud_change_scan.py'),
+        signal: controller.signal
+      });
+    } finally {
+      visionScanTask = null;
+    }
+  });
+  ipcMain.handle('vision:cancel', event => {
+    if (!isTrustedLocalRenderer(event, 'review.html')) throw new Error('Vision IPC sender rejected.');
+    if (!visionScanTask) return { cancelled: false };
+    visionScanTask.abort();
+    return { cancelled: true };
+  });
+  ipcMain.handle('vision:open-folder', async event => {
+    if (!isTrustedLocalRenderer(event, 'review.html')) throw new Error('Vision IPC sender rejected.');
+    const folder = path.join(app.getPath('userData'), 'VisionRuns');
+    if (!fs.existsSync(folder)) return { ok: false };
+    const error = await shell.openPath(folder);
+    return { ok: !error };
+  });
+
   ipcMain.handle('recording:get-status', () => recordingController.getStatus());
   ipcMain.handle('recording:prepare', async (_event, payload) => {
     let telemetry = telemetryController.getStatus();
@@ -508,6 +546,7 @@ app.on('before-quit', event => {
   }
 
   frameExportTask?.abort();
+  visionScanTask?.abort();
   taskRegistry?.interruptRunning();
   if (mainWindow && !mainWindow.isDestroyed()) windowStateStore?.save(mainWindow);
   logger?.info('app.before-quit');

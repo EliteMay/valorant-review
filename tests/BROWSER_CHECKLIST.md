@@ -1,3 +1,13 @@
+## OpenCV Candidate Scanner （2026-10-19: 検証継続）
+
+- [x] Python 3.11専用仮想環境でOpenCVをimport・実行できる。
+- [x] 変更合成動画でHP周辺/killfeed周辺をそれぞれ1件検出し、安定映像は候補0件。
+- [x] Node API → Python worker → JPEG/summary.json保存E2E確認。
+- [ ] Windows ElectronのNew Reviewから実動画を開き、解析・動画Seek・Folderボタンを確認。
+- [ ] OpenCV未導入時の説明・エラー表示、Stop操作時の部分成果物後片付け。
+- [ ] 実試合の異なるHUD Scale/解像度/キルログ位置について検出誤差を測定。
+- [ ] Screen heightが低い環境でInspectorにUIが埋もれないことを確認。
+
 ## Local Frame Evidence Export (2026-10-19 / 部分的に検証済み)
 
 - [x] Windows Chrome Headlessの60fps合成動画でWeb版30枚抽出。境界シークでは20枚しか異ならず、中央寄せ修正後は30枚すべて異なることを検証。

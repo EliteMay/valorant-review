@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07090c">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20261019-1">
-  <link rel="stylesheet" href="css/layout.css?v=20261019-1">
-  <link rel="stylesheet" href="css/components.css?v=20261019-1">
-  <link rel="stylesheet" href="css/feedback-queue.css?v=20261019-1">
+  <link rel="stylesheet" href="css/base.css?v=20261019-2">
+  <link rel="stylesheet" href="css/layout.css?v=20261019-2">
+  <link rel="stylesheet" href="css/components.css?v=20261019-2">
+  <link rel="stylesheet" href="css/feedback-queue.css?v=20261019-2">
 </head>
 <body class="review-page">
   <div class="app-shell">
@@ -184,6 +184,26 @@
             </details>
           </section>
 
+          <section class="inspector-section vision-section">
+            <details id="visionDetails">
+              <summary>OpenCV 画面変化を調べる <small>Windows・実験機能</small></summary>
+              <p class="helper">HP・シールド・キルログ付近の画面変化を候補として検出します。数値・キルは確定しません。</p>
+              <div class="frame-export-fields">
+                <label>開始（秒）<input type="number" id="visionStart" min="0" step="0.1" value="0"></label>
+                <label>終了（秒）<input type="number" id="visionEnd" min="0" step="0.1" value="3"></label>
+                <label>間引き頻度<select id="visionFps"><option value="5">5fps</option><option value="10" selected>10fps</option><option value="15">15fps</option><option value="30">30fps</option></select></label>
+              </div>
+              <p class="helper">1回最大30秒。初期ROIは仮設定で、HUD位置が違う映像では検出漏れ・誤検出があります。</p>
+              <div class="button-row">
+                <button class="btn btn-secondary" id="visionRunBtn" type="button" disabled>OpenCVで候補を検出</button>
+                <button class="btn btn-danger btn-small" id="visionCancelBtn" type="button" disabled>中止</button>
+              </div>
+              <p class="helper" id="visionStatus" role="status" aria-live="polite">Windows版のみ。OpenCV用Pythonが必要です。</p>
+              <div id="visionResults" aria-label="画面変化候補"></div>
+              <button class="btn btn-ghost btn-small" id="visionOpenFolder" type="button" disabled>根拠画像とJSONを開く</button>
+            </details>
+          </section>
+
           <section class="inspector-section feedback-panel">
             <div class="section-heading">
               <div>
@@ -231,16 +251,17 @@
     </main>
   </div>
 
-  <script src="js/version.js?v=20261019-1"></script>
-  <script src="js/diagnostics.js?v=20261019-1"></script>
-  <script src="js/storage.js?v=20261019-1"></script>
-  <script src="js/video.js?v=20261019-1"></script>
-  <script src="js/detector.js?v=20261019-1"></script>
-  <script src="js/feedback-library.js?v=20261019-1"></script>
-  <script src="js/feedback-package-v5.js?v=20261019-1"></script>
-  <script src="js/frame-export.js?v=20261019-1"></script>
-  <script src="js/ui.js?v=20261019-1"></script>
-  <script src="js/app.js?v=20261019-1"></script>
-  <script src="js/desktop-telemetry.js?v=20261019-1"></script>
+  <script src="js/version.js?v=20261019-2"></script>
+  <script src="js/diagnostics.js?v=20261019-2"></script>
+  <script src="js/storage.js?v=20261019-2"></script>
+  <script src="js/video.js?v=20261019-2"></script>
+  <script src="js/detector.js?v=20261019-2"></script>
+  <script src="js/feedback-library.js?v=20261019-2"></script>
+  <script src="js/feedback-package-v5.js?v=20261019-2"></script>
+  <script src="js/frame-export.js?v=20261019-2"></script>
+  <script src="js/ui.js?v=20261019-2"></script>
+  <script src="js/vision-review.js?v=20261019-2"></script>
+  <script src="js/app.js?v=20261019-2"></script>
+  <script src="js/desktop-telemetry.js?v=20261019-2"></script>
 </body>
 </html>

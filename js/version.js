@@ -9,7 +9,7 @@ window.VReviewVersion = Object.freeze({
   feedbackSchema: 1,
   feedbackBatchSchema: 1,
   diagnosticsSchema: 1,
-  build: '20261019-1',
+  build: '20261019-2',
   guide: '1.22.0'
 });
 
