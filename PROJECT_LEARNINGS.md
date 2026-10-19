@@ -6,6 +6,16 @@
 
 ## Failure
 
+### PL-F-010 Frame境界へのBrowser Seekで60fps抽出が重複した（PR #14 検証中）
+
+- Date: 2026-10-19
+- Symptom: 60fpsの合成動画で0.5秒・30枚を要求したが異なる画像は20枚だけだった。
+- Root cause hypothesis: HTMLVideoElementのseek境界時刻と実デコードフレームの丸めが一致せず、同じフレームを複数回取得した。
+- Verified fix: サンプル時刻を最大1/2フレーム分中央へ移し、同じChromeで30枚/30画像へ改善。
+- Prevention: Web seek画像をフレーム精度と誤認せず、用途に応じてFFmpegのNative decodeを利用し、実動画の独立画像数で検証する。
+- Remaining: 他fps/他Codec/長尺動画への汎化、実UI、Packaged Windowsを未検証として扱う。
+
+
 ### PL-F-001 Detector RuntimeをVersion Patchで積み重ねた
 
 - Date: 2026-08-30

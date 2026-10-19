@@ -52,6 +52,8 @@ assert.equal(result.manifest.frames.length, 3);
 assert.equal(filesInZip.length, 5);
 assert.equal(result.manifest.frames[1].requested_seconds, 1.1);
 assert.equal(requested.length, 3);
+assert.ok(Math.abs(requested[0] - 1.05) < 1e-6, 'seek to center of source frame');
+assert.ok(Math.abs(requested[1] - 1.15) < 1e-6);
 assert.equal(revoked, 1);
 assert.ok(filesInZip.find(file => file.name === 'manifest.json'));
 assert.ok(!filesInZip.some(file => file.name.endsWith('.mp4')));

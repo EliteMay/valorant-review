@@ -1,4 +1,10 @@
-## Local Frame Evidence Export (2026-10-19 / 実ブラウザ未確認)
+## Local Frame Evidence Export (2026-10-19 / 部分的に検証済み)
+
+- [x] Windows Chrome Headlessの60fps合成動画でWeb版30枚抽出。境界シークでは20枚しか異ならず、中央寄せ修正後は30枚すべて異なることを検証。
+- [x] WindowsのFFmpeg + PowerShellで60fps合成動画の1.0〜1.5秒から30枚のZIPを生成。
+- [x] 別環境の実`4k.mp4`からFFmpegで27.0〜28.0秒の60枚を抽出し、60枚のJPEGが相異なることを確認。
+- [ ] Windows Electron版New Reviewの実UIからZIP保存先を選び、完了・中止・エラー表示を確認。
+- [ ] Windows Installerでインストール後、FFmpeg存在/不在それぞれを確認。
 
 - [ ] New ReviewでMP4 / WebMを読み込み、Inspectorの「フレーム画像を書き出す」を開く。
 - [ ] 26.5〜27.0秒 / 10枚/秒を選び、5枚のJPEGとmanifest.jsonがZIPに含まれる。

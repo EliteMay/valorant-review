@@ -68,7 +68,8 @@ window.VReviewFrameExport = (() => {
         const time = times[i];
         if (Math.abs(video.currentTime - time) >= 0.0005) {
           const seeked = waitFor(video, 'seeked', signal);
-          video.currentTime = time;
+          const sourceEnd = Number.isFinite(video.duration) ? video.duration : videoData.duration;
+          video.currentTime = Math.min(sourceEnd - 0.001, time + (0.5 / Number(fps)));
           await seeked;
         }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -106,6 +107,12 @@ window.VReviewFrameExport = (() => {
       ids.map(id => document.getElementById(id));
     if (ids.some(id => !document.getElementById(id))) return null;
     let controller = null;
+    const desktop = window.vreviewDesktop;
+    desktop?.onNativeFrameStatus?.(state => {
+      if (!controller) return;
+      status.textContent = state?.detail || '抽出中…';
+      progress.value = state?.stage === 'zip' ? 90 : state?.stage === 'done' ? 100 : 15;
+    });
     const validate = () => {
       try {
         const source = getVideo();
@@ -124,7 +131,10 @@ window.VReviewFrameExport = (() => {
     document.getElementById('frameUseEnd')?.addEventListener('click', () => {
       end.value = String(round(preview.currentTime)); validate();
     });
-    cancel.addEventListener('click', () => controller?.abort());
+    cancel.addEventListener('click', () => {
+      controller?.abort();
+      desktop?.cancelNativeFrames?.().catch(() => {});
+    });
     button.addEventListener('click', async () => {
       if (controller) return;
       const source = getVideo();
@@ -134,17 +144,30 @@ window.VReviewFrameExport = (() => {
       progress.value = 0;
       status.textContent = '画像化の準備中…';
       try {
-        const result = await exportFrames({
-          ...source, start: start.value, end: end.value, fps: fps.value,
-          signal: controller.signal,
-          onProgress: (value, text) => {
-            progress.value = Math.round(value * 100);
-            status.textContent = text;
+        if (desktop?.exportNativeFrames) {
+          const result = await desktop.exportNativeFrames(source.file, {
+            start: Number(start.value), end: Number(end.value), fps: Number(fps.value)
+          });
+          if (controller.signal.aborted) throw abortError();
+          if (result.cancelled) {
+            status.textContent = '保存をキャンセルしました。';
+          } else {
+            progress.value = 100;
+            status.textContent = result.frameCount + '枚を保存しました。保存先: ' + result.savedPath;
           }
-        });
-        if (controller.signal.aborted) throw abortError();
-        window.VReviewFeedbackPackage.download(result.blob, result.filename);
-        status.textContent = result.manifest.frames.length + '枚をZIP化しました。ダウンロードをご確認ください。';
+        } else {
+          const result = await exportFrames({
+            ...source, start: start.value, end: end.value, fps: fps.value,
+            signal: controller.signal,
+            onProgress: (value, text) => {
+              progress.value = Math.round(value * 100);
+              status.textContent = text;
+            }
+          });
+          if (controller.signal.aborted) throw abortError();
+          window.VReviewFeedbackPackage.download(result.blob, result.filename);
+          status.textContent = result.manifest.frames.length + '枚をZIP化しました。ダウンロードをご確認ください。';
+        }
       } catch (error) {
         status.textContent = error.name === 'AbortError' ? '画像化を中止しました。' :
           (error.message || '画像化に失敗しました。');

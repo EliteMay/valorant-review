@@ -36,6 +36,15 @@ ClipごとにFeedback内容だけIndexedDBへ保存
 → 最後に1回だけBatch ZIPを作成
 ```
 
+## 2.0.1 高密度フレーム画像（PR #14）
+
+- Web: HTMLVideoElement seek + Canvas。タイミング境界の二重取得を減らすため、要求区間の中央へサンプリング。正確な元フレーム番号・PTSは保証しない。
+- Electron: sandboxed preloadの`webUtils.getPathForFile`経由で、明示選択された動画のPathだけをMain IPCへ渡す。Mainは`review.html`送信元・時間範囲・拡張子を検査。
+- FFmpeg native decode + select（非補間）で最大10 / 30 / 60fpsを抽出。ソースfpsが低ければ無理に画像を増やさない。
+- ユーザー指定のZIP保存先のみへ出力し、作業用一時画像は成功・失敗・中止時に削除する。元動画・音声はZIPに含めない。
+- 画像最大180枚、JPEG合計100MB。ffprobe・ffmpeg・PowerShellのエラーと中止をユーザーに返す。FFmpegはユーザーPCのPATHにあることが必要で、同梱や自動インストールはしない。
+- manifestのPTSはシーク後の相対値であり元動画絶対PTSの保証とは分ける。UI表示・全動画対応・Windows Installer実機確認は別Validation gate。
+
 ## 2.1 v0.11.0 Electron移行方針
 
 正本: `docs/V1_ELECTRON_ARCHITECTURE.md`
