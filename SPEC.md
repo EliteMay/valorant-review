@@ -352,6 +352,16 @@ PC版New Review:
 | Input Telemetry | `electron/telemetry/controller.cjs` | Telemetry Session UUID | `vreview-input-telemetry-session` v1 | Electron userData / sessions |
 | Gameplay Recording | `electron/recording/controller.cjs` | Telemetry Session UUID | `vreview-gameplay-recording` v1 | same Session folder / `gameplay.webm` |
 
+### Local Frame Evidence Export (2026-10-19 candidate)
+
+- `review.html`のScene Inspector内の折りたたみから、読み込んだMP4 / WebMの短い範囲を指定してローカル抽出する。
+- `js/frame-export.js`が独立したvideo elementへseekし、Canvas JPEGを生成する。元の再生位置は変えない。
+- 10 / 30 / 60枚/秒の要求頻度とし、1回最大180枚かつJPEG合計100MBで中断可能。元動画や音声をZIPへ含めない。
+- `manifest.json`には要求時刻とブラウザのseek結果を記録するが、厳密なpresentation timestampとは扱わない。Browser方式はFrame-accurateではない。
+- ZIPは既存のStore ZIP生成機能を再利用する。画像は永続Storageへ保存せず、外部送信しない。
+- 正確なフレーム番号 / 60fpsデコード / Telemetry同期は別PhaseのElectron + FFmpeg解析で扱う。
+- 実ブラウザ / 実動画を通した確認まではRuntime Validated扱いにしない。
+
 ## 8. Scene Data
 
 主要フィールド:
