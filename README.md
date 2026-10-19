@@ -173,6 +173,7 @@ Batch ZIPは`Detector Test`へそのまま1個ドロップでき、中の複数�
 
 - Gameplay録画 + Input Telemetry同時記録（Electron）
 - MP4 / WebM読み込み
+- 撃ち合いなど指定した短い区間から10 / 30 / 60枚/秒でJPEG画像を抽出し、時刻付きmanifestとともにZIP出力（最大180枚、100MB）
 - キルScene候補の自動検出
 - `primary` / `weak`候補の分離
 - Scene手動追加・削除・範囲修正
