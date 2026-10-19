@@ -29,6 +29,9 @@ jobs:
       - name: Validate project structure and references
         run: node scripts/validate.mjs
 
+      - name: Run frame evidence regression tests
+        run: node tests/frame-export.test.mjs
+
       - name: Run storage regression tests
         run: node tests/storage.test.mjs
 
