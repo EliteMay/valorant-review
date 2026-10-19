@@ -1,3 +1,15 @@
+## Local Frame Evidence Export (2026-10-19 / 実ブラウザ未確認)
+
+- [ ] New ReviewでMP4 / WebMを読み込み、Inspectorの「フレーム画像を書き出す」を開く。
+- [ ] 26.5〜27.0秒 / 10枚/秒を選び、5枚のJPEGとmanifest.jsonがZIPに含まれる。
+- [ ] 30 / 60枚/秒、指定範囲、再生位置ボタン、上限180枚、範囲の不正値の表示を確認。
+- [ ] 中止時にZIPがダウンロードされず、次回の抽出が可能。
+- [ ] 元動画がZIP / IndexedDB / localStorageに保存されない。
+- [ ] ZIP画像のHUDと映像の要求時刻を比較。時刻・フレーム番号の厳密一致は主張しない。
+- [ ] Reviewerの動画表示・タイムライン操作・右Inspectorのスクロールが崩れない（低い画面含む）。
+
+---
+
 # VReview Browser / Visual Validation Checklist
 
 `web-project-guide` v1.22.0 の `STATIC + MEDIA + AI-HANDOFF + TOOL` と Visual Quality Baseline用の手動確認項目です。
