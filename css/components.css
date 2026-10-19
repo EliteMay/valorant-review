@@ -627,3 +627,14 @@
   .workflow-row { grid-template-columns: 34px minmax(0,1fr); }
   .workflow-arrow { display: none; }
 }
+
+/* Secondary image export, kept inside the existing Scene Inspector. */
+.frame-export-section summary { cursor: pointer; color: var(--text); font-size: .82rem; font-weight: 700; }
+.frame-export-section summary small { color: var(--muted); font-size: .67rem; font-weight: 500; }
+.frame-export-section details[open] > .helper:first-of-type { margin-top: 10px; }
+.frame-export-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 9px 0; }
+.frame-export-fields label { display: grid; gap: 5px; color: var(--muted); font-size: .7rem; }
+.frame-export-fields input, .frame-export-fields select { min-width: 0; width: 100%; height: 34px; padding: 5px; color: var(--text); background: #090d12; border: 1px solid var(--border-strong); border-radius: 5px; }
+.frame-export-section progress { width: 100%; height: 6px; margin: 10px 0 4px; }
+.frame-export-section #frameStatus { min-height: 1.4em; overflow-wrap: anywhere; }
+@media (max-width: 350px) { .frame-export-fields { grid-template-columns: 1fr; } }
