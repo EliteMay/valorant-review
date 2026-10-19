@@ -23,6 +23,8 @@ const requiredFiles = [
   'js/detector.js',
   'js/feedback-library.js',
   'js/feedback-package-v5.js',
+  'js/frame-export.js',
+  'tests/frame-export.test.mjs',
   'js/storage.js',
   'css/base.css',
   'css/layout.css',
