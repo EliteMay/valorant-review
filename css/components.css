@@ -629,7 +629,13 @@
 }
 
 /* Secondary image export, kept inside the existing Scene Inspector. */
-.frame-export-section summary { cursor: pointer; color: var(--text); font-size: .82rem; font-weight: 700; }
+.frame-export-section summary, .vision-section summary { cursor: pointer; color: var(--text); font-size: .82rem; font-weight: 700; }
+.vision-section summary small { color: var(--muted); font-size: .67rem; font-weight: 500; }
+.vision-section details[open] > .helper:first-of-type { margin-top: 10px; }
+.vision-section #visionStatus { min-height: 1.4em; overflow-wrap: anywhere; }
+.vision-section #visionResults { display: grid; gap: 5px; max-height: 220px; overflow-y: auto; margin: 8px 0; }
+.vision-section #visionResults button { width: 100%; justify-content: flex-start; text-align: left; white-space: normal; }
+.vision-section #visionOpenFolder { margin-top: 4px; }
 .frame-export-section summary small { color: var(--muted); font-size: .67rem; font-weight: 500; }
 .frame-export-section details[open] > .helper:first-of-type { margin-top: 10px; }
 .frame-export-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 9px 0; }

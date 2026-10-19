@@ -45,6 +45,16 @@ ClipごとにFeedback内容だけIndexedDBへ保存
 - 画像最大180枚、JPEG合計100MB。ffprobe・ffmpeg・PowerShellのエラーと中止をユーザーに返す。FFmpegはユーザーPCのPATHにあることが必要で、同梱や自動インストールはしない。
 - manifestのPTSはシーク後の相対値であり元動画絶対PTSの保証とは分ける。UI表示・全動画対応・Windows Installer実機確認は別Validation gate。
 
+## 2.0.2 OpenCV ROI変化候補（Draft）
+
+- Windows Electron限定の実験機能。Python 3.11 / `opencv-python-headless==4.14.0.94`を仮想環境から呼ぶ（自動インストールなし）。
+- ROIは初期値`hp_shield_area`と`killfeed_area`の2か所。ユーザー校正・精密HUD数値認識は未実装。
+- 30秒/回、1～30fps、各領域最大15候補。候補`confirmed=false`、根拠JPEG、summary.jsonをローカル`VisionRuns`へ保存。結果はキル数・HPと混同しない。
+- `review.html`だけからsandbox付きpreloadの`webUtils.getPathForFile`を通す。Mainで送信元・パス・範囲検証。外部アップロードなし。
+- Python子プロセスは中止・2分タイムアウト・stdout制限・失敗時一時フォルダ削除を行う。
+- 合成動画の安定領域・変化領域で基本動作確認する。実試合のPrecision/RecallやHUD校正は別ゲート。
+- SQLite / ONNX Runtimeは今回導入しない。
+
 ## 2.1 v0.11.0 Electron移行方針
 
 正本: `docs/V1_ELECTRON_ARCHITECTURE.md`

@@ -44,6 +44,13 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
     ipcRenderer.on('frame-export:status', listener);
     return () => ipcRenderer.removeListener('frame-export:status', listener);
   },
+  scanVision: (file, options) => {
+    const sourcePath = webUtils.getPathForFile(file);
+    if (!sourcePath) throw new Error('PC上の動画ファイルを選択してください。');
+    return invoke('vision:scan', { sourcePath, start: options.start, end: options.end, fps: options.fps });
+  },
+  cancelVision: () => invoke('vision:cancel'),
+  openVisionFolder: () => invoke('vision:open-folder'),
   getRecordingStatus: () => invoke('recording:get-status'),
   prepareRecording: payload => invoke('recording:prepare', payload),
   appendRecordingChunk: chunk => invoke('recording:append-chunk', chunk),
