@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#07090c">
   <title>New Review | VReview</title>
-  <link rel="stylesheet" href="css/base.css?v=20261004-1">
-  <link rel="stylesheet" href="css/layout.css?v=20261004-1">
-  <link rel="stylesheet" href="css/components.css?v=20261004-1">
-  <link rel="stylesheet" href="css/feedback-queue.css?v=20261004-1">
+  <link rel="stylesheet" href="css/base.css?v=20261019-1">
+  <link rel="stylesheet" href="css/layout.css?v=20261019-1">
+  <link rel="stylesheet" href="css/components.css?v=20261019-1">
+  <link rel="stylesheet" href="css/feedback-queue.css?v=20261019-1">
 </head>
 <body class="review-page">
   <div class="app-shell">
@@ -160,6 +160,30 @@
             <div class="scene-list" id="sceneList"></div>
           </section>
 
+          <section class="inspector-section frame-export-section">
+            <details id="frameExportDetails">
+              <summary>フレーム画像を書き出す <small>AI解析用</small></summary>
+              <p class="helper">指定した範囲をJPEG画像としてZIPにまとめます。元動画は含めず、外部へ自動送信しません。</p>
+              <div class="frame-export-fields">
+                <label>開始（秒）<input type="number" id="frameStart" min="0" step="0.001" value="0"></label>
+                <label>終了（秒）<input type="number" id="frameEnd" min="0" step="0.001" value="3"></label>
+                <label>抽出頻度<select id="frameFps"><option value="10">10枚/秒</option><option value="30">30枚/秒</option><option value="60">60枚/秒</option></select></label>
+              </div>
+              <div class="button-row">
+                <button class="btn btn-ghost btn-small" id="frameUseStart" type="button">開始 = 再生位置</button>
+                <button class="btn btn-ghost btn-small" id="frameUseEnd" type="button">終了 = 再生位置</button>
+              </div>
+              <p class="helper" id="frameCount">画像の枚数を計算します</p>
+              <div class="button-row">
+                <button class="btn btn-secondary" id="frameExportBtn" type="button" disabled>画像ZIPを書き出す</button>
+                <button class="btn btn-danger btn-small" id="frameCancelBtn" type="button" disabled>中止</button>
+              </div>
+              <progress id="frameProgress" max="100" value="0" aria-label="フレーム画像の出力進捗"></progress>
+              <p class="helper" id="frameStatus" role="status" aria-live="polite"></p>
+              <p class="helper">Web版はシーク抽出（厳密なフレーム精度は未保証）。Windowsアプリ版はFFmpegで元動画の実フレームを抽出します（FFmpegの導入が必要）。</p>
+            </details>
+          </section>
+
           <section class="inspector-section feedback-panel">
             <div class="section-heading">
               <div>
@@ -207,15 +231,16 @@
     </main>
   </div>
 
-  <script src="js/version.js?v=20261004-1"></script>
-  <script src="js/diagnostics.js?v=20261004-1"></script>
-  <script src="js/storage.js?v=20261004-1"></script>
-  <script src="js/video.js?v=20261004-1"></script>
-  <script src="js/detector.js?v=20261004-1"></script>
-  <script src="js/feedback-library.js?v=20261004-1"></script>
-  <script src="js/feedback-package-v5.js?v=20261004-1"></script>
-  <script src="js/ui.js?v=20261004-1"></script>
-  <script src="js/app.js?v=20261004-1"></script>
-  <script src="js/desktop-telemetry.js?v=20261004-1"></script>
+  <script src="js/version.js?v=20261019-1"></script>
+  <script src="js/diagnostics.js?v=20261019-1"></script>
+  <script src="js/storage.js?v=20261019-1"></script>
+  <script src="js/video.js?v=20261019-1"></script>
+  <script src="js/detector.js?v=20261019-1"></script>
+  <script src="js/feedback-library.js?v=20261019-1"></script>
+  <script src="js/feedback-package-v5.js?v=20261019-1"></script>
+  <script src="js/frame-export.js?v=20261019-1"></script>
+  <script src="js/ui.js?v=20261019-1"></script>
+  <script src="js/app.js?v=20261019-1"></script>
+  <script src="js/desktop-telemetry.js?v=20261019-1"></script>
 </body>
 </html>

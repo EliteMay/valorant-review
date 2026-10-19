@@ -36,6 +36,15 @@ ClipごとにFeedback内容だけIndexedDBへ保存
 → 最後に1回だけBatch ZIPを作成
 ```
 
+## 2.0.1 高密度フレーム画像（PR #14）
+
+- Web: HTMLVideoElement seek + Canvas。タイミング境界の二重取得を減らすため、要求区間の中央へサンプリング。正確な元フレーム番号・PTSは保証しない。
+- Electron: sandboxed preloadの`webUtils.getPathForFile`経由で、明示選択された動画のPathだけをMain IPCへ渡す。Mainは`review.html`送信元・時間範囲・拡張子を検査。
+- FFmpeg native decode + select（非補間）で最大10 / 30 / 60fpsを抽出。ソースfpsが低ければ無理に画像を増やさない。
+- ユーザー指定のZIP保存先のみへ出力し、作業用一時画像は成功・失敗・中止時に削除する。元動画・音声はZIPに含めない。
+- 画像最大180枚、JPEG合計100MB。ffprobe・ffmpeg・PowerShellのエラーと中止をユーザーに返す。FFmpegはユーザーPCのPATHにあることが必要で、同梱や自動インストールはしない。
+- manifestのPTSはシーク後の相対値であり元動画絶対PTSの保証とは分ける。UI表示・全動画対応・Windows Installer実機確認は別Validation gate。
+
 ## 2.1 v0.11.0 Electron移行方針
 
 正本: `docs/V1_ELECTRON_ARCHITECTURE.md`
@@ -351,6 +360,16 @@ PC版New Review:
 | Development Diagnostics | `js/diagnostics.js` | Session UUID | Diagnostics v1 | sessionStorage / JSON Export |
 | Input Telemetry | `electron/telemetry/controller.cjs` | Telemetry Session UUID | `vreview-input-telemetry-session` v1 | Electron userData / sessions |
 | Gameplay Recording | `electron/recording/controller.cjs` | Telemetry Session UUID | `vreview-gameplay-recording` v1 | same Session folder / `gameplay.webm` |
+
+### Local Frame Evidence Export (2026-10-19 candidate)
+
+- `review.html`のScene Inspector内の折りたたみから、読み込んだMP4 / WebMの短い範囲を指定してローカル抽出する。
+- `js/frame-export.js`が独立したvideo elementへseekし、Canvas JPEGを生成する。元の再生位置は変えない。
+- 10 / 30 / 60枚/秒の要求頻度とし、1回最大180枚かつJPEG合計100MBで中断可能。元動画や音声をZIPへ含めない。
+- `manifest.json`には要求時刻とブラウザのseek結果を記録するが、厳密なpresentation timestampとは扱わない。Browser方式はFrame-accurateではない。
+- ZIPは既存のStore ZIP生成機能を再利用する。画像は永続Storageへ保存せず、外部送信しない。
+- 正確なフレーム番号 / 60fpsデコード / Telemetry同期は別PhaseのElectron + FFmpeg解析で扱う。
+- 実ブラウザ / 実動画を通した確認まではRuntime Validated扱いにしない。
 
 ## 8. Scene Data
 

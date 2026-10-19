@@ -32,6 +32,10 @@ v0.11.0ではGameplay録画を追加し、`New Review`の「録画＋入力 開�
 
 v0.12.0ではElectron専用の **Tracker収集 / Tracker Collector v0.1.0** を追加しました。ユーザーが明示的に選択したTracker.ggのブラウザウィンドウだけを対象に、Match Historyの自動Scroll CaptureとCurrent Matchの5Tab Captureを行います。VALORANT / Vanguard / Tracker private APIにはアクセスしません。\n\nv0.12.1ではWindows PowerShell 5.1でChatGPT用ZIP生成が失敗する問題を修正し、実際の`powershell.exe`でPackage生成するWindows Regression Testを追加しました。
 
+### フレーム画像ZIP（PR #14 検証中）
+
+New Reviewのフレーム抽出は、Web版では短い指定範囲をブラウザでJPEG化します（厳密なフレーム番号は保証しません）。Windowsアプリ版では、PCにインストールされたFFmpeg / FFprobeを使って元動画の実フレームを抽出し、ZIPの保存先を選べます。10 / 30 / 60枚/秒は**最大抽出頻度**で、ソースが低fpsなら架空のフレームを増やしません。最大180枚・画像合計100MB。両方式とも元動画や音声をZIPへ含めず、自動アップロードはしません。FFmpegがないPCでは利用者にエラーを表示し、勝手に精度の低い方式へ切り替えません。正式Release前のDraft PR機能です。
+
 Runtime Versionの正本は [`js/version.js`](js/version.js) です。
 
 - Project metadata: [`project-meta.json`](project-meta.json)
@@ -173,6 +177,7 @@ Batch ZIPは`Detector Test`へそのまま1個ドロップでき、中の複数�
 
 - Gameplay録画 + Input Telemetry同時記録（Electron）
 - MP4 / WebM読み込み
+- 撃ち合いなど指定した短い区間から10 / 30 / 60枚/秒でJPEG画像を抽出し、時刻付きmanifestとともにZIP出力（最大180枚、100MB）
 - キルScene候補の自動検出
 - `primary` / `weak`候補の分離
 - Scene手動追加・削除・範囲修正

@@ -590,5 +590,5 @@ window.VReviewFeedbackPackage = (() => {
     return Math.min(max, Math.max(min, value));
   }
 
-  return { prepare, build, buildBatch, download };
+  return { prepare, build, buildBatch, download, createArchive: buildStoreZip };
 })();

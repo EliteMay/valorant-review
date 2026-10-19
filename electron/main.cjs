@@ -10,6 +10,7 @@ const { UpdaterController } = require('./updater.cjs');
 const { TelemetryController } = require('./telemetry/controller.cjs');
 const { RecordingController } = require('./recording/controller.cjs');
 const { TrackerCollectorController } = require('./tracker-collector/controller.cjs');
+const { exportNativeFrames, planNativeFrames } = require('./frame-export/controller.cjs');
 
 const APP_ID = 'io.github.elitemay.vreview';
 app.setAppUserModelId(APP_ID);
@@ -27,6 +28,7 @@ let updater = null;
 let telemetryController = null;
 let recordingController = null;
 let trackerController = null;
+let frameExportTask = null;
 let quitAfterCaptureStop = false;
 
 function createWindow() {
@@ -232,6 +234,46 @@ function registerIpc() {
     if (!folder) return { ok: false, error: '保存済みSessionがありません。' };
     const error = await shell.openPath(folder);
     return { ok: !error, error: error || null };
+  });
+
+  ipcMain.handle('frame-export:run', async (event, payload) => {
+    if (!isTrustedLocalRenderer(event, 'review.html')) throw new Error('Frame Export IPC sender rejected.');
+    if (frameExportTask) throw new Error('画像を書き出し中です。');
+    planNativeFrames(payload || {});
+    const sourcePath = String(payload?.sourcePath || '');
+    if (!/\.(mp4|webm)$/i.test(sourcePath)) throw new Error('MP4 / WebMを指定してください。');
+    const baseName = path.parse(sourcePath).name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40) || 'clip';
+    const selection = await dialog.showSaveDialog(mainWindow, {
+      title: 'VReview フレーム画像ZIPの保存先',
+      defaultPath: path.join(app.getPath('downloads'), 'VReview_frames_' + baseName + '.zip'),
+      filters: [{ name: 'ZIP', extensions: ['zip'] }]
+    });
+    if (selection.canceled || !selection.filePath) return { cancelled: true };
+    const controller = new AbortController();
+    frameExportTask = controller;
+    try {
+      const result = await exportNativeFrames(
+        { sourcePath, start: payload.start, end: payload.end, fps: payload.fps },
+        {
+          outputPath: selection.filePath,
+          signal: controller.signal,
+          onProgress: state => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('frame-export:status', state);
+            }
+          }
+        }
+      );
+      return { savedPath: result.savedPath, frameCount: result.frameCount, byteCount: result.byteCount };
+    } finally {
+      frameExportTask = null;
+    }
+  });
+  ipcMain.handle('frame-export:cancel', event => {
+    if (!isTrustedLocalRenderer(event, 'review.html')) throw new Error('Frame Export IPC sender rejected.');
+    if (!frameExportTask) return { cancelled: false };
+    frameExportTask.abort();
+    return { cancelled: true };
   });
 
   ipcMain.handle('recording:get-status', () => recordingController.getStatus());
@@ -465,6 +507,7 @@ app.on('before-quit', event => {
     return;
   }
 
+  frameExportTask?.abort();
   taskRegistry?.interruptRunning();
   if (mainWindow && !mainWindow.isDestroyed()) windowStateStore?.save(mainWindow);
   logger?.info('app.before-quit');

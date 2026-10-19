@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 const invoke = (channel, payload) => ipcRenderer.invoke(channel, payload);
 
@@ -31,6 +31,18 @@ contextBridge.exposeInMainWorld('vreviewDesktop', Object.freeze({
     const listener = (_event, status) => callback(status);
     ipcRenderer.on('telemetry:status', listener);
     return () => ipcRenderer.removeListener('telemetry:status', listener);
+  },
+  exportNativeFrames: (file, options) => {
+    const sourcePath = webUtils.getPathForFile(file);
+    if (!sourcePath) throw new Error('PC上の動画ファイルを選択してください。');
+    return invoke('frame-export:run', { sourcePath, start: options.start, end: options.end, fps: options.fps });
+  },
+  cancelNativeFrames: () => invoke('frame-export:cancel'),
+  onNativeFrameStatus: callback => {
+    if (typeof callback !== 'function') return () => {};
+    const listener = (_event, status) => callback(status);
+    ipcRenderer.on('frame-export:status', listener);
+    return () => ipcRenderer.removeListener('frame-export:status', listener);
   },
   getRecordingStatus: () => invoke('recording:get-status'),
   prepareRecording: payload => invoke('recording:prepare', payload),
