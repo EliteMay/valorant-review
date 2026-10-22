@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { trustedAppPage, trustedIpcSender, safeExternalUrl } = require('./foundation/security-boundary.cjs');
 const { app, BrowserWindow, desktopCapturer, dialog, ipcMain, session, shell, screen } = require('electron');
 const { SettingsStore } = require('./foundation/settings-store.cjs');
 const { Logger } = require('./foundation/logger.cjs');
@@ -12,6 +13,12 @@ const { RecordingController } = require('./recording/controller.cjs');
 const { TrackerCollectorController } = require('./tracker-collector/controller.cjs');
 
 const APP_ID = 'io.github.elitemay.vreview';
+const APP_ROOT = path.resolve(__dirname, '..');
+
+function openTrustedExternal(candidate) {
+  const url = safeExternalUrl(candidate);
+  if (url) shell.openExternal(url).catch(() => {});
+}
 app.setAppUserModelId(APP_ID);
 
 const gotLock = app.requestSingleInstanceLock();
@@ -53,13 +60,14 @@ function createWindow() {
 
   win.setMenuBarVisibility(false);
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) shell.openExternal(url).catch(() => {});
+    openTrustedExternal(url);
     return { action: 'deny' };
   });
-  win.webContents.on('will-navigate', (event, url) => {
-    if (url.startsWith('file://')) return;
+  win.webContents.on('will-navigate', (event, legacyUrl) => {
+    const target = typeof event?.url === 'string' ? event.url : legacyUrl;
+    if (trustedAppPage(target, APP_ROOT)) return;
     event.preventDefault();
-    if (/^https?:\/\//i.test(url)) shell.openExternal(url).catch(() => {});
+    openTrustedExternal(target);
   });
   win.webContents.on('render-process-gone', (_event, details) => {
     diagnostics.noteRendererFailure(details);
@@ -105,10 +113,7 @@ function ensureRecordingSpace(directory) {
 }
 
 function isTrustedLocalRenderer(event, pageName = null) {
-  if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return false;
-  const url = String(event.sender.getURL?.() || '');
-  if (!url.startsWith('file://')) return false;
-  return pageName ? url.endsWith(`/${pageName}`) : true;
+  return trustedIpcSender(event, mainWindow?.webContents, APP_ROOT, pageName);
 }
 
 function requireTrackerRenderer(event) {
@@ -118,7 +123,15 @@ function requireTrackerRenderer(event) {
 }
 
 function registerIpc() {
-  ipcMain.handle('desktop:get-info', () => ({
+  // A renderer must belong to the active bundled top-level document.
+  const registerTrustedIpc = (channel, handler) =>
+    ipcMain.handle(channel, (event, ...args) => {
+      if (!isTrustedLocalRenderer(event)) {
+        throw new Error(`Untrusted IPC sender for ${channel}`);
+      }
+      return handler(event, ...args);
+    });
+  registerTrustedIpc('desktop:get-info', () => ({
     desktop: true,
     appVersion: app.getVersion(),
     electronVersion: process.versions.electron,
@@ -126,10 +139,10 @@ function registerIpc() {
     arch: process.arch,
     packaged: app.isPackaged
   }));
-  ipcMain.handle('settings:get', () => settingsStore.get());
-  ipcMain.handle('settings:update', (_event, patch) => settingsStore.update(patch && typeof patch === 'object' ? patch : {}));
-  ipcMain.handle('settings:reset', () => settingsStore.reset());
-  ipcMain.handle('settings:choose-recording-folder', async () => {
+  registerTrustedIpc('settings:get', () => settingsStore.get());
+  registerTrustedIpc('settings:update', (_event, patch) => settingsStore.update(patch && typeof patch === 'object' ? patch : {}));
+  registerTrustedIpc('settings:reset', () => settingsStore.reset());
+  registerTrustedIpc('settings:choose-recording-folder', async () => {
     const current = settingsStore.get().recording?.saveDirectory || defaultRecordingDirectory();
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'VReview 録画保存先',
@@ -139,7 +152,7 @@ function registerIpc() {
     if (result.canceled || !result.filePaths?.[0]) return settingsStore.get();
     return settingsStore.update({ recording: { saveDirectory: result.filePaths[0] } });
   });
-  ipcMain.handle('settings:choose-tracker-folder', async event => {
+  registerTrustedIpc('settings:choose-tracker-folder', async event => {
     if (!isTrustedLocalRenderer(event)) throw new Error('Settings IPC sender was rejected.');
     const current = settingsStore.get().tracker?.saveDirectory || path.join(app.getPath('userData'), 'TrackerCaptures');
     const result = await dialog.showOpenDialog(mainWindow, {
@@ -151,51 +164,51 @@ function registerIpc() {
     return settingsStore.update({ tracker: { saveDirectory: result.filePaths[0] } });
   });
 
-  ipcMain.handle('tracker:get-status', event => {
+  registerTrustedIpc('tracker:get-status', event => {
     requireTrackerRenderer(event);
     return trackerController.getStatus();
   });
-  ipcMain.handle('tracker:list-windows', async event => {
+  registerTrustedIpc('tracker:list-windows', async event => {
     requireTrackerRenderer(event);
     return trackerController.listWindows();
   });
-  ipcMain.handle('tracker:preview', (event, candidateId) => {
+  registerTrustedIpc('tracker:preview', (event, candidateId) => {
     requireTrackerRenderer(event);
     return trackerController.preview(candidateId);
   });
-  ipcMain.handle('tracker:select-window', async (event, candidateId) => {
+  registerTrustedIpc('tracker:select-window', async (event, candidateId) => {
     requireTrackerRenderer(event);
     return trackerController.selectWindow(candidateId);
   });
-  ipcMain.handle('tracker:get-calibration', async event => {
+  registerTrustedIpc('tracker:get-calibration', async event => {
     requireTrackerRenderer(event);
     return trackerController.getCalibration();
   });
-  ipcMain.handle('tracker:save-calibration', async (event, calibration) => {
+  registerTrustedIpc('tracker:save-calibration', async (event, calibration) => {
     requireTrackerRenderer(event);
     return trackerController.saveCalibration(calibration);
   });
-  ipcMain.handle('tracker:start-history', async event => {
+  registerTrustedIpc('tracker:start-history', async event => {
     requireTrackerRenderer(event);
     return trackerController.startMatchHistory();
   });
-  ipcMain.handle('tracker:start-current-match', async event => {
+  registerTrustedIpc('tracker:start-current-match', async event => {
     requireTrackerRenderer(event);
     return trackerController.startCurrentMatch();
   });
-  ipcMain.handle('tracker:stop', (event, reason) => {
+  registerTrustedIpc('tracker:stop', (event, reason) => {
     requireTrackerRenderer(event);
     return trackerController.requestStop(reason || 'user-stop');
   });
-  ipcMain.handle('tracker:create-package', async event => {
+  registerTrustedIpc('tracker:create-package', async event => {
     requireTrackerRenderer(event);
     return trackerController.createPackage();
   });
-  ipcMain.handle('tracker:discard-recovery', event => {
+  registerTrustedIpc('tracker:discard-recovery', event => {
     requireTrackerRenderer(event);
     return trackerController.discardRecoveredSession();
   });
-  ipcMain.handle('tracker:open-folder', async event => {
+  registerTrustedIpc('tracker:open-folder', async event => {
     requireTrackerRenderer(event);
     const folder = trackerController.getLastSessionDirectory();
     if (!folder) return { ok: false, error: '保存済みTracker Sessionがありません。' };
@@ -203,14 +216,14 @@ function registerIpc() {
     return { ok: !error, error: error || null };
   });
 
-  ipcMain.handle('diagnostics:get', () => diagnostics.snapshot());
-  ipcMain.handle('diagnostics:open-log-folder', async () => {
+  registerTrustedIpc('diagnostics:get', () => diagnostics.snapshot());
+  registerTrustedIpc('diagnostics:open-log-folder', async () => {
     const error = await shell.openPath(app.getPath('logs'));
     return { ok: !error, error: error || null };
   });
-  ipcMain.handle('updates:check', () => updater.check());
-  ipcMain.handle('updates:get-status', () => updater.getStatus());
-  ipcMain.handle('updates:update-now', async () => {
+  registerTrustedIpc('updates:check', () => updater.check());
+  registerTrustedIpc('updates:get-status', () => updater.getStatus());
+  registerTrustedIpc('updates:update-now', async () => {
     const result = await updater.downloadLatest();
     if (result.status !== 'downloaded') return result;
 
@@ -223,19 +236,19 @@ function registerIpc() {
 
     return updater.installDownloaded();
   });
-  ipcMain.handle('tasks:list', () => taskRegistry.list());
-  ipcMain.handle('telemetry:get-status', () => telemetryController.getStatus());
-  ipcMain.handle('telemetry:start', () => telemetryController.start());
-  ipcMain.handle('telemetry:stop', () => telemetryController.stop());
-  ipcMain.handle('telemetry:open-folder', async () => {
+  registerTrustedIpc('tasks:list', () => taskRegistry.list());
+  registerTrustedIpc('telemetry:get-status', () => telemetryController.getStatus());
+  registerTrustedIpc('telemetry:start', () => telemetryController.start());
+  registerTrustedIpc('telemetry:stop', () => telemetryController.stop());
+  registerTrustedIpc('telemetry:open-folder', async () => {
     const folder = recordingController?.getSessionDirectory() || telemetryController.getSessionDirectory();
     if (!folder) return { ok: false, error: '保存済みSessionがありません。' };
     const error = await shell.openPath(folder);
     return { ok: !error, error: error || null };
   });
 
-  ipcMain.handle('recording:get-status', () => recordingController.getStatus());
-  ipcMain.handle('recording:prepare', async (_event, payload) => {
+  registerTrustedIpc('recording:get-status', () => recordingController.getStatus());
+  registerTrustedIpc('recording:prepare', async (_event, payload) => {
     let telemetry = telemetryController.getStatus();
     if (!telemetry.active) {
       const recordingDirectory = resolveRecordingDirectory();
@@ -258,12 +271,12 @@ function registerIpc() {
     });
   });
 
-  ipcMain.handle('recording:append-chunk', (event, chunk) => {
+  registerTrustedIpc('recording:append-chunk', (event, chunk) => {
     if (!mainWindow || event.sender.id !== mainWindow.webContents.id) return false;
     return recordingController.appendChunk(chunk);
   });
 
-  ipcMain.handle('recording:finish', async (_event, payload) => {
+  registerTrustedIpc('recording:finish', async (_event, payload) => {
     const recording = await recordingController.finish(payload || {});
     if (telemetryController.getStatus().active) await telemetryController.stop();
     const telemetry = telemetryController.getStatus();
@@ -271,7 +284,7 @@ function registerIpc() {
     return { recording, telemetry };
   });
 
-  ipcMain.handle('recording:abort', async (_event, reason) => {
+  registerTrustedIpc('recording:abort', async (_event, reason) => {
     const recording = await recordingController.abort(reason || 'renderer-abort');
     if (telemetryController.getStatus().active) await telemetryController.stop();
     const telemetry = telemetryController.getStatus();
@@ -279,7 +292,7 @@ function registerIpc() {
     return { recording, telemetry };
   });
 
-  ipcMain.handle('recording:open-folder', async () => {
+  registerTrustedIpc('recording:open-folder', async () => {
     const folder = recordingController.getSessionDirectory() || telemetryController.getSessionDirectory();
     if (!folder) return { ok: false, error: '保存済みSessionがありません。' };
     const error = await shell.openPath(folder);
@@ -390,8 +403,9 @@ app.whenReady().then(() => {
 
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
     try {
-      const currentUrl = String(mainWindow?.webContents?.getURL?.() || '');
-      const isLocalReview = currentUrl.startsWith('file://') && currentUrl.endsWith('/review.html');
+      const isLocalReview = request.frame != null &&
+        request.frame === mainWindow?.webContents?.mainFrame &&
+        trustedAppPage(request.frame.url, APP_ROOT) === 'review.html';
       if (!request.videoRequested || !isLocalReview) {
         callback(null);
         return;
